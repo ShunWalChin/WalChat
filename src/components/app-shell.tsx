@@ -85,12 +85,17 @@ export function AppShell() {
   useEffect(() => {
     if (!user) return
     void apiFetch<{
-      accounts: Array<{ username: string; status: string }>
+      accounts: Array<{
+        username: string
+        status: string
+        tokenStored: boolean
+      }>
     }>('/api/integrations/meta/status')
       .then((status) =>
         setInstagramUsername(
-          status.accounts.find((account) => account.status === 'connected')
-            ?.username ?? null,
+          status.accounts.find(
+            (account) => account.status === 'connected' && account.tokenStored,
+          )?.username ?? null,
         ),
       )
       .catch(() => setInstagramUsername(null))

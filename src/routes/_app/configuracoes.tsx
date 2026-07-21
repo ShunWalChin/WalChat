@@ -111,7 +111,10 @@ function SettingsPage() {
   }, [loadStatus])
 
   const activeAccount = useMemo(
-    () => meta?.accounts.find((account) => account.status === 'connected'),
+    () =>
+      meta?.accounts.find(
+        (account) => account.status === 'connected' && account.tokenStored,
+      ),
     [meta],
   )
 
