@@ -1,0 +1,13 @@
+# Mantém dependências, secrets, documentos e builds locais fora do contexto Docker.
+node_modules
+.git
+.output
+.vscode
+.cta.json
+dist
+docs
+output
+tmp
+status.env
+.env*
+supabase/.temp
