@@ -108,7 +108,7 @@ Nenhum erro ou warning foi registrado no console durante a navegação final dos
 
 ## Validação da refatoração Meta/OpenAI
 
-Em 21/07/2026, a camada de integrações foi ampliada e validada localmente:
+Em 21/07/2026, a camada de integrações foi ampliada e validada localmente e na homologação:
 
 | Verificação                         | Resultado                                                 |
 | ----------------------------------- | --------------------------------------------------------- |
@@ -117,11 +117,31 @@ Em 21/07/2026, a camada de integrações foi ampliada e validada localmente:
 | Vitest `npm test`                   | 5 arquivos e 18 testes aprovados                          |
 | Build cliente + SSR `npm run build` | Aprovado                                                  |
 | PostgreSQL `npm run db:lint`        | Aprovado, zero erros de schema                            |
-| Recriação `npm run db:reset`        | Não executada nesta máquina: Docker Desktop estava parado |
+| Recriação local `npm run db:reset`  | Não executada nesta máquina: Docker Desktop estava parado |
+| Backup pré-migração                 | Aprovado; código, schema e dados preservados no servidor  |
+| Migration `20260721180000`          | Aplicada sem reset e aprovada na instância de homologação |
+| Redis/BullMQ                        | Aprovado com política `noeviction`                        |
 
-A suíte cobre HMAC, criptografia autenticada, OAuth e troca de token, assinatura de campos, janelas 24h/7d, Private Reply única, HUMAN_AGENT, cooldown, blocklist, opt-out e canais que podem ou não renovar a janela. O reset não foi substituído por uma afirmação simulada; ele deve ser repetido em WSL/servidor com Docker ativo antes de aplicar a migration em produção.
+A suíte cobre HMAC, criptografia autenticada, OAuth e troca de token, assinatura de campos, janelas 24h/7d, Private Reply única, HUMAN_AGENT, cooldown, blocklist, opt-out e canais que podem ou não renovar a janela. O reset local não foi substituído por uma afirmação simulada. No servidor isolado, a migration foi aplicada sem reset depois dos backups e validada pelos smokes autenticados, pelo build e pelos logs dos serviços.
 
 O smoke autenticado complementar (`scripts/smoke-integrations.mjs`) valida status Meta sanitizado, configuração de IA, agentes, sugestão com opt-out, Inbox, gatilhos e rejeição de acesso anônimo. Ele não substitui o teste externo com credenciais reais.
+
+Resultado do smoke autenticado das integrações:
+
+```json
+{
+  "privateApiAuth": "ok",
+  "metaStatus": "ok",
+  "aiSettings": "ok",
+  "agentsCrud": "ok",
+  "knowledgeCrud": "ok",
+  "aiSuggestion": "demo",
+  "inbox": "ok",
+  "triggers": "ok"
+}
+```
+
+Os backups de homologação foram preservados em `/opt/wal-chat/backups`. A aplicação, o worker, o scheduler e o Redis estão ativos; os logs finais não apresentaram erros. A interface também foi corrigida para só indicar uma conta Meta como conectada quando o token criptografado correspondente realmente existe.
 
 ## Dependências externas pendentes
 
