@@ -25,6 +25,7 @@
     "db:reset": "supabase db reset",
     "db:lint": "supabase db lint --local",
     "smoke": "node --env-file=.env.local scripts/smoke.mjs",
+    "smoke:integrations": "node --env-file=.env.local scripts/smoke-integrations.mjs",
     "validate:routes": "node scripts/validate-routes.mjs",
     "prod:up": "docker compose --env-file .env.production -f docker-compose.production.yml up -d --build",
     "prod:down": "docker compose --env-file .env.production -f docker-compose.production.yml down",

@@ -121,6 +121,8 @@ Em 21/07/2026, a camada de integrações foi ampliada e validada localmente:
 
 A suíte cobre HMAC, criptografia autenticada, OAuth e troca de token, assinatura de campos, janelas 24h/7d, Private Reply única, HUMAN_AGENT, cooldown, blocklist, opt-out e canais que podem ou não renovar a janela. O reset não foi substituído por uma afirmação simulada; ele deve ser repetido em WSL/servidor com Docker ativo antes de aplicar a migration em produção.
 
+O smoke autenticado complementar (`scripts/smoke-integrations.mjs`) valida status Meta sanitizado, configuração de IA, agentes, sugestão com opt-out, Inbox, gatilhos e rejeição de acesso anônimo. Ele não substitui o teste externo com credenciais reais.
+
 ## Dependências externas pendentes
 
 O ambiente continua em `DEMO_MODE=true`. Os itens abaixo exigem contas e credenciais que não foram fornecidas:
