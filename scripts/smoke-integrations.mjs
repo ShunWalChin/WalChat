@@ -58,16 +58,65 @@ assert(Array.isArray(inbox.conversations), 'Inbox inválida.')
 assert(Array.isArray(triggers.triggers), 'Lista de gatilhos inválida.')
 
 let suggestion = 'sem-agente'
-if (agents.agents.length > 0) {
+let temporaryAgentId
+let temporaryDocumentId
+try {
+  const createdAgent = await requestJson('/api/ai/agents', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: `Agente Smoke ${Date.now()}`,
+      persona: 'Especialista de teste que responde de forma curta e objetiva.',
+      mode: 'copilot',
+      tone: 'direto e cordial',
+      isActive: true,
+      providerOverride: null,
+      modelOverride: null,
+      maxReplyChars: 300,
+      fallbackToCopilot: true,
+    }),
+  })
+  temporaryAgentId = createdAgent.id
+  await requestJson('/api/ai/agents', {
+    method: 'PATCH',
+    body: JSON.stringify({ id: temporaryAgentId, tone: 'cordial e conciso' }),
+  })
+  const createdDocument = await requestJson('/api/ai/knowledge', {
+    method: 'POST',
+    body: JSON.stringify({
+      agentId: temporaryAgentId,
+      title: 'Base temporária do smoke',
+      content: 'O Wal Chat centraliza atendimento e automação do Instagram.',
+    }),
+  })
+  temporaryDocumentId = createdDocument.id
+  const documents = await requestJson(
+    `/api/ai/knowledge?agentId=${encodeURIComponent(temporaryAgentId)}`,
+  )
+  assert(
+    documents.documents.length === 1,
+    'CRUD da base de conhecimento falhou.',
+  )
+
   const result = await requestJson('/api/ai/suggest', {
     method: 'POST',
     body: JSON.stringify({
-      agentId: agents.agents[0].id,
+      agentId: temporaryAgentId,
       history: [{ role: 'user', content: 'Como funciona o Wal Chat?' }],
     }),
   })
   assert(result.suggestion?.endsWith('Responda PARAR'), 'IA sem opt-out.')
   suggestion = result.provider
+} finally {
+  if (temporaryDocumentId)
+    await requestJson('/api/ai/knowledge', {
+      method: 'DELETE',
+      body: JSON.stringify({ id: temporaryDocumentId }),
+    })
+  if (temporaryAgentId)
+    await requestJson('/api/ai/agents', {
+      method: 'DELETE',
+      body: JSON.stringify({ id: temporaryAgentId }),
+    })
 }
 
 console.log(
@@ -76,7 +125,8 @@ console.log(
       privateApiAuth: 'ok',
       metaStatus: 'ok',
       aiSettings: 'ok',
-      agents: agents.agents.length,
+      agentsCrud: 'ok',
+      knowledgeCrud: 'ok',
       aiSuggestion: suggestion,
       inbox: 'ok',
       triggers: 'ok',
