@@ -11,11 +11,17 @@ const serverEnvSchema = z.object({
   META_ACCESS_TOKEN: z.string().optional(),
   META_PUBLISH_TOKEN: z.string().optional(),
   META_VERIFY_TOKEN: z.string().min(8).optional(),
+  META_OAUTH_REDIRECT_URI: z.string().url().optional(),
   META_GRAPH_VERSION: z
     .string()
     .regex(/^v\d+\.\d+$/)
     .default('v25.0'),
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().min(1).default('gpt-5.6-sol'),
+  OPENAI_PROJECT: z.string().optional(),
+  OPENAI_ORGANIZATION: z.string().optional(),
+  CREDENTIALS_ENCRYPTION_KEY: z.string().min(32).optional(),
   APP_ORIGIN: z.string().url().default('http://localhost:3000'),
   DEMO_MODE: z.enum(['true', 'false']).default('true'),
 })
@@ -31,8 +37,14 @@ export function getServerEnv() {
     META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN,
     META_PUBLISH_TOKEN: process.env.META_PUBLISH_TOKEN,
     META_VERIFY_TOKEN: process.env.META_VERIFY_TOKEN,
+    META_OAUTH_REDIRECT_URI: process.env.META_OAUTH_REDIRECT_URI,
     META_GRAPH_VERSION: process.env.META_GRAPH_VERSION,
     GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENAI_MODEL: process.env.OPENAI_MODEL,
+    OPENAI_PROJECT: process.env.OPENAI_PROJECT,
+    OPENAI_ORGANIZATION: process.env.OPENAI_ORGANIZATION,
+    CREDENTIALS_ENCRYPTION_KEY: process.env.CREDENTIALS_ENCRYPTION_KEY,
     APP_ORIGIN: process.env.APP_ORIGIN,
     DEMO_MODE: process.env.DEMO_MODE,
   })

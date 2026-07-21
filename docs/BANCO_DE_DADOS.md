@@ -33,18 +33,20 @@ erDiagram
 | `ai_agent_mode`         | `copilot`, `autonomous`                                             |
 | `content_kind`          | `feed`, `reel`, `story`, `carousel`                                 |
 | `campaign_status`       | `draft`, `scheduled`, `running`, `paused`, `completed`, `cancelled` |
-| `window_policy`         | `standard_24h`, `human_agent_7d`, `blocked`                         |
+| `window_policy`         | `standard_24h`, `human_agent_7d`, `private_reply_7d`, `blocked`     |
 
 ## 3. Catálogo de tabelas
 
 ### Tenancy e integrações
 
-| Tabela                          | Responsabilidade                             |
-| ------------------------------- | -------------------------------------------- |
-| `workspaces`                    | Tenant, nome, slug e configurações           |
-| `workspace_members`             | Associação usuário/workspace e papel         |
-| `instagram_accounts`            | Contas profissionais conectadas e permissões |
-| `private.instagram_credentials` | Tokens por conta; service role apenas        |
+| Tabela                     | Responsabilidade                                                 |
+| -------------------------- | ---------------------------------------------------------------- |
+| `workspaces`               | Tenant, nome, slug e configurações                               |
+| `workspace_members`        | Associação usuário/workspace e papel                             |
+| `instagram_accounts`       | Perfil, scopes, webhook, validade e estado da conexão            |
+| `integration_credentials`  | Tokens/API keys cifrados; sem acesso `anon/authenticated`        |
+| `integration_oauth_states` | States Meta curtos, de uso único e protegidos contra replay      |
+| `integration_audit_logs`   | Auditoria sanitizada de conectar, validar, renovar e desconectar |
 
 ### CRM e Inbox
 
@@ -80,13 +82,14 @@ erDiagram
 
 ### IA, campanhas e proteção
 
-| Tabela                | Responsabilidade                                |
-| --------------------- | ----------------------------------------------- |
-| `ai_agents`           | Persona, modo e habilitação do agente           |
-| `knowledge_documents` | Base de conhecimento do agente                  |
-| `campaigns`           | Segmento, mensagem, taxa e estado da campanha   |
-| `campaign_recipients` | Snapshot de elegibilidade e entrega por contato |
-| `blocklist_entries`   | Palavras e padrões proibidos por workspace      |
+| Tabela                 | Responsabilidade                                 |
+| ---------------------- | ------------------------------------------------ |
+| `ai_provider_settings` | Provedor, modelo, esforço e limites do workspace |
+| `ai_agents`            | Persona, modo, provedor e limites do agente      |
+| `knowledge_documents`  | Base de conhecimento global ou ligada ao agente  |
+| `campaigns`            | Segmento, mensagem, taxa e estado da campanha    |
+| `campaign_recipients`  | Snapshot de elegibilidade e entrega por contato  |
+| `blocklist_entries`    | Palavras e padrões proibidos por workspace       |
 
 ## 4. Views
 
@@ -116,7 +119,9 @@ As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e par�
 - RLS é habilitado em todas as tabelas públicas operacionais.
 - `workspaces` permite leitura aos membros e alteração a `owner/admin`.
 - `workspace_members` permite leitura aos membros e gestão a `owner/admin`.
-- Demais tabelas recebem policies de `select`, `insert`, `update` e `delete` baseadas em `workspace_id`.
+- Demais tabelas recebem policies baseadas em `workspace_id`.
+- `instagram_accounts`, `ai_agents`, `knowledge_documents` e `ai_provider_settings` só podem ser alteradas por `owner/admin`; membros mantêm leitura.
+- `integration_credentials` e `integration_oauth_states` não têm GRANT para `anon/authenticated` e são operadas somente pela service role.
 - `authenticated` recebe DML no schema público, sempre limitado pelo RLS.
 - `service_role` recebe acesso total aos schemas público e privado.
 - `authenticated` não recebe uso do schema `private`.
@@ -125,6 +130,8 @@ As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e par�
 
 - contatos: um `instagram_user_id` por workspace;
 - interações: um `meta_event_id` por workspace quando presente;
+- mensagens: uma linha por `interaction_id` quando presente;
+- credenciais: uma por workspace, provedor, tipo e `scope_key`;
 - cooldown: um registro por gatilho/contato;
 - Private Reply: um registro por ID de comentário;
 - jobs: índice parcial por `run_at` quando `pending`;

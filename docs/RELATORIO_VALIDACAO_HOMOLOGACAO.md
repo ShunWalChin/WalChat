@@ -106,14 +106,29 @@ As 16 rotas abaixo responderam HTTP 200:
 
 Nenhum erro ou warning foi registrado no console durante a navegação final dos módulos.
 
+## Validação da refatoração Meta/OpenAI
+
+Em 21/07/2026, a camada de integrações foi ampliada e validada localmente:
+
+| Verificação                         | Resultado                                                 |
+| ----------------------------------- | --------------------------------------------------------- |
+| TypeScript `npx tsc --noEmit`       | Aprovado, zero erros                                      |
+| ESLint `npm run lint`               | Aprovado, zero erros/warnings                             |
+| Vitest `npm test`                   | 5 arquivos e 18 testes aprovados                          |
+| Build cliente + SSR `npm run build` | Aprovado                                                  |
+| PostgreSQL `npm run db:lint`        | Aprovado, zero erros de schema                            |
+| Recriação `npm run db:reset`        | Não executada nesta máquina: Docker Desktop estava parado |
+
+A suíte cobre HMAC, criptografia autenticada, OAuth e troca de token, assinatura de campos, janelas 24h/7d, Private Reply única, HUMAN_AGENT, cooldown, blocklist, opt-out e canais que podem ou não renovar a janela. O reset não foi substituído por uma afirmação simulada; ele deve ser repetido em WSL/servidor com Docker ativo antes de aplicar a migration em produção.
+
 ## Dependências externas pendentes
 
 O ambiente continua em `DEMO_MODE=true`. Os itens abaixo exigem contas e credenciais que não foram fornecidas:
 
 - App Meta com permissões aprovadas e Advanced Access.
 - Tokens reais do Instagram Graph API.
-- OAuth por workspace para operação multi-tenant real.
-- Chave Gemini e política de orçamento.
+- Teste do OAuth já implementado com App ID/secret e conta Professional reais.
+- Chave OpenAI ou Gemini e política de orçamento.
 - SMTP de produção para confirmação e recuperação de senha.
 
-Publicação, disparos reais, insights reais e geração Gemini não devem ser marcados como produção ativa antes dessas configurações.
+Publicação, disparos reais, insights reais e geração por IA não devem ser marcados como produção ativa antes dessas configurações externas e da matriz em `CONFIGURACAO_META_E_OPENAI.md`.

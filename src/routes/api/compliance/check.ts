@@ -11,6 +11,7 @@ const bodySchema = z.object({
   requestedTag: z.string().nullable().optional(),
   triggerLastFiredAt: z.string().datetime().nullable().optional(),
   instagramCommentId: z.string().nullable().optional(),
+  commentCreatedAt: z.string().datetime().nullable().optional(),
   commentAlreadyReplied: z.boolean().optional(),
   blocklist: z.array(z.string()).max(100).optional(),
 })

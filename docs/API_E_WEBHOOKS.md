@@ -87,35 +87,66 @@ Em `503`, o endpoint envia `Retry-After: 10` para favorecer uma nova tentativa.
 
 ## `POST /api/ai/suggest`
 
-Gera uma sugestão curta em PT-BR. O serviço usa no máximo cinco mensagens e sempre pós-processa a resposta com `Responda PARAR`.
+Gera uma sugestão curta em PT-BR usando o agente e a base persistidos no workspace. Exige JWT Supabase; persona e conhecimento enviados pelo navegador são ignorados por design.
 
 Request:
 
 ```json
 {
-  "agentName": "Wal Vendas",
-  "persona": "Direto, parceiro e sem pressão.",
-  "knowledge": "O guia é gratuito e está disponível no site.",
+  "agentId": "00000000-0000-0000-0000-000000000000",
   "history": [{ "role": "user", "content": "Quero o guia" }]
 }
 ```
 
 Limites:
 
-- `agentName`: 80 caracteres;
-- `persona`: 4.000 caracteres;
-- `knowledge`: 30.000 caracteres;
+- `agentId`: UUID de um agente ativo do workspace;
 - `history`: uma a cinco mensagens, até 4.000 caracteres cada.
 
 Resposta:
 
 ```json
 {
-  "suggestion": "Fechou! Separei tudo por aqui 👊\n\nResponda PARAR"
+  "suggestion": "Fechou! Separei tudo por aqui 👊\n\nResponda PARAR",
+  "provider": "openai",
+  "model": "gpt-5.6-sol"
 }
 ```
 
-Códigos: `200`, `400` ou `502`.
+Códigos: `200`, `400`, `401`, `403`, `500` ou `502`.
+
+## Integração Meta
+
+| Método   | Endpoint                            | Uso                                                                  |
+| -------- | ----------------------------------- | -------------------------------------------------------------------- |
+| `POST`   | `/api/integrations/meta/start`      | Cria state de uso único, cookie HttpOnly e URL OAuth                 |
+| `GET`    | `/api/integrations/meta/callback`   | Confere cookie/state, troca token, assina webhook e cifra credencial |
+| `GET`    | `/api/integrations/meta/status`     | Retorna configuração, URLs e contas sem expor secrets                |
+| `POST`   | `/api/integrations/meta/validate`   | Relê perfil e `subscribed_apps`                                      |
+| `DELETE` | `/api/integrations/meta/disconnect` | Desassina webhooks e remove token cifrado                            |
+
+Mutações exigem `owner/admin`, bearer token e Origin confiável. O callback é público por protocolo, mas exige state simultaneamente no cookie e no Postgres.
+
+## Configurações e agentes de IA
+
+| Método                  | Endpoint            | Uso                                                 |
+| ----------------------- | ------------------- | --------------------------------------------------- |
+| `GET/PUT`               | `/api/ai/settings`  | Provedor, modelo, limites e API key cifrada         |
+| `GET/POST/PATCH/DELETE` | `/api/ai/agents`    | CRUD de personas e modos                            |
+| `GET/POST/PATCH/DELETE` | `/api/ai/knowledge` | CRUD da base textual, sempre filtrada por workspace |
+
+Leitura exige associação ao workspace. Escrita exige `owner/admin`. A chave nunca é devolvida; o status informa apenas `configured` e a origem `tenant`, `server` ou `none`.
+
+## `POST /api/messages/send`
+
+Envio manual autenticado por `owner/admin/agent`. Recebe `contactId`, `message` e `humanAgent`. O backend relê contato e blocklist, aplica compliance, usa o token da conta do mesmo workspace e persiste tanto sucessos quanto bloqueios.
+
+## Inbox e gatilhos
+
+- `GET /api/inbox`: lista até 100 conversas da categoria, contato sanitizado, janela calculada, até 200 mensagens e agentes ativos.
+- `PATCH /api/inbox`: marca leitura e altera categoria/IA do contato; exige `owner/admin/agent`.
+- `GET /api/triggers`: lista gatilhos e quantidade de contatos em cooldown.
+- `POST/PATCH/DELETE /api/triggers`: cria, altera ou exclui gatilhos simples; exige `owner/admin`.
 
 ## `POST /api/compliance/check`
 
@@ -151,6 +182,7 @@ Motivos de bloqueio possíveis:
 - `human_agent_is_not_automation`;
 - `trigger_cooldown`;
 - `comment_already_replied`;
+- `outside_private_reply_window`;
 - `blocked_content`.
 
 ## `POST /api/data-deletion`
@@ -178,4 +210,4 @@ Essas camadas protegem contra retries normais da Meta e concorrência entre work
 
 ## Autenticação dos endpoints
 
-O webhook e a exclusão são públicos por definição do protocolo, mas autenticados por assinatura. Os endpoints de IA e compliance pertencem à superfície autenticada da aplicação; antes do Live Mode, mantenha-os atrás da sessão/JWT e limite requisições no proxy ou na aplicação.
+O webhook e a exclusão são públicos por definição do protocolo, mas autenticados por assinatura. Integrações, configurações/agentes de IA e envio manual exigem JWT Supabase e membership explícito. O preview de compliance é uma função pública sem persistência nem efeitos externos; aplique rate limit no proxy antes do Live Mode.

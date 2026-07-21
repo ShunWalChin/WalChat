@@ -27,7 +27,7 @@ begin
 
   select id into demo_workspace_id from public.workspaces where owner_id = demo_user_id limit 1;
   insert into public.instagram_accounts (workspace_id, instagram_user_id, username, display_name, status, scopes, webhook_subscribed_at)
-  values (demo_workspace_id, '17841400000000001', 'wal.chat', 'Wal Chat', 'connected', array['instagram_basic','instagram_manage_messages','instagram_manage_comments','instagram_content_publish'], timezone('utc', now()))
+  values (demo_workspace_id, '17841400000000001', 'wal.chat', 'Wal Chat', 'connected', array['instagram_business_basic','instagram_business_manage_messages','instagram_business_manage_comments','instagram_business_content_publish','instagram_business_manage_insights'], timezone('utc', now()))
   on conflict (workspace_id, instagram_user_id) do update set username = excluded.username
   returning id into demo_account_id;
 
@@ -72,4 +72,25 @@ begin
     (demo_workspace_id, 'ganhe dinheiro rápido', 'spam'),
     (demo_workspace_id, 'clique agora sem risco', 'spam')
   on conflict do nothing;
+
+  insert into public.ai_provider_settings (
+    workspace_id, provider, model, reasoning_effort, response_verbosity,
+    max_output_tokens, is_enabled
+  ) values (
+    demo_workspace_id, 'openai', 'gpt-5.6-sol', 'low', 'low', 500, true
+  ) on conflict (workspace_id) do nothing;
+
+  insert into public.ai_agents (
+    workspace_id, name, persona, mode, tone, is_active, max_reply_chars,
+    fallback_to_copilot
+  ) values (
+    demo_workspace_id,
+    'Mano Vendas',
+    'Atenda creators com proximidade, esclareça dúvidas e só avance para uma oferta quando houver contexto.',
+    'copilot',
+    'próximo, direto e brasileiro',
+    true,
+    500,
+    true
+  ) on conflict (workspace_id, name) do nothing;
 end $$;

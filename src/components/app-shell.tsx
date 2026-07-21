@@ -22,8 +22,9 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/auth-context'
+import { apiFetch } from '../lib/api-client'
 
 const groups = [
   {
@@ -60,7 +61,7 @@ const titles: Record<string, { eyebrow: string; title: string }> = {
   '/contatos': { eyebrow: 'BASE DE RELACIONAMENTO', title: 'Contatos & tags' },
   '/gatilhos': { eyebrow: 'AUTOMAÇÃO INTELIGENTE', title: 'Gatilhos' },
   '/sequencias': { eyebrow: 'FUNIS DE DM', title: 'Sequências' },
-  '/agentes': { eyebrow: 'GEMINI 2.5 FLASH', title: 'Agentes de IA' },
+  '/agentes': { eyebrow: 'OPENAI + GEMINI', title: 'Agentes de IA' },
   '/reengajamento': { eyebrow: 'CAMPANHAS META-SAFE', title: 'Reengajamento' },
   '/auto-like': { eyebrow: 'ENGAJAMENTO AUTOMÁTICO', title: 'Auto-like' },
   '/calendario': { eyebrow: 'PLANEJAMENTO EDITORIAL', title: 'Calendário' },
@@ -73,10 +74,27 @@ const titles: Record<string, { eyebrow: string; title: string }> = {
 export function AppShell() {
   const { user, loading, signOut } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [instagramUsername, setInstagramUsername] = useState<string | null>(
+    null,
+  )
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
   const heading = titles[pathname] ?? titles['/dashboard']
+
+  useEffect(() => {
+    if (!user) return
+    void apiFetch<{
+      accounts: Array<{ username: string; status: string }>
+    }>('/api/integrations/meta/status')
+      .then((status) =>
+        setInstagramUsername(
+          status.accounts.find((account) => account.status === 'connected')
+            ?.username ?? null,
+        ),
+      )
+      .catch(() => setInstagramUsername(null))
+  }, [user])
 
   if (loading) {
     return (
@@ -112,8 +130,12 @@ export function AppShell() {
         <button className="account-picker">
           <span className="avatar avatar-orange">WC</span>
           <span>
-            <strong>@wal.chat</strong>
-            <small>Instagram conectado</small>
+            <strong>
+              {instagramUsername ? `@${instagramUsername}` : 'Instagram'}
+            </strong>
+            <small>
+              {instagramUsername ? 'Instagram conectado' : 'Conexão pendente'}
+            </small>
           </span>
           <ChevronDown size={16} />
         </button>
@@ -195,7 +217,7 @@ export function AppShell() {
           </div>
           <div className="topbar-actions">
             <span className="connection-pill">
-              <i /> Meta conectada
+              <i /> {instagramUsername ? 'Meta conectada' : 'Meta pendente'}
             </span>
             <Link to="/publicar" className="button button-dark">
               <Plus size={17} /> Criar

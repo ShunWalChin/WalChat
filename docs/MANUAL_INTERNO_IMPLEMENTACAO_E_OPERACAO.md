@@ -13,7 +13,7 @@ Endereços previstos:
 O MVP possui duas formas de uso:
 
 1. **Demonstração:** apresenta todos os módulos com dados de exemplo e bloqueia envios reais.
-2. **Operação real:** autenticação e banco reais; integrações Meta e Gemini são habilitadas somente após cadastrar credenciais válidas e concluir as etapas de aprovação externas.
+2. **Operação real:** autenticação e banco reais; integrações Meta e OpenAI/Gemini são habilitadas somente após cadastrar credenciais válidas e concluir as etapas de aprovação externas.
 
 ## 2. Arquitetura isolada
 
@@ -149,11 +149,11 @@ Depois acesse `http://127.0.0.1:54353` no computador local.
 
 ### 6.1 Contas necessárias
 
-- Meta Business Portfolio verificado.
-- Aplicativo Meta do tipo Business.
-- Produto Instagram Graph API/Messaging.
-- Conta Instagram Professional vinculada a uma Página do Facebook.
-- Usuário administrador ou desenvolvedor do app durante testes.
+- Meta Business Portfolio e aplicativo Business dedicado.
+- Produto Instagram API with Instagram Login.
+- Conta Instagram Professional, Business ou Creator; esse fluxo não exige Página do Facebook vinculada.
+- Usuário e ativo aceitos nos roles de teste do app durante o Development Mode.
+- Verificação empresarial, App Review e Advanced Access antes de atender contas de terceiros.
 
 ### 6.2 Webhook
 
@@ -163,21 +163,24 @@ Depois acesse `http://127.0.0.1:54353` no computador local.
 3. Assine os campos:
    - `messages`
    - `messaging_postbacks`
+   - `messaging_seen`
    - `comments`
+   - `live_comments`
    - `mentions`
    - `message_reactions`
+   - `story_insights`
 4. Gere um evento de teste e confirme HTTP `200` nos logs.
 5. Solicite permissões e Advanced Access exigidos pela Meta antes do Live Mode.
 
-### 6.3 Tokens
+### 6.3 Aplicativo, criptografia e OAuth
 
 Preencha em `.env.production`:
 
 ```dotenv
 META_APP_ID=...
 META_APP_SECRET=...
-META_ACCESS_TOKEN=...
-META_PUBLISH_TOKEN=...
+META_OAUTH_REDIRECT_URI=https://wal-chat.64.181.178.125.nip.io/api/integrations/meta/callback
+CREDENTIALS_ENCRYPTION_KEY=...
 DEMO_MODE=false
 ```
 
@@ -188,18 +191,20 @@ docker compose --env-file .env.production \
   -f docker-compose.production.yml up -d --force-recreate
 ```
 
-O MVP aceita tokens de backend. Para múltiplos clientes reais, cada workspace deve concluir o OAuth da Meta e armazenar o token criptografado em `private.instagram_credentials`; não compartilhe um único token entre tenants.
+Depois, cada `owner/admin` conecta a própria conta em **Configurações > Conectar Instagram**. O callback troca o code por token long-lived, assina webhooks e cifra a credencial em `integration_credentials`. Em modo live, tokens globais não são usados como fallback entre tenants.
 
-## 7. Configuração do Gemini
+O passo a passo completo de painel, permissões, App Review e matriz de testes está em [Configuração real da Meta e OpenAI](CONFIGURACAO_META_E_OPENAI.md).
 
-1. Crie um projeto dedicado no Google AI Studio/Google Cloud.
+## 7. Configuração da IA
+
+1. Crie um projeto dedicado na OpenAI Platform e defina orçamento/alertas.
 2. Gere uma chave exclusiva para o Wal Chat.
-3. Restrinja orçamento, alertas e uso da chave.
-4. Preencha `GOOGLE_GENERATIVE_AI_API_KEY` em `.env.production`.
-5. Recrie `app`, `webhooks` e `scheduler`.
-6. No Playground do agente, teste respostas em PT-BR sem dados sensíveis.
+3. Preencha `OPENAI_API_KEY` e, se aplicável, `OPENAI_PROJECT` no backend; alternativamente, salve uma chave cifrada por workspace na tela Configurações.
+4. Recrie `app`, `webhooks` e `scheduler` após alterar o ambiente.
+5. Configure provedor/modelo em Configurações.
+6. Crie persona e base em Agentes de IA e valide no Playground.
 
-O modelo configurado é `gemini-2.5-flash`.
+O provedor padrão usa OpenAI Responses API; Gemini 2.5 Flash permanece opcional.
 
 ## 8. Regras obrigatórias antes de disparos
 
@@ -303,8 +308,8 @@ Manter ao menos sete backups diários e quatro semanais fora do servidor princip
 ## 12. Limites conhecidos do MVP
 
 - Telas analíticas e editoriais apresentam dados de demonstração até a coleta real de Insights estar conectada à conta Meta.
-- OAuth multi-tenant da Meta depende do App ID, segredo, URLs de callback e aprovação da Meta.
-- Publicação real e geração de imagens exigem tokens Meta e chave Gemini válidos.
+- O OAuth multi-tenant está implementado, mas seu teste real depende do App ID, segredo, conta Professional e aprovação da Meta.
+- Publicação real e geração de imagens exigem implementação de serviço específica, tokens Meta e provedor de imagem válido.
 - SMTP deve ser configurado antes de exigir confirmação de e-mail ou recuperação de senha.
 - A entrada em Live Mode depende de verificação empresarial, análise de permissões e políticas da Meta.
 

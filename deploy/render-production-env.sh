@@ -32,6 +32,7 @@ fi
 umask 077
 META_SECRET="$(openssl rand -hex 32)"
 META_VERIFY="$(openssl rand -hex 24)"
+CREDENTIALS_KEY="$(openssl rand -base64 32 | tr -d '\n')"
 TEST_PASSWORD="Wal-$(openssl rand -hex 8)!"
 
 {
@@ -48,7 +49,13 @@ TEST_PASSWORD="Wal-$(openssl rand -hex 8)!"
   printf 'META_PUBLISH_TOKEN=\n'
   printf 'META_VERIFY_TOKEN=%s\n' "$META_VERIFY"
   printf 'META_GRAPH_VERSION=v25.0\n'
+  printf 'META_OAUTH_REDIRECT_URI=https://%s/api/integrations/meta/callback\n' "$APP_DOMAIN"
+  printf 'OPENAI_API_KEY=\n'
+  printf 'OPENAI_MODEL=gpt-5.6-sol\n'
+  printf 'OPENAI_PROJECT=\n'
+  printf 'OPENAI_ORGANIZATION=\n'
   printf 'GOOGLE_GENERATIVE_AI_API_KEY=\n'
+  printf 'CREDENTIALS_ENCRYPTION_KEY=%s\n' "$CREDENTIALS_KEY"
   printf 'APP_ORIGIN=https://%s\n' "$APP_DOMAIN"
   printf 'DEMO_MODE=true\n'
   printf 'SMOKE_AUTH_EMAIL=demo@walchat.local\n'

@@ -12,12 +12,13 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | Homologação HTTPS         | [wal-chat.64.181.178.125.nip.io](https://wal-chat.64.181.178.125.nip.io) |
 | Auth, Postgres e RLS      | Supabase isolado                                                         |
 | Filas e workers           | Redis + BullMQ                                                           |
-| Webhook Meta              | Implementado com validação HMAC SHA-256                                  |
-| Gemini 2.5 Flash          | Implementado; exige chave externa                                        |
+| Webhook Meta              | HMAC, idempotência, inbox e worker implementados                         |
+| OAuth Instagram           | Login, token cifrado por tenant, assinatura e validação implementados    |
+| OpenAI / Gemini           | Responses API + Gemini opcional, configuráveis por workspace             |
 | Modo atual da homologação | `DEMO_MODE=true`                                                         |
 | Live Mode Meta            | Depende de app, tokens, permissões e revisão da Meta                     |
 
-> A interface e os fluxos internos estão funcionais. Envio real de mensagens, publicação, Insights e geração Gemini permanecem desativados até a configuração das credenciais externas e a aprovação do aplicativo Meta.
+> OAuth, mensageria e IA estão preparados para teste integrado. A entrega real depende de credenciais Meta/OpenAI, conta Professional de teste e permissões concedidas; publicação e Insights ainda mantêm partes demonstrativas.
 
 ## O que o sistema entrega
 
@@ -49,7 +50,7 @@ flowchart LR
     Compliance -->|"Bloqueado"| Audit["interactions_log"]
     Sender --> Meta
     Webhook --> Supabase
-    AI["Gemini 2.5 Flash"] -->|"Sugestão com opt-out"| Webhook
+    AI["OpenAI Responses API / Gemini"] -->|"Sugestão com opt-out"| Scheduler
 ```
 
 O backend recebe o corpo bruto do webhook, valida `X-Hub-Signature-256`, persiste uma chave idempotente e enfileira o processamento. O worker normaliza contatos e interações; o scheduler executa sequências e chama o motor de compliance imediatamente antes de qualquer envio.
@@ -80,7 +81,7 @@ Detalhes e checklist de auditoria: [Segurança e compliance](docs/SEGURANCA_E_CO
 | Interface          | CSS próprio, Recharts, Lucide, dnd-kit            |
 | Banco/Auth/Storage | Supabase/PostgreSQL                               |
 | Fila               | Redis 7.4 + BullMQ                                |
-| IA                 | AI SDK + Gemini 2.5 Flash                         |
+| IA                 | OpenAI Responses API + AI SDK/Gemini opcional     |
 | Validação          | Zod                                               |
 | Testes             | Vitest + smoke test integrado                     |
 | Produção           | Docker Compose, Nginx, Let's Encrypt              |
@@ -169,7 +170,13 @@ Essa credencial existe apenas para desenvolvimento. Nunca reutilize a senha loca
 | `META_ACCESS_TOKEN`            | Secreta   | Mensageria e leitura da Graph API     |
 | `META_PUBLISH_TOKEN`           | Secreta   | Publicação de conteúdo                |
 | `META_VERIFY_TOKEN`            | Secreta   | Challenge inicial do webhook          |
+| `META_OAUTH_REDIRECT_URI`      | Backend   | Redirect exato do Instagram Login     |
 | `META_GRAPH_VERSION`           | Backend   | Versão da Graph API, como `v25.0`     |
+| `CREDENTIALS_ENCRYPTION_KEY`   | Secreta   | AES-256-GCM de tokens por tenant      |
+| `OPENAI_API_KEY`               | Secreta   | Responses API                         |
+| `OPENAI_MODEL`                 | Backend   | Modelo OpenAI padrão                  |
+| `OPENAI_PROJECT`               | Secreta   | Projeto OpenAI opcional               |
+| `OPENAI_ORGANIZATION`          | Secreta   | Organização OpenAI opcional           |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Secreta   | Gemini 2.5 Flash                      |
 | `APP_ORIGIN`                   | Backend   | Origem pública da aplicação           |
 | `DEMO_MODE`                    | Backend   | Impede efeitos externos quando `true` |
@@ -198,20 +205,29 @@ Somente `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` podem chegar ao bundle do
 
 ## API e webhook
 
-| Método | Endpoint                         | Responsabilidade                           |
-| ------ | -------------------------------- | ------------------------------------------ |
-| `GET`  | `/api/health`                    | Saúde e presença das integrações           |
-| `GET`  | `/api/public/webhooks/instagram` | Challenge de verificação da Meta           |
-| `POST` | `/api/public/webhooks/instagram` | Recepção assinada e enfileiramento         |
-| `POST` | `/api/ai/suggest`                | Sugestão Gemini limitada a cinco mensagens |
-| `POST` | `/api/compliance/check`          | Decisão pura de elegibilidade              |
-| `POST` | `/api/data-deletion`             | Signed request de exclusão da Meta         |
+| Método      | Endpoint                              | Responsabilidade                             |
+| ----------- | ------------------------------------- | -------------------------------------------- |
+| `GET`       | `/api/health`                         | Saúde e presença das integrações             |
+| `GET/POST`  | `/api/public/webhooks/instagram`      | Challenge, HMAC e fila Meta                  |
+| `POST`      | `/api/integrations/meta/start`        | Início OAuth com state de uso único          |
+| `GET`       | `/api/integrations/meta/status`       | Estado sanitizado da conexão                 |
+| `GET`       | `/api/integrations/meta/callback`     | Code exchange e token cifrado                |
+| `POST`      | `/api/integrations/meta/validate`     | Revalidação de perfil, token e webhooks      |
+| `DELETE`    | `/api/integrations/meta/disconnect`   | Desassinatura e remoção da credencial        |
+| `GET/PUT`   | `/api/ai/settings`                    | Provedor, modelo e chave cifrada             |
+| `GET/*`     | `/api/ai/agents`, `/api/ai/knowledge` | CRUD autenticado de agentes e conhecimento   |
+| `POST`      | `/api/ai/suggest`                     | Playground/sugestão a partir do agente salvo |
+| `GET/PATCH` | `/api/inbox`                          | Conversas reais, mensagens, leitura e IA     |
+| `GET/*`     | `/api/triggers`                       | CRUD de gatilhos simples persistidos         |
+| `POST`      | `/api/messages/send`                  | Envio humano com compliance                  |
+| `POST`      | `/api/compliance/check`               | Decisão pura de elegibilidade                |
+| `POST`      | `/api/data-deletion`                  | Signed request de exclusão da Meta           |
 
 Contratos, respostas e códigos HTTP: [API e webhooks](docs/API_E_WEBHOOKS.md).
 
 ## Banco e multi-tenancy
 
-O tenant é um `workspace`. Toda entidade operacional carrega `workspace_id`, e as policies chamam funções `SECURITY DEFINER` para validar associação e papel. O schema privado armazena credenciais que não são concedidas a `authenticated`.
+O tenant é um `workspace`. Toda entidade operacional carrega `workspace_id`, e as policies chamam funções `SECURITY DEFINER` para validar associação e papel. Tokens Meta e chaves de IA são cifrados em `integration_credentials`, tabela revogada para `anon/authenticated` e acessada apenas pela service role.
 
 Papéis disponíveis:
 
@@ -251,9 +267,10 @@ A homologação usa:
 - Nginx como único ponto de entrada público;
 - HTTPS automático pelo Certbot.
 
-O procedimento completo, configuração das contas Meta/Gemini e rotina de operação estão em:
+O procedimento completo, configuração das contas Meta/OpenAI e rotina de operação estão em:
 
 - [Manual interno de implementação e operação](docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md)
+- [Configuração real da Meta e OpenAI](docs/CONFIGURACAO_META_E_OPENAI.md)
 - [Manual em PDF](output/pdf/manual-interno-wal-chat.pdf)
 - [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)
 
@@ -265,6 +282,7 @@ O procedimento completo, configuração das contas Meta/Gemini e rotina de opera
 | [API e webhooks](docs/API_E_WEBHOOKS.md)                              | Contratos HTTP e eventos Meta              |
 | [Banco de dados](docs/BANCO_DE_DADOS.md)                              | Tabelas, RLS, GRANTs, views e jobs         |
 | [Segurança e compliance](docs/SEGURANCA_E_COMPLIANCE.md)              | Regras Meta, secrets e controles           |
+| [Configuração Meta e OpenAI](docs/CONFIGURACAO_META_E_OPENAI.md)      | Onboarding e testes com contas reais       |
 | [Mapa do código](docs/MAPA_DO_CODIGO.md)                              | Responsabilidade de cada arquivo           |
 | [Guia de desenvolvimento](docs/GUIA_DE_DESENVOLVIMENTO.md)            | Convenções, testes e extensão do produto   |
 | [Manual operacional](docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md) | Implantação e contas reais                 |
@@ -272,11 +290,11 @@ O procedimento completo, configuração das contas Meta/Gemini e rotina de opera
 
 ## Limites conhecidos do MVP
 
-- Métricas editoriais usam dados demonstrativos até a coleta real da Graph API ser ativada.
-- O OAuth individual por workspace ainda deve substituir tokens globais antes do uso multi-cliente em Live Mode.
+- Métricas editoriais, publicação e outros módulos visuais ainda usam dados demonstrativos até seus serviços Graph API serem ligados.
+- OAuth e tokens cifrados por workspace estão implementados, mas a homologação real depende do App ID/secret, conta Professional e permissões externas.
 - O endpoint de exclusão valida o signed request e devolve um protocolo; a rotina assíncrona de eliminação definitiva deve ser ligada ao processo operacional.
 - SMTP de produção é necessário para confirmação de e-mail e recuperação de senha.
-- Rotação e criptografia de tokens por tenant devem ser concluídas antes de armazenar credenciais reais em escala.
+- Rate limiting e monitoramento/alertas devem ser fechados antes de tráfego em escala.
 
 ## Licença
 
