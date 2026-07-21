@@ -1,0 +1,136 @@
+/**
+ * Motor central de elegibilidade de mensageria.
+ *
+ * Este módulo não acessa rede nem banco: ele recebe um snapshot do contato e
+ * produz uma decisão determinística que pode ser testada e auditada. Todo
+ * sender automático deve passar por `evaluateCompliance` no momento do envio.
+ */
+export const OPT_OUT_FOOTER = 'Responda PARAR'
+export const STANDARD_WINDOW_MS = 24 * 60 * 60 * 1000
+export const HUMAN_AGENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+export const DEFAULT_COOLDOWN_MS = 24 * 60 * 60 * 1000
+
+export type SendPolicy = 'standard_24h' | 'human_agent_7d' | 'blocked'
+
+export type ComplianceInput = {
+  now?: Date
+  lastInboundAt: Date | string | null
+  optedOutAt?: Date | string | null
+  isAutomated: boolean
+  message: string
+  requestedTag?: 'HUMAN_AGENT' | string | null
+  triggerLastFiredAt?: Date | string | null
+  cooldownMs?: number
+  instagramCommentId?: string | null
+  commentAlreadyReplied?: boolean
+  blocklist?: string[]
+}
+
+export type ComplianceDecision = {
+  allowed: boolean
+  policy: SendPolicy
+  body: string
+  tag?: string
+  reason?:
+    | 'opted_out'
+    | 'no_inbound_interaction'
+    | 'outside_24h'
+    | 'outside_7d'
+    | 'human_agent_is_not_automation'
+    | 'trigger_cooldown'
+    | 'comment_already_replied'
+    | 'blocked_content'
+  secondsLeft24h: number
+}
+
+function asTime(value: Date | string | null | undefined) {
+  if (!value) return null
+  const milliseconds =
+    value instanceof Date ? value.getTime() : new Date(value).getTime()
+  return Number.isFinite(milliseconds) ? milliseconds : null
+}
+
+/** Acrescenta o opt-out obrigatório sem duplicá-lo em mensagens já preparadas. */
+export function withOptOut(message: string) {
+  const clean = message.trim()
+  return clean
+    .toLocaleLowerCase('pt-BR')
+    .includes(OPT_OUT_FOOTER.toLocaleLowerCase('pt-BR'))
+    ? clean
+    : `${clean}\n\n${OPT_OUT_FOOTER}`
+}
+
+/**
+ * Aplica a ordem de bloqueios do Wal Chat e devolve o corpo final da mensagem.
+ * A ordem é intencional: opt-out e ausência de inbound têm precedência sobre
+ * conteúdo, cooldown e janelas para que o motivo auditado seja consistente.
+ */
+export function evaluateCompliance(input: ComplianceInput): ComplianceDecision {
+  const now = (input.now ?? new Date()).getTime()
+  const lastInbound = asTime(input.lastInboundAt)
+  const messageBody = input.isAutomated
+    ? withOptOut(input.message)
+    : input.message.trim()
+  const elapsed =
+    lastInbound === null ? Number.POSITIVE_INFINITY : now - lastInbound
+  const secondsLeft24h = Math.max(
+    0,
+    Math.floor((STANDARD_WINDOW_MS - elapsed) / 1000),
+  )
+  // Centralizar a construção evita que um branch de bloqueio omita o corpo ou o relógio da janela.
+  const deny = (
+    reason: ComplianceDecision['reason'],
+    policy: SendPolicy = 'blocked',
+  ): ComplianceDecision => ({
+    allowed: false,
+    policy,
+    body: messageBody,
+    reason,
+    secondsLeft24h,
+  })
+
+  if (input.optedOutAt) return deny('opted_out')
+  if (!lastInbound) return deny('no_inbound_interaction')
+
+  const normalized = messageBody.toLocaleLowerCase('pt-BR')
+  if (
+    (input.blocklist ?? []).some((term) =>
+      normalized.includes(term.toLocaleLowerCase('pt-BR')),
+    )
+  )
+    return deny('blocked_content')
+
+  if (input.instagramCommentId && input.commentAlreadyReplied)
+    return deny('comment_already_replied')
+
+  const lastFired = asTime(input.triggerLastFiredAt)
+  if (
+    input.isAutomated &&
+    lastFired &&
+    now - lastFired < (input.cooldownMs ?? DEFAULT_COOLDOWN_MS)
+  )
+    return deny('trigger_cooldown')
+
+  if (elapsed <= STANDARD_WINDOW_MS)
+    return {
+      allowed: true,
+      policy: 'standard_24h',
+      body: messageBody,
+      secondsLeft24h,
+    }
+
+  if (input.requestedTag === 'HUMAN_AGENT') {
+    if (input.isAutomated) return deny('human_agent_is_not_automation')
+    if (elapsed <= HUMAN_AGENT_WINDOW_MS)
+      return {
+        allowed: true,
+        policy: 'human_agent_7d',
+        body: messageBody,
+        tag: 'HUMAN_AGENT',
+        secondsLeft24h: 0,
+      }
+    return deny('outside_7d')
+  }
+
+  return deny('outside_24h')
+}

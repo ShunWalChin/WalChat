@@ -1,0 +1,100 @@
+# Stack isolada: app HTTP, worker de webhooks, scheduler e Redis compartilham somente a rede interna.
+name: wal-chat
+
+# Controles comuns reduzem privilégios dos três processos Node.
+x-app-base: &app-base
+  image: wal-chat-app:latest
+  env_file:
+    - .env.production
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:size=128m,mode=1777
+  extra_hosts:
+    - host.docker.internal:host-gateway
+  networks:
+    - wal-chat-internal
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+services:
+  app:
+    <<: *app-base
+    build:
+      context: .
+      args:
+        VITE_SUPABASE_URL: ${PUBLIC_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+    ports:
+      - 127.0.0.1:4194:3000
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  webhooks:
+    <<: *app-base
+    command: ['./node_modules/.bin/tsx', 'src/workers/instagram.worker.ts']
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  scheduler:
+    <<: *app-base
+    command: ['./node_modules/.bin/tsx', 'src/workers/scheduler.worker.ts']
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7.4-alpine
+    user: redis
+    command:
+      [
+        'redis-server',
+        '--appendonly',
+        'yes',
+        '--maxmemory',
+        '256mb',
+        '--maxmemory-policy',
+        'allkeys-lru',
+      ]
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    volumes:
+      - wal-chat-redis:/data
+    networks:
+      - wal-chat-internal
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+networks:
+  wal-chat-internal:
+    name: wal-chat-internal
+    driver: bridge
+
+volumes:
+  wal-chat-redis:
+    name: wal-chat-redis

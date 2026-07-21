@@ -1,0 +1,84 @@
+/** Endpoint público exigido pela Meta: challenge GET e recepção POST assinada. */
+import { createFileRoute } from '@tanstack/react-router'
+import { getServerEnv } from '../../../../server/env.server'
+import { enqueueInstagramWebhook } from '../../../../server/queue.server'
+import { verifyMetaSignature } from '../../../../server/webhook-signature.server'
+
+export const Route = createFileRoute('/api/public/webhooks/instagram')({
+  server: {
+    handlers: {
+      // A Meta espera o challenge como texto puro quando token e modo são válidos.
+      GET: async ({ request }) => {
+        const url = new URL(request.url)
+        const mode = url.searchParams.get('hub.mode')
+        const token = url.searchParams.get('hub.verify_token')
+        const challenge = url.searchParams.get('hub.challenge')
+        const env = getServerEnv()
+        if (
+          mode === 'subscribe' &&
+          challenge &&
+          env.META_VERIFY_TOKEN &&
+          token === env.META_VERIFY_TOKEN
+        ) {
+          return new Response(challenge, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/plain',
+              'Cache-Control': 'no-store',
+            },
+          })
+        }
+        return Response.json(
+          { error: 'Verificação do webhook recusada.' },
+          { status: 403 },
+        )
+      },
+      // O corpo precisa permanecer bruto até a validação HMAC; fazer JSON antes quebraria a assinatura.
+      POST: async ({ request }) => {
+        const rawBody = await request.text()
+        const env = getServerEnv()
+        if (!env.META_APP_SECRET)
+          return Response.json(
+            { error: 'Webhook não configurado.' },
+            { status: 503 },
+          )
+        const valid = verifyMetaSignature(
+          rawBody,
+          request.headers.get('x-hub-signature-256'),
+          env.META_APP_SECRET,
+        )
+        if (!valid)
+          return Response.json(
+            { error: 'Assinatura inválida.' },
+            { status: 401 },
+          )
+
+        let payload: Record<string, unknown>
+        try {
+          payload = JSON.parse(rawBody) as Record<string, unknown>
+        } catch {
+          return Response.json({ error: 'JSON inválido.' }, { status: 400 })
+        }
+        if (payload.object !== 'instagram')
+          return Response.json(
+            { received: true, ignored: true },
+            { status: 200 },
+          )
+
+        try {
+          const queued = await enqueueInstagramWebhook(payload, rawBody)
+          return Response.json(
+            { received: true, queued: queued.id, backend: queued.backend },
+            { status: 200, headers: { 'Cache-Control': 'no-store' } },
+          )
+        } catch (error) {
+          console.error('instagram_webhook_enqueue_failed', error)
+          return Response.json(
+            { error: 'Falha temporária ao enfileirar.' },
+            { status: 503, headers: { 'Retry-After': '10' } },
+          )
+        }
+      },
+    },
+  },
+})

@@ -1,0 +1,24 @@
+# Dependências e builds
+node_modules
+.DS_Store
+dist
+dist-ssr
+
+# Configuração local e secrets; o contrato `.env.example` permanece versionado.
+*.local
+.env
+.env.*
+!.env.example
+status.env
+
+# Saídas transitórias de ferramentas e backups locais
+tmp/
+backups/
+*.sql.gz
+.nitro
+.tanstack
+.wrangler
+.output
+.vinxi
+__unconfig*
+todos.json
