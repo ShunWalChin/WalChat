@@ -1,10 +1,10 @@
-/** Inbox unificada com categorias, janela Meta, contexto do contato e copiloto de IA. */
+/** Inbox unificada ligada ao Postgres, ao copiloto de IA e ao sender Meta. */
 import { createFileRoute } from '@tanstack/react-router'
 import {
   Bot,
   Clock3,
   Info,
-  MoreHorizontal,
+  LoaderCircle,
   Paperclip,
   Search,
   Send,
@@ -12,219 +12,501 @@ import {
   Sparkles,
   Tag,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { conversations, messages as seedMessages } from '../../lib/demo-data'
-import { StatusDot } from '../../components/ui'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { StatusDot, Switch } from '../../components/ui'
+import { apiFetch } from '../../lib/api-client'
 
 export const Route = createFileRoute('/_app/inbox')({ component: InboxPage })
 
-type ChatMessage = { id: number; from: string; body: string; time: string }
+type InboxCategory = 'principal' | 'geral' | 'pedidos' | 'ia_off'
+type Conversation = {
+  id: string
+  contactId: string
+  category: InboxCategory
+  unread: number
+  preview: string
+  lastMessageAt: string | null
+  name: string
+  username: string
+  avatarUrl: string | null
+  aiEnabled: boolean
+  optedOut: boolean
+  firstSeenAt: string | null
+  open24h: boolean
+  humanAgentEligible: boolean
+  secondsLeft24h: number
+}
+type ChatMessage = {
+  id: string
+  direction: 'inbound' | 'outbound'
+  body: string | null
+  media_url: string | null
+  status: string
+  is_ai_generated: boolean
+  is_automated: boolean
+  created_at: string
+}
+type Agent = { id: string; name: string; mode: 'copilot' | 'autonomous' }
+type InboxResponse = {
+  conversations: Conversation[]
+  selectedId: string | null
+  messages: ChatMessage[]
+  agents: Agent[]
+}
+
+const palette = ['#F8C8AE', '#BFE3D0', '#C9D8F2', '#F6D987', '#DCC7EE']
+
+function initials(name: string) {
+  return name
+    .replace('@', '')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+}
+
+function timeLabel(value: string | null) {
+  if (!value) return ''
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function countdown(seconds: number) {
+  const hours = Math.floor(seconds / 3_600)
+  const minutes = Math.floor((seconds % 3_600) / 60)
+  return `${hours}h ${String(minutes).padStart(2, '0')}min restantes`
+}
 
 function InboxPage() {
-  const [tab, setTab] = useState('principal')
-  const [selectedId, setSelectedId] = useState('ana')
-  const [messages, setMessages] = useState<ChatMessage[]>(seedMessages)
+  const [tab, setTab] = useState<InboxCategory>('principal')
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [agentId, setAgentId] = useState('')
+  const [query, setQuery] = useState('')
   const [draft, setDraft] = useState('')
-  const [suggesting, setSuggesting] = useState(false)
-  const selected =
-    conversations.find((conversation) => conversation.id === selectedId) ??
-    conversations[0]
-  const visible = useMemo(
-    () =>
-      conversations.filter(
-        (conversation) => tab === 'todos' || conversation.category === tab,
-      ),
-    [tab],
+  const [draftFromAi, setDraftFromAi] = useState(false)
+  const [humanAgent, setHumanAgent] = useState(false)
+  const [busy, setBusy] = useState<string | null>('load')
+  const [error, setError] = useState('')
+
+  const loadInbox = useCallback(
+    async (category: InboxCategory, conversationId?: string) => {
+      setBusy('load')
+      try {
+        const params = new URLSearchParams({ category })
+        if (conversationId) params.set('conversationId', conversationId)
+        const result = await apiFetch<InboxResponse>(
+          `/api/inbox?${params.toString()}`,
+        )
+        setConversations(result.conversations)
+        setSelectedId(result.selectedId)
+        setMessages(result.messages)
+        setAgents(result.agents)
+        setAgentId((current) =>
+          result.agents.some((agent) => agent.id === current)
+            ? current
+            : (result.agents[0]?.id ?? ''),
+        )
+        setError('')
+      } catch (caught) {
+        setError(
+          caught instanceof Error ? caught.message : 'Falha ao abrir a Inbox.',
+        )
+      } finally {
+        setBusy(null)
+      }
+    },
+    [],
   )
 
-  /** Preenche o composer; sugerir nunca envia automaticamente. */
-  function suggest() {
-    setSuggesting(true)
-    window.setTimeout(() => {
-      setDraft(
-        'Fechou, Ana! Aqui está o link do guia: https://wal-chat.64.181.178.125.nip.io/guia — se pintar qualquer dúvida, chama por aqui 👊\n\nResponda PARAR',
-      )
-      setSuggesting(false)
-    }, 650)
+  useEffect(() => {
+    setHumanAgent(false)
+    setDraft('')
+    setDraftFromAi(false)
+    void loadInbox(tab)
+  }, [loadInbox, tab])
+
+  const selected = conversations.find((item) => item.id === selectedId) ?? null
+  const visible = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase('pt-BR')
+    if (!normalized) return conversations
+    return conversations.filter(
+      (conversation) =>
+        conversation.name.toLocaleLowerCase('pt-BR').includes(normalized) ||
+        conversation.username.toLocaleLowerCase('pt-BR').includes(normalized) ||
+        conversation.preview.toLocaleLowerCase('pt-BR').includes(normalized),
+    )
+  }, [conversations, query])
+  const canCompose = Boolean(
+    selected &&
+    !selected.optedOut &&
+    (selected.open24h || (selected.humanAgentEligible && humanAgent)),
+  )
+
+  async function selectConversation(conversationId: string) {
+    setHumanAgent(false)
+    setDraft('')
+    setDraftFromAi(false)
+    try {
+      await apiFetch('/api/inbox', {
+        method: 'PATCH',
+        body: JSON.stringify({ conversationId, markRead: true }),
+      })
+      await loadInbox(tab, conversationId)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Falha ao abrir.')
+    }
   }
 
-  /** Simula o envio na UI e garante o opt-out no texto automático sugerido. */
-  function sendMessage() {
-    if (!draft.trim() || !selected.open) return
-    setMessages((current) => [
-      ...current,
-      { id: Date.now(), from: 'me', body: draft, time: 'agora' },
-    ])
-    setDraft('')
+  /** Gera texto no composer; nunca envia automaticamente. */
+  async function suggest() {
+    if (!selected || !agentId || !selected.open24h) return
+    setBusy('suggest')
+    try {
+      const history = messages
+        .filter((message) => message.body?.trim())
+        .slice(-5)
+        .map((message) => ({
+          role:
+            message.direction === 'inbound'
+              ? ('user' as const)
+              : ('assistant' as const),
+          content: message.body ?? '',
+        }))
+      if (history.length === 0)
+        throw new Error('A conversa ainda não tem texto.')
+      const result = await apiFetch<{ suggestion: string }>('/api/ai/suggest', {
+        method: 'POST',
+        body: JSON.stringify({ agentId, history }),
+      })
+      setDraft(result.suggestion)
+      setDraftFromAi(true)
+      setError('')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Falha na sugestão.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /** Envia pela API autenticada; o backend decide novamente se a janela permite. */
+  async function sendMessage() {
+    if (!selected || !draft.trim() || !canCompose) return
+    if (humanAgent && draftFromAi) {
+      setError('HUMAN_AGENT exige uma resposta escrita e revisada pelo humano.')
+      return
+    }
+    setBusy('send')
+    try {
+      await apiFetch('/api/messages/send', {
+        method: 'POST',
+        body: JSON.stringify({
+          contactId: selected.contactId,
+          message: draft,
+          humanAgent,
+          aiGenerated: draftFromAi,
+        }),
+      })
+      setDraft('')
+      setDraftFromAi(false)
+      await loadInbox(tab, selected.id)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Falha ao enviar.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function toggleAi() {
+    if (!selected) return
+    try {
+      await apiFetch('/api/inbox', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          conversationId: selected.id,
+          aiEnabled: !selected.aiEnabled,
+        }),
+      })
+      await loadInbox(tab, selected.id)
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : 'Falha ao alterar IA.',
+      )
+    }
   }
 
   return (
     <div className="inbox-shell">
       <section className="conversation-list">
         <div className="inbox-tabs">
-          {['principal', 'geral', 'pedidos', 'ia_off'].map((item) => (
-            <button
-              key={item}
-              className={tab === item ? 'active' : ''}
-              onClick={() => setTab(item)}
-            >
-              {item === 'ia_off' ? 'IA off' : item}
-            </button>
-          ))}
+          {(['principal', 'geral', 'pedidos', 'ia_off'] as const).map(
+            (item) => (
+              <button
+                key={item}
+                className={tab === item ? 'active' : ''}
+                onClick={() => setTab(item)}
+              >
+                {item === 'ia_off' ? 'IA off' : item}
+              </button>
+            ),
+          )}
         </div>
         <label className="search-field">
           <Search size={16} />
-          <input placeholder="Buscar conversa…" />
+          <input
+            placeholder="Buscar conversa…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
         </label>
         <div className="conversation-scroll">
-          {visible.map((conversation) => (
+          {busy === 'load' && conversations.length === 0 && (
+            <div className="inbox-empty">
+              <LoaderCircle className="spin" /> Carregando…
+            </div>
+          )}
+          {visible.map((conversation, index) => (
             <button
               key={conversation.id}
               className={`conversation-row ${selectedId === conversation.id ? 'active' : ''}`}
-              onClick={() => setSelectedId(conversation.id)}
+              onClick={() => void selectConversation(conversation.id)}
             >
               <span
                 className="avatar"
-                style={{ background: conversation.color }}
+                style={{ background: palette[index % palette.length] }}
               >
-                {conversation.initials}
+                {initials(conversation.name)}
               </span>
               <span className="conversation-copy">
                 <strong>
                   {conversation.name}
-                  <time>{conversation.time}</time>
+                  <time>{timeLabel(conversation.lastMessageAt)}</time>
                 </strong>
-                <small>{conversation.user}</small>
-                <p>{conversation.preview}</p>
+                <small>@{conversation.username}</small>
+                <p>{conversation.preview || 'Nova interação'}</p>
               </span>
               {conversation.unread > 0 && <em>{conversation.unread}</em>}
             </button>
           ))}
+          {busy !== 'load' && visible.length === 0 && (
+            <div className="inbox-empty">Nenhuma conversa nesta aba.</div>
+          )}
         </div>
       </section>
 
       <section className="chat-panel">
-        <header className="chat-header">
-          <span className="avatar" style={{ background: selected.color }}>
-            {selected.initials}
-          </span>
-          <div>
-            <strong>{selected.name}</strong>
-            <small>{selected.user}</small>
-          </div>
-          <span className={`window-badge ${selected.open ? 'open' : 'closed'}`}>
-            <Clock3 size={14} />
-            {selected.open ? '23h 42min restantes' : 'Janela 24h fechada'}
-          </span>
-          <button className="icon-button">
-            <MoreHorizontal size={20} />
-          </button>
-        </header>
-        {!selected.open && (
-          <div className="window-warning">
-            <ShieldAlert size={17} />
-            <span>
-              Envio automático bloqueado. Disponível somente para atendimento
-              humano elegível em até 7 dias.
-            </span>
+        {selected ? (
+          <>
+            <header className="chat-header">
+              <span className="avatar">{initials(selected.name)}</span>
+              <div>
+                <strong>{selected.name}</strong>
+                <small>@{selected.username}</small>
+              </div>
+              <span
+                className={`window-badge ${selected.open24h ? 'open' : 'closed'}`}
+              >
+                <Clock3 size={14} />
+                {selected.open24h
+                  ? countdown(selected.secondsLeft24h)
+                  : 'Janela 24h fechada'}
+              </span>
+            </header>
+            {!selected.open24h && (
+              <div className="window-warning">
+                <ShieldAlert size={17} />
+                <span>
+                  {selected.optedOut
+                    ? 'Contato opt-out: qualquer envio está bloqueado.'
+                    : selected.humanAgentEligible
+                      ? 'Só atendimento humano com HUMAN_AGENT está elegível.'
+                      : 'Janela encerrada: nenhuma mensagem está elegível.'}
+                </span>
+              </div>
+            )}
+            <div className="messages-scroll">
+              <div className="day-separator">
+                <span>CONVERSA</span>
+              </div>
+              {messages.map((message) => {
+                const from =
+                  message.direction === 'inbound'
+                    ? 'them'
+                    : message.is_automated
+                      ? 'bot'
+                      : 'me'
+                return (
+                  <div key={message.id} className={`bubble-row ${from}`}>
+                    <div className="message-bubble">
+                      {(message.is_automated || message.is_ai_generated) && (
+                        <span className="bot-label">
+                          <Bot size={12} />
+                          {message.is_automated ? 'AUTOMAÇÃO' : 'COPILOTO IA'}
+                        </span>
+                      )}
+                      <p>{message.body || 'Mídia recebida'}</p>
+                      <time>
+                        {timeLabel(message.created_at)} · {message.status}
+                      </time>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="composer">
+              <div className="composer-actions">
+                <button
+                  className="ai-button"
+                  onClick={() => void suggest()}
+                  disabled={busy === 'suggest' || !agentId || !selected.open24h}
+                >
+                  {busy === 'suggest' ? (
+                    <LoaderCircle className="spin" size={15} />
+                  ) : (
+                    <Sparkles size={15} />
+                  )}
+                  {agentId ? 'Sugerir com IA' : 'Configure um agente'}
+                </button>
+                {agents.length > 1 && (
+                  <select
+                    value={agentId}
+                    onChange={(event) => setAgentId(event.target.value)}
+                  >
+                    {agents.map((agent) => (
+                      <option key={agent.id} value={agent.id}>
+                        {agent.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {!selected.open24h &&
+                  selected.humanAgentEligible &&
+                  !selected.optedOut && (
+                    <button
+                      className={`human-agent-toggle ${humanAgent ? 'active' : ''}`}
+                      onClick={() => {
+                        setHumanAgent((current) => !current)
+                        setDraft('')
+                        setDraftFromAi(false)
+                      }}
+                    >
+                      {humanAgent
+                        ? 'HUMAN_AGENT ativo'
+                        : 'Assumir atendimento humano'}
+                    </button>
+                  )}
+              </div>
+              <div className="composer-box">
+                <textarea
+                  value={draft}
+                  onChange={(event) => {
+                    setDraft(event.target.value)
+                    setDraftFromAi(false)
+                  }}
+                  placeholder={
+                    canCompose
+                      ? 'Escreva no papo reto…'
+                      : 'Envio bloqueado pela janela Meta'
+                  }
+                  disabled={!canCompose}
+                />
+                <div>
+                  <button
+                    className="icon-button"
+                    disabled
+                    title="Mídia entra na próxima etapa"
+                  >
+                    <Paperclip size={18} />
+                  </button>
+                  <button
+                    className="icon-button"
+                    disabled
+                    title="Tags entram na próxima etapa"
+                  >
+                    <Tag size={18} />
+                  </button>
+                  <button
+                    className="send-button"
+                    onClick={() => void sendMessage()}
+                    disabled={!canCompose || !draft.trim() || busy === 'send'}
+                  >
+                    {busy === 'send' ? (
+                      <LoaderCircle className="spin" size={17} />
+                    ) : (
+                      <Send size={17} />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <small className="optout-note">
+                <Info size={13} /> Automação inclui “Responda PARAR”;
+                HUMAN_AGENT nunca usa IA.
+              </small>
+              {error && <small className="inbox-error">{error}</small>}
+            </div>
+          </>
+        ) : (
+          <div className="inbox-no-selection">
+            <Bot size={30} />
+            <h3>Inbox pronta para receber</h3>
+            <p>
+              {error || 'A primeira conversa aparecerá após um webhook real.'}
+            </p>
           </div>
         )}
-        <div className="messages-scroll">
-          <div className="day-separator">
-            <span>HOJE</span>
-          </div>
-          {messages.map((message) => (
-            <div key={message.id} className={`bubble-row ${message.from}`}>
-              <div className="message-bubble">
-                {message.from === 'bot' && (
-                  <span className="bot-label">
-                    <Bot size={12} /> AUTOMAÇÃO
-                  </span>
-                )}
-                <p>{message.body}</p>
-                <time>{message.time}</time>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="composer">
-          <div className="composer-actions">
-            <button
-              className="ai-button"
-              onClick={suggest}
-              disabled={suggesting}
-            >
-              <Sparkles size={15} />
-              {suggesting ? 'Pensando…' : 'Sugerir com IA'}
-            </button>
-            <span>A IA usa as últimas 5 mensagens + sua base.</span>
-          </div>
-          <div className="composer-box">
-            <textarea
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder={
-                selected.open
-                  ? 'Escreva no papo reto…'
-                  : 'Janela de envio fechada'
-              }
-              disabled={!selected.open}
-            />
-            <div>
-              <button className="icon-button">
-                <Paperclip size={18} />
-              </button>
-              <button className="icon-button">
-                <Tag size={18} />
-              </button>
-              <button
-                className="send-button"
-                onClick={sendMessage}
-                disabled={!selected.open || !draft.trim()}
-              >
-                <Send size={17} />
-              </button>
-            </div>
-          </div>
-          <small className="optout-note">
-            <Info size={13} />
-            Mensagens automáticas sempre recebem “Responda PARAR”.
-          </small>
-        </div>
       </section>
 
       <aside className="contact-panel">
-        <span
-          className="avatar avatar-xl"
-          style={{ background: selected.color }}
-        >
-          {selected.initials}
-        </span>
-        <h3>{selected.name}</h3>
-        <p>{selected.user}</p>
-        <div className="contact-status">
-          <StatusDot tone={selected.open ? 'green' : 'orange'}>
-            {selected.open ? 'Janela aberta' : 'Atendimento humano'}
-          </StatusDot>
-        </div>
-        <div className="info-block">
-          <span>TAGS</span>
-          <div className="tag-list">
-            <em>Lead quente</em>
-            <em>Veio do Reels</em>
-            <button>+</button>
-          </div>
-        </div>
-        <div className="info-block">
-          <span>ORIGEM</span>
-          <strong>Reel — 3 erros de creator</strong>
-          <small>Comentou “quero”</small>
-        </div>
-        <div className="info-block">
-          <span>DADOS</span>
-          <small>Primeiro contato: 14 jul 2026</small>
-          <small>8 mensagens · 1 sequência</small>
-        </div>
+        {selected ? (
+          <>
+            <span className="avatar avatar-xl">{initials(selected.name)}</span>
+            <h3>{selected.name}</h3>
+            <p>@{selected.username}</p>
+            <div className="contact-status">
+              <StatusDot tone={selected.open24h ? 'green' : 'orange'}>
+                {selected.open24h ? 'Janela aberta' : 'Fora de 24h'}
+              </StatusDot>
+            </div>
+            <div className="info-block">
+              <span>AGENTE AUTÔNOMO</span>
+              <Switch
+                checked={selected.aiEnabled}
+                label="Permitir agente autônomo"
+                onChange={() => void toggleAi()}
+              />
+            </div>
+            <div className="info-block">
+              <span>COMPLIANCE</span>
+              <small>
+                {selected.optedOut ? 'Opt-out registrado' : 'Sem opt-out'}
+              </small>
+              <small>
+                {selected.humanAgentEligible
+                  ? 'HUMAN_AGENT até 7d elegível'
+                  : 'HUMAN_AGENT indisponível'}
+              </small>
+            </div>
+            <div className="info-block">
+              <span>DADOS</span>
+              <small>
+                Primeiro contato:{' '}
+                {selected.firstSeenAt
+                  ? new Date(selected.firstSeenAt).toLocaleDateString('pt-BR')
+                  : '—'}
+              </small>
+              <small>{messages.length} mensagens carregadas</small>
+            </div>
+          </>
+        ) : (
+          <p className="inbox-empty">Selecione uma conversa.</p>
+        )}
       </aside>
     </div>
   )

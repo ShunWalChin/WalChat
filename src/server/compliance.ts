@@ -6,11 +6,13 @@
  * sender automático deve passar por `evaluateCompliance` no momento do envio.
  */
 export const OPT_OUT_FOOTER = 'Responda PARAR'
+export const MAX_META_TEXT_CHARS = 1_000
 export const STANDARD_WINDOW_MS = 24 * 60 * 60 * 1000
 export const HUMAN_AGENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 export const DEFAULT_COOLDOWN_MS = 24 * 60 * 60 * 1000
 
-export type SendPolicy = 'standard_24h' | 'human_agent_7d' | 'blocked'
+export type SendPolicy =
+  'standard_24h' | 'human_agent_7d' | 'private_reply_7d' | 'blocked'
 
 export type ComplianceInput = {
   now?: Date
@@ -22,6 +24,7 @@ export type ComplianceInput = {
   triggerLastFiredAt?: Date | string | null
   cooldownMs?: number
   instagramCommentId?: string | null
+  commentCreatedAt?: Date | string | null
   commentAlreadyReplied?: boolean
   blocklist?: string[]
 }
@@ -39,6 +42,7 @@ export type ComplianceDecision = {
     | 'human_agent_is_not_automation'
     | 'trigger_cooldown'
     | 'comment_already_replied'
+    | 'outside_private_reply_window'
     | 'blocked_content'
   secondsLeft24h: number
 }
@@ -53,11 +57,13 @@ function asTime(value: Date | string | null | undefined) {
 /** Acrescenta o opt-out obrigatório sem duplicá-lo em mensagens já preparadas. */
 export function withOptOut(message: string) {
   const clean = message.trim()
-  return clean
-    .toLocaleLowerCase('pt-BR')
-    .includes(OPT_OUT_FOOTER.toLocaleLowerCase('pt-BR'))
-    ? clean
-    : `${clean}\n\n${OPT_OUT_FOOTER}`
+  const footerAtEnd = new RegExp(
+    `\\s*${OPT_OUT_FOOTER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`,
+    'i',
+  )
+  const base = clean.replace(footerAtEnd, '').trim()
+  const suffix = `\n\n${OPT_OUT_FOOTER}`
+  return `${base.slice(0, MAX_META_TEXT_CHARS - suffix.length).trimEnd()}${suffix}`
 }
 
 /**
@@ -90,7 +96,6 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceDecision {
   })
 
   if (input.optedOutAt) return deny('opted_out')
-  if (!lastInbound) return deny('no_inbound_interaction')
 
   const normalized = messageBody.toLocaleLowerCase('pt-BR')
   if (
@@ -102,6 +107,23 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceDecision {
 
   if (input.instagramCommentId && input.commentAlreadyReplied)
     return deny('comment_already_replied')
+
+  // Private Reply é uma permissão própria da Meta: uma mensagem por comentário,
+  // em até sete dias, sem transformar o comentário em uma janela padrão de DM.
+  if (input.instagramCommentId) {
+    const commentTime = asTime(input.commentCreatedAt) ?? lastInbound
+    if (!commentTime) return deny('no_inbound_interaction')
+    if (now - commentTime > HUMAN_AGENT_WINDOW_MS)
+      return deny('outside_private_reply_window')
+    return {
+      allowed: true,
+      policy: 'private_reply_7d',
+      body: messageBody,
+      secondsLeft24h,
+    }
+  }
+
+  if (!lastInbound) return deny('no_inbound_interaction')
 
   const lastFired = asTime(input.triggerLastFiredAt)
   if (

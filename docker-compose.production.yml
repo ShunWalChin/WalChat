@@ -69,7 +69,7 @@ services:
         '--maxmemory',
         '256mb',
         '--maxmemory-policy',
-        'allkeys-lru',
+        'noeviction',
       ]
     restart: unless-stopped
     init: true

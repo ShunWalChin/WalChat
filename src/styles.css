@@ -644,6 +644,24 @@ select:focus {
   color: #a42f28;
   font-size: 11px;
 }
+.form-success {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #e3f2e9;
+  color: #176442;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .auth-form-wrap > .text-button {
   width: 100%;
   text-align: center;
@@ -1080,6 +1098,27 @@ select:focus {
 .conversation-scroll {
   overflow-y: auto;
 }
+
+.inbox-empty,
+.inbox-no-selection {
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.inbox-no-selection {
+  min-height: 100%;
+  flex-direction: column;
+}
+
+.inbox-no-selection h3,
+.inbox-no-selection p {
+  margin: 0;
+}
 .conversation-row {
   width: 100%;
   border: 0;
@@ -1270,6 +1309,39 @@ select:focus {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.composer-actions select {
+  max-width: 180px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.human-agent-toggle {
+  margin-left: auto;
+  border: 1px solid #d69a31;
+  border-radius: 999px;
+  padding: 0.42rem 0.7rem;
+  background: #fff8e9;
+  color: #80540b;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.human-agent-toggle.active {
+  background: #80540b;
+  color: #fff;
+}
+
+.inbox-error {
+  color: var(--red);
+  font-weight: 700;
 }
 .composer-actions > span {
   color: var(--muted);
@@ -1511,6 +1583,45 @@ select:focus {
   display: flex;
   flex-direction: column;
   gap: 9px;
+}
+
+.trigger-editor {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.trigger-editor label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.trigger-editor input,
+.trigger-editor select,
+.trigger-editor textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.trigger-editor textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.trigger-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
 }
 .trigger-card {
   display: grid;
@@ -1960,6 +2071,58 @@ select:focus {
   color: var(--muted);
   font-size: 7px;
   margin-top: 6px;
+}
+.empty-integration {
+  padding: 30px;
+  text-align: center;
+  color: var(--muted);
+}
+.empty-integration h3 {
+  color: var(--ink);
+  font-family: 'Archivo Black';
+  margin: 9px 0 5px;
+}
+.knowledge-manager {
+  padding: 17px;
+}
+.knowledge-editor {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.45fr) minmax(260px, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  margin-top: 14px;
+}
+.knowledge-editor textarea {
+  min-height: 72px;
+}
+.knowledge-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 13px;
+}
+.knowledge-list article {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+}
+.knowledge-list article > div {
+  flex: 1;
+}
+.knowledge-list strong {
+  font-size: 10px;
+}
+.knowledge-list p {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.5;
+  margin-top: 4px;
+  white-space: pre-wrap;
+  max-height: 64px;
+  overflow: hidden;
 }
 
 /* Campaign */
@@ -2936,6 +3099,46 @@ select:focus {
   gap: 4px;
   font-size: 7px;
   font-weight: 700;
+}
+.permissions-grid span.missing {
+  color: #9a4e13;
+  background: #fff1dc;
+}
+.settings-warning {
+  margin-top: 12px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: #8b3b18;
+  background: #fff0e8;
+  font-size: 9px;
+  line-height: 1.5;
+}
+.integration-actions {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 11px;
+}
+.integration-actions small {
+  color: var(--muted);
+  font-size: 8px;
+  margin-right: auto;
+}
+.text-button.danger {
+  color: #a42f28;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.settings-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
 }
 .settings-card > label {
   margin-top: 14px;

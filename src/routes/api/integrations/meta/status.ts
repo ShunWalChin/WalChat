@@ -1,0 +1,70 @@
+/** Estado sanitizado da integração Meta para a tela de configurações. */
+import { createFileRoute } from '@tanstack/react-router'
+import {
+  apiErrorResponse,
+  requireWorkspaceContext,
+} from '../../../../server/api-auth.server'
+import { getServerEnv } from '../../../../server/env.server'
+import { hasValidCredentialEncryptionKey } from '../../../../server/credentials-crypto.server'
+import {
+  META_REQUIRED_SCOPES,
+  META_WEBHOOK_FIELDS,
+} from '../../../../server/meta-api.server'
+
+export const Route = createFileRoute('/api/integrations/meta/status')({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        try {
+          const context = await requireWorkspaceContext(request)
+          const { data: accounts, error } = await context.supabase
+            .from('instagram_accounts')
+            .select(
+              'id,instagram_user_id,username,display_name,profile_picture_url,account_type,status,scopes,subscribed_fields,token_expires_at,webhook_subscribed_at,permissions_validated_at,last_sync_at,connection_error',
+            )
+            .eq('workspace_id', context.workspaceId)
+            .order('created_at')
+          if (error) throw error
+          const { data: credentials, error: credentialsError } =
+            await context.supabase
+              .from('integration_credentials')
+              .select('scope_key,expires_at')
+              .eq('workspace_id', context.workspaceId)
+              .eq('provider', 'meta')
+              .eq('credential_type', 'access_token')
+          if (credentialsError) throw credentialsError
+          const credentialMap = new Map(
+            credentials.map((item) => [item.scope_key, item.expires_at]),
+          )
+          const env = getServerEnv()
+          return Response.json(
+            {
+              platformConfigured: Boolean(
+                env.META_APP_ID &&
+                env.META_APP_SECRET &&
+                env.META_VERIFY_TOKEN &&
+                hasValidCredentialEncryptionKey(),
+              ),
+              liveMode: env.DEMO_MODE === 'false',
+              callbackUrl: `${env.APP_ORIGIN}/api/public/webhooks/instagram`,
+              oauthRedirectUrl:
+                env.META_OAUTH_REDIRECT_URI ??
+                `${env.APP_ORIGIN}/api/integrations/meta/callback`,
+              requiredScopes: META_REQUIRED_SCOPES,
+              webhookFields: META_WEBHOOK_FIELDS,
+              accounts: accounts.map((account) => ({
+                ...account,
+                tokenStored: credentialMap.has(account.id),
+                tokenExpiresAt:
+                  credentialMap.get(account.id) ?? account.token_expires_at,
+              })),
+            },
+            { headers: { 'Cache-Control': 'no-store' } },
+          )
+        } catch (error) {
+          return apiErrorResponse(error, 'Não foi possível consultar a Meta.')
+        }
+      },
+    },
+  },
+})

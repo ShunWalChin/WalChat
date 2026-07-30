@@ -145,7 +145,7 @@ Métricas recomendadas para evolução:
 - jobs `failed` e `pending` atrasados;
 - bloqueios por motivo de compliance;
 - erros e rate limits da Graph API;
-- consumo e falhas do Gemini.
+- consumo, custo e falhas dos provedores OpenAI/Gemini.
 
 ## 10. Fluxo Git
 

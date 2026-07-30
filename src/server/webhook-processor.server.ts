@@ -1,25 +1,36 @@
-/** Normaliza eventos Meta, atualiza o CRM e agenda automações elegíveis. */
+/** Normaliza webhooks Meta, persiste a inbox e agenda automações elegíveis. */
 import '@tanstack/react-start/server-only'
+import { suggestInstagramReply } from './ai.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
 
 type MetaChange = { field?: string; value?: Record<string, unknown> }
+type MetaMessage = {
+  mid?: string
+  text?: string
+  is_echo?: boolean
+  is_self?: boolean
+  attachments?: Array<{ type?: string; payload?: Record<string, unknown> }>
+  reply_to?: { story?: Record<string, unknown> }
+}
 type MetaMessaging = {
   sender?: { id?: string }
   recipient?: { id?: string }
   timestamp?: number
-  message?: { mid?: string; text?: string }
+  message?: MetaMessage
   postback?: { mid?: string; title?: string; payload?: string }
   reaction?: Record<string, unknown>
 }
 type MetaEntry = {
   id?: string
   time?: number
+  field?: string
+  value?: Record<string, unknown>
   changes?: MetaChange[]
   messaging?: MetaMessaging[]
 }
 type MetaWebhook = { object?: string; entry?: MetaEntry[] }
 
-/** Processa os formatos `messaging` e `changes` sem produzir envio no mesmo worker. */
+/** Processa formatos `messaging`, `changes` e o formato direto `field/value`. */
 export async function processInstagramWebhook(
   payload: MetaWebhook,
   metaEventKey: string,
@@ -29,22 +40,33 @@ export async function processInstagramWebhook(
   let processed = 0
 
   for (const entry of payload.entry ?? []) {
-    const accountResult = await supabase
+    const { data: account } = await supabase
       .from('instagram_accounts')
       .select('id,workspace_id')
       .eq('instagram_user_id', entry.id ?? '')
+      .eq('status', 'connected')
       .maybeSingle()
-    const account = accountResult.data
     if (!account) continue
 
     for (const event of entry.messaging ?? []) {
+      // Ecos de mensagens enviadas pela própria conta nunca abrem janela nem disparam IA.
+      if (event.message?.is_echo || event.message?.is_self) continue
+      // Recibos de leitura/seen não são mensagens do contato e não abrem a janela de 24h.
+      if (!event.message && !event.postback && !event.reaction) continue
       const senderId = event.sender?.id
-      if (!senderId) continue
+      if (!senderId || senderId === entry.id) continue
       const inboundText = event.message?.text ?? event.postback?.title ?? ''
       const metaId =
         event.message?.mid ??
         event.postback?.mid ??
-        `${metaEventKey}:${processed}`
+        `${metaEventKey}:messaging:${processed}`
+      const channel = event.postback
+        ? 'postback'
+        : event.reaction
+          ? 'reaction'
+          : isStoryInteraction(event.message)
+            ? 'story_reply'
+            : 'dm'
       await ingestInbound({
         supabase,
         workspaceId: account.workspace_id,
@@ -52,44 +74,51 @@ export async function processInstagramWebhook(
         senderId,
         metaId,
         text: inboundText,
-        channel: event.postback
-          ? 'postback'
-          : event.reaction
-            ? 'reaction'
-            : 'dm',
+        channel,
         raw: event,
         timestamp: event.timestamp,
       })
       processed++
     }
 
-    for (const change of entry.changes ?? []) {
+    const changes = [...(entry.changes ?? [])]
+    if (entry.field) changes.push({ field: entry.field, value: entry.value })
+    for (const change of changes) {
       if (
-        !['comments', 'mentions', 'message_reactions'].includes(
-          change.field ?? '',
-        )
+        ![
+          'comments',
+          'live_comments',
+          'mentions',
+          'message_reactions',
+        ].includes(change.field ?? '')
       )
         continue
       const value = change.value ?? {}
       const sender = value.from as
-        { id?: string; username?: string } | undefined
-      const senderId = sender?.id
-      if (!senderId) continue
+        | { id?: string; username?: string; self_ig_scoped_id?: string }
+        | undefined
+      const username = sender?.username
+      const senderId =
+        sender?.id ??
+        sender?.self_ig_scoped_id ??
+        (username ? `username:${username}` : null)
+      if (!senderId || senderId === entry.id) continue
       await ingestInbound({
         supabase,
         workspaceId: account.workspace_id,
         accountId: account.id,
         senderId,
-        username: sender.username,
-        metaId: String(value.id ?? `${metaEventKey}:${processed}`),
+        username,
+        metaId: String(value.id ?? `${metaEventKey}:change:${processed}`),
         text: String(value.text ?? ''),
         channel:
-          change.field === 'comments'
+          change.field === 'comments' || change.field === 'live_comments'
             ? 'comment'
             : change.field === 'mentions'
               ? 'mention'
               : 'reaction',
         raw: value,
+        timestamp: entry.time,
       })
       processed++
     }
@@ -102,7 +131,30 @@ export async function processInstagramWebhook(
   return { processed, demo: false }
 }
 
-/** Upsert do contato e da interação inbound; índices únicos tornam a operação repetível. */
+function isStoryInteraction(message?: MetaMessage) {
+  return Boolean(
+    message?.reply_to?.story ||
+    message?.attachments?.some(
+      (attachment) => attachment.type === 'story_mention',
+    ),
+  )
+}
+
+function metaTimestamp(value?: number) {
+  if (!value) return new Date().toISOString()
+  const milliseconds = value > 10_000_000_000 ? value : value * 1_000
+  const date = new Date(milliseconds)
+  return Number.isFinite(date.getTime())
+    ? date.toISOString()
+    : new Date().toISOString()
+}
+
+/** Apenas ações conversacionais do contato abrem ou renovam a janela padrão. */
+export function opensMessagingWindow(channel: string) {
+  return ['dm', 'story_reply', 'postback'].includes(channel)
+}
+
+/** Upsert do CRM, conversa, interação e mensagem com as mesmas chaves idempotentes. */
 async function ingestInbound(input: {
   supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>
   workspaceId: string
@@ -115,10 +167,17 @@ async function ingestInbound(input: {
   raw: unknown
   timestamp?: number
 }) {
-  const receivedAt = input.timestamp
-    ? new Date(input.timestamp).toISOString()
-    : new Date().toISOString()
-  const contactResult = await input.supabase
+  const receivedAt = metaTimestamp(input.timestamp)
+  const { data: duplicate, error: duplicateError } = await input.supabase
+    .from('interactions_log')
+    .select('id')
+    .eq('workspace_id', input.workspaceId)
+    .eq('meta_event_id', input.metaId)
+    .maybeSingle()
+  if (duplicateError) throw duplicateError
+  if (duplicate) return
+
+  const { data: contact, error: contactError } = await input.supabase
     .from('contacts')
     .upsert(
       {
@@ -126,19 +185,41 @@ async function ingestInbound(input: {
         instagram_account_id: input.accountId,
         instagram_user_id: input.senderId,
         username: input.username,
-        last_interaction_at: receivedAt,
-        last_inbound_at: receivedAt,
       },
       { onConflict: 'workspace_id,instagram_user_id' },
     )
-    .select('id')
+    .select('id,ai_enabled,inbox_category,last_interaction_at,last_inbound_at')
     .single()
-  if (contactResult.error) throw contactResult.error
-  await input.supabase.from('interactions_log').upsert(
-    {
+  if (contactError) throw contactError
+
+  const laterTimestamp = (current: string | null, incoming: string) =>
+    !current || new Date(incoming).getTime() > new Date(current).getTime()
+      ? incoming
+      : current
+  const contactUpdate: Record<string, string> = {
+    last_interaction_at: laterTimestamp(
+      contact.last_interaction_at,
+      receivedAt,
+    ),
+  }
+  if (opensMessagingWindow(input.channel))
+    contactUpdate.last_inbound_at = laterTimestamp(
+      contact.last_inbound_at,
+      receivedAt,
+    )
+  const { error: contactUpdateError } = await input.supabase
+    .from('contacts')
+    .update(contactUpdate)
+    .eq('id', contact.id)
+    .eq('workspace_id', input.workspaceId)
+  if (contactUpdateError) throw contactUpdateError
+
+  const { data: interaction, error: interactionError } = await input.supabase
+    .from('interactions_log')
+    .insert({
       workspace_id: input.workspaceId,
       instagram_account_id: input.accountId,
-      contact_id: contactResult.data.id,
+      contact_id: contact.id,
       meta_event_id: input.metaId,
       channel: input.channel,
       direction: 'inbound',
@@ -146,17 +227,73 @@ async function ingestInbound(input: {
       status: 'delivered',
       meta_created_at: receivedAt,
       raw_payload: input.raw,
-    },
-    { onConflict: 'workspace_id,meta_event_id', ignoreDuplicates: true },
-  )
-  await matchAndScheduleTriggers({ ...input, contactId: contactResult.data.id })
+    })
+    .select('id')
+    .maybeSingle()
+  // Dois workers podem observar a ausência ao mesmo tempo; a chave única decide.
+  if (interactionError?.code === '23505') return
+  if (interactionError) throw interactionError
+  if (!interaction) return
+
+  // Reações são telemetria da mensagem existente, não uma nova conversa na inbox.
+  if (input.channel === 'reaction') return
+
+  const { data: conversation, error: conversationError } = await input.supabase
+    .from('conversations')
+    .upsert(
+      {
+        workspace_id: input.workspaceId,
+        instagram_account_id: input.accountId,
+        contact_id: contact.id,
+        category: contact.inbox_category,
+        last_message_preview: input.text.slice(0, 180),
+        last_message_at: receivedAt,
+      },
+      { onConflict: 'workspace_id,contact_id,instagram_account_id' },
+    )
+    .select('id,unread_count')
+    .single()
+  if (conversationError) throw conversationError
+  await input.supabase
+    .from('conversations')
+    .update({ unread_count: conversation.unread_count + 1 })
+    .eq('id', conversation.id)
+
+  const { error: interactionLinkError } = await input.supabase
+    .from('interactions_log')
+    .update({ conversation_id: conversation.id })
+    .eq('id', interaction.id)
+  if (interactionLinkError) throw interactionLinkError
+  const { error: messageError } = await input.supabase.from('messages').insert({
+    workspace_id: input.workspaceId,
+    conversation_id: conversation.id,
+    contact_id: contact.id,
+    interaction_id: interaction.id,
+    direction: 'inbound',
+    body: input.text,
+    status: 'delivered',
+  })
+  if (messageError) throw messageError
+
+  const scheduledByTrigger = await matchAndScheduleTrigger({
+    ...input,
+    contactId: contact.id,
+    receivedAt,
+  })
+  if (!scheduledByTrigger && contact.ai_enabled)
+    await maybeScheduleAutonomousAgent({
+      supabase: input.supabase,
+      workspaceId: input.workspaceId,
+      accountId: input.accountId,
+      contactId: contact.id,
+      conversationId: conversation.id,
+      senderId: input.senderId,
+      channel: input.channel,
+    })
 }
 
-/**
- * Aplica opt-out, origem, match e cooldown; o resultado é sempre um job assíncrono.
- * A elegibilidade final não é decidida aqui: o scheduler a revalida na execução.
- */
-async function matchAndScheduleTriggers(input: {
+/** Aplica opt-out, match e cooldown; no máximo um gatilho agenda resposta por evento. */
+async function matchAndScheduleTrigger(input: {
   supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>
   workspaceId: string
   accountId: string
@@ -166,6 +303,7 @@ async function matchAndScheduleTriggers(input: {
   text: string
   channel: string
   raw: unknown
+  receivedAt: string
 }) {
   const source =
     input.channel === 'comment'
@@ -175,16 +313,17 @@ async function matchAndScheduleTriggers(input: {
         : input.channel === 'dm' || input.channel === 'postback'
           ? 'dm'
           : null
-  if (!source || !input.text) return
+  if (!source || !input.text) return false
   if (input.text.trim().toLocaleLowerCase('pt-BR') === 'parar') {
     await input.supabase
       .from('contacts')
       .update({ opted_out_at: new Date().toISOString(), ai_enabled: false })
       .eq('id', input.contactId)
-    return
+      .eq('workspace_id', input.workspaceId)
+    return true
   }
 
-  const { data: triggers } = await input.supabase
+  const { data: triggers, error } = await input.supabase
     .from('triggers')
     .select(
       'id,keyword,match_mode,response_text,sequence_id,cooldown_hours,auto_tag_id',
@@ -192,8 +331,10 @@ async function matchAndScheduleTriggers(input: {
     .eq('workspace_id', input.workspaceId)
     .eq('source', source)
     .eq('is_active', true)
+    .order('created_at')
+  if (error) throw error
   const normalized = input.text.trim().toLocaleLowerCase('pt-BR')
-  for (const trigger of triggers ?? []) {
+  for (const trigger of triggers) {
     const keyword = String(trigger.keyword).toLocaleLowerCase('pt-BR')
     const matches =
       trigger.match_mode === 'exact'
@@ -232,8 +373,13 @@ async function matchAndScheduleTriggers(input: {
         { onConflict: 'contact_id,tag_id' },
       )
 
+    const commonPayload = {
+      senderId: input.senderId,
+      instagramCommentId: source === 'comment' ? input.metaId : null,
+      commentCreatedAt: source === 'comment' ? input.receivedAt : null,
+    }
     if (trigger.sequence_id) {
-      const { data: enrollment } = await input.supabase
+      const { data: enrollment, error: enrollmentError } = await input.supabase
         .from('sequence_enrollments')
         .insert({
           workspace_id: input.workspaceId,
@@ -243,18 +389,17 @@ async function matchAndScheduleTriggers(input: {
         })
         .select('id')
         .single()
-      if (enrollment)
-        await input.supabase.from('scheduled_jobs').insert({
-          workspace_id: input.workspaceId,
-          kind: 'sequence_step',
-          payload: {
-            enrollmentId: enrollment.id,
-            position: 0,
-            senderId: input.senderId,
-            instagramCommentId: source === 'comment' ? input.metaId : null,
-          },
-          run_at: new Date().toISOString(),
-        })
+      if (enrollmentError) throw enrollmentError
+      await input.supabase.from('scheduled_jobs').insert({
+        workspace_id: input.workspaceId,
+        kind: 'sequence_step',
+        payload: {
+          enrollmentId: enrollment.id,
+          position: 0,
+          ...commonPayload,
+        },
+        run_at: new Date().toISOString(),
+      })
     } else if (trigger.response_text) {
       await input.supabase.from('scheduled_jobs').insert({
         workspace_id: input.workspaceId,
@@ -262,11 +407,81 @@ async function matchAndScheduleTriggers(input: {
         payload: {
           contactId: input.contactId,
           responseText: trigger.response_text,
-          senderId: input.senderId,
-          instagramCommentId: source === 'comment' ? input.metaId : null,
+          ...commonPayload,
         },
         run_at: new Date().toISOString(),
       })
     }
+    return true
+  }
+  return false
+}
+
+/** Em modo autônomo a IA apenas prepara um job; compliance e envio ficam no scheduler. */
+async function maybeScheduleAutonomousAgent(input: {
+  supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>
+  workspaceId: string
+  accountId: string
+  contactId: string
+  conversationId: string
+  senderId: string
+  channel: string
+}) {
+  if (!['dm', 'story_reply', 'postback'].includes(input.channel)) return
+  const { data: agent, error } = await input.supabase
+    .from('ai_agents')
+    .select('id,fallback_to_copilot')
+    .eq('workspace_id', input.workspaceId)
+    .eq('mode', 'autonomous')
+    .eq('is_active', true)
+    .order('created_at')
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  if (!agent) return
+
+  const { data: recent } = await input.supabase
+    .from('interactions_log')
+    .select('direction,message_text')
+    .eq('workspace_id', input.workspaceId)
+    .eq('contact_id', input.contactId)
+    .not('message_text', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(10)
+  const history = (recent ?? []).reverse().map((item) => ({
+    role:
+      item.direction === 'inbound' ? ('user' as const) : ('assistant' as const),
+    content: String(item.message_text),
+  }))
+  try {
+    const result = await suggestInstagramReply({
+      workspaceId: input.workspaceId,
+      agentId: agent.id,
+      history,
+      safetyIdentifier: `${input.workspaceId}:${input.contactId}`,
+    })
+    const { error: jobError } = await input.supabase
+      .from('scheduled_jobs')
+      .insert({
+        workspace_id: input.workspaceId,
+        kind: 'sequence_step',
+        payload: {
+          contactId: input.contactId,
+          responseText: result.suggestion,
+          senderId: input.senderId,
+          aiGenerated: true,
+          agentId: agent.id,
+        },
+        run_at: new Date().toISOString(),
+      })
+    if (jobError) throw jobError
+  } catch (agentError) {
+    console.error('autonomous_agent_failed', agentError)
+    if (agent.fallback_to_copilot)
+      await input.supabase
+        .from('conversations')
+        .update({ category: 'ia_off' })
+        .eq('id', input.conversationId)
+        .eq('workspace_id', input.workspaceId)
   }
 }

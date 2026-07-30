@@ -5,8 +5,11 @@ import type { ComplianceInput } from './compliance'
 import { getServerEnv } from './env.server'
 
 export type MetaSendInput = ComplianceInput & {
+  workspaceId: string
+  instagramAccountId: string
   recipientId: string
   accessToken?: string
+  instagramUserId?: string
 }
 
 /** Envia uma DM ou simula o envio quando `DEMO_MODE=true`. */
@@ -15,8 +18,7 @@ export async function sendInstagramMessage(input: MetaSendInput) {
   if (!decision.allowed) return { sent: false as const, decision }
 
   const env = getServerEnv()
-  const token = input.accessToken ?? env.META_ACCESS_TOKEN
-  if (!token || env.DEMO_MODE === 'true') {
+  if (env.DEMO_MODE === 'true') {
     return {
       sent: true as const,
       demo: true,
@@ -25,19 +27,32 @@ export async function sendInstagramMessage(input: MetaSendInput) {
     }
   }
 
+  const { getMetaAccountAccess } =
+    await import('./integration-credentials.server')
+  const account = input.accessToken
+    ? {
+        accessToken: input.accessToken,
+        instagramUserId: input.instagramUserId,
+      }
+    : await getMetaAccountAccess({
+        workspaceId: input.workspaceId,
+        instagramAccountId: input.instagramAccountId,
+      })
+  if (!account.accessToken || !account.instagramUserId)
+    throw new Error('Credencial Meta da conta está incompleta.')
+
   const payload: Record<string, unknown> = {
     recipient: { id: input.recipientId },
     message: { text: decision.body },
   }
-  if (decision.tag) payload.messaging_type = 'MESSAGE_TAG'
   if (decision.tag) payload.tag = decision.tag
 
   const response = await fetch(
-    `https://graph.facebook.com/${env.META_GRAPH_VERSION}/me/messages`,
+    `https://graph.instagram.com/${env.META_GRAPH_VERSION}/${encodeURIComponent(account.instagramUserId)}/messages`,
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${account.accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
@@ -66,8 +81,7 @@ export async function sendInstagramPrivateReply(
   if (!decision.allowed) return { sent: false as const, decision }
 
   const env = getServerEnv()
-  const token = input.accessToken ?? env.META_ACCESS_TOKEN
-  if (!token || env.DEMO_MODE === 'true')
+  if (env.DEMO_MODE === 'true')
     return {
       sent: true as const,
       demo: true,
@@ -75,15 +89,32 @@ export async function sendInstagramPrivateReply(
       decision,
     }
 
+  const { getMetaAccountAccess } =
+    await import('./integration-credentials.server')
+  const account = input.accessToken
+    ? {
+        accessToken: input.accessToken,
+        instagramUserId: input.instagramUserId,
+      }
+    : await getMetaAccountAccess({
+        workspaceId: input.workspaceId,
+        instagramAccountId: input.instagramAccountId,
+      })
+  if (!account.accessToken || !account.instagramUserId)
+    throw new Error('Credencial Meta da conta está incompleta.')
+
   const response = await fetch(
-    `https://graph.facebook.com/${env.META_GRAPH_VERSION}/${encodeURIComponent(input.instagramCommentId)}/private_replies`,
+    `https://graph.instagram.com/${env.META_GRAPH_VERSION}/${encodeURIComponent(account.instagramUserId)}/messages`,
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${account.accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message: decision.body }),
+      body: JSON.stringify({
+        recipient: { comment_id: input.instagramCommentId },
+        message: { text: decision.body },
+      }),
     },
   )
   const result = await response.json()
