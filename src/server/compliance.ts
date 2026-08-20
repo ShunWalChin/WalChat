@@ -13,7 +13,11 @@ export const DEFAULT_COOLDOWN_MS = 24 * 60 * 60 * 1000
 export const MAX_CLOCK_SKEW_MS = 5 * 60 * 1_000
 
 export type SendPolicy =
-  'standard_24h' | 'human_agent_7d' | 'private_reply_7d' | 'blocked'
+  | 'standard_24h'
+  | 'human_agent_7d'
+  | 'private_reply_7d'
+  | 'whatsapp_template'
+  | 'blocked'
 
 export type ComplianceInput = {
   now?: Date
@@ -46,6 +50,9 @@ export type ComplianceDecision = {
     | 'outside_private_reply_window'
     | 'blocked_content'
     | 'invalid_interaction_time'
+    | 'whatsapp_template_required'
+    | 'whatsapp_template_not_approved'
+    | 'whatsapp_template_missing_opt_out'
   secondsLeft24h: number
 }
 
@@ -176,4 +183,93 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceDecision {
   }
 
   return deny('outside_24h')
+}
+
+export type WhatsAppComplianceInput = Omit<
+  ComplianceInput,
+  | 'requestedTag'
+  | 'instagramCommentId'
+  | 'commentCreatedAt'
+  | 'commentAlreadyReplied'
+> & {
+  template?: {
+    name: string
+    language: string
+    status: string
+    hasOptOut: boolean
+  } | null
+}
+
+/**
+ * WhatsApp não possui a extensão HUMAN_AGENT do Instagram. Texto livre só sai
+ * dentro da janela de atendimento de 24h; fora dela, apenas template APPROVED.
+ */
+export function evaluateWhatsAppCompliance(
+  input: WhatsAppComplianceInput,
+): ComplianceDecision {
+  const now = (input.now ?? new Date()).getTime()
+  const lastInbound = asTime(input.lastInboundAt)
+  const elapsed =
+    lastInbound === null ? Number.POSITIVE_INFINITY : now - lastInbound
+  const secondsLeft24h = Math.max(
+    0,
+    Math.floor((STANDARD_WINDOW_MS - elapsed) / 1_000),
+  )
+  const textBody = input.isAutomated
+    ? withOptOut(input.message)
+    : input.message.trim()
+  const templateBody = input.template
+    ? `[Template WhatsApp: ${input.template.name}/${input.template.language}]`
+    : textBody
+  const deny = (reason: ComplianceDecision['reason']): ComplianceDecision => ({
+    allowed: false,
+    policy: 'blocked',
+    body: templateBody,
+    reason,
+    secondsLeft24h,
+  })
+
+  if (input.optedOutAt) return deny('opted_out')
+  if (lastInbound !== null && lastInbound > now + MAX_CLOCK_SKEW_MS)
+    return deny('invalid_interaction_time')
+
+  const normalized = normalizeComplianceText(textBody)
+  if (
+    !input.template &&
+    (input.blocklist ?? []).some((term) => {
+      const normalizedTerm = normalizeComplianceText(term)
+      return normalizedTerm.length > 0 && normalized.includes(normalizedTerm)
+    })
+  )
+    return deny('blocked_content')
+
+  const lastFired = asTime(input.triggerLastFiredAt)
+  if (
+    input.isAutomated &&
+    lastFired &&
+    now - lastFired < (input.cooldownMs ?? DEFAULT_COOLDOWN_MS)
+  )
+    return deny('trigger_cooldown')
+
+  if (input.template) {
+    if (input.template.status.toUpperCase() !== 'APPROVED')
+      return deny('whatsapp_template_not_approved')
+    if (input.isAutomated && !input.template.hasOptOut)
+      return deny('whatsapp_template_missing_opt_out')
+    return {
+      allowed: true,
+      policy: 'whatsapp_template',
+      body: templateBody,
+      secondsLeft24h,
+    }
+  }
+
+  if (!lastInbound || elapsed > STANDARD_WINDOW_MS)
+    return deny('whatsapp_template_required')
+  return {
+    allowed: true,
+    policy: 'standard_24h',
+    body: textBody,
+    secondsLeft24h,
+  }
 }

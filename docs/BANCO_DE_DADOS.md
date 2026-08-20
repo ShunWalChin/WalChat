@@ -9,7 +9,10 @@ erDiagram
     AUTH_USERS ||--o{ WORKSPACE_MEMBERS : participa
     WORKSPACES ||--o{ WORKSPACE_MEMBERS : possui
     WORKSPACES ||--o{ INSTAGRAM_ACCOUNTS : conecta
+    WORKSPACES ||--o{ WHATSAPP_ACCOUNTS : conecta
     INSTAGRAM_ACCOUNTS ||--o{ CONTACTS : relaciona
+    WHATSAPP_ACCOUNTS ||--o{ CONTACTS : relaciona
+    WHATSAPP_ACCOUNTS ||--o{ WHATSAPP_MESSAGE_TEMPLATES : sincroniza
     CONTACTS ||--o{ INTERACTIONS_LOG : gera
     CONTACTS ||--o{ OUTBOUND_DELIVERIES : recebe
     OUTBOUND_DELIVERIES ||--o| INTERACTIONS_LOG : audita
@@ -23,45 +26,47 @@ erDiagram
 
 ## 2. Tipos enumerados
 
-| Tipo                    | Valores                                                             |
-| ----------------------- | ------------------------------------------------------------------- |
-| `workspace_role`        | `owner`, `admin`, `agent`, `viewer`                                 |
-| `interaction_channel`   | `dm`, `comment`, `story_reply`, `mention`, `reaction`, `postback`   |
-| `interaction_direction` | `inbound`, `outbound`                                               |
-| `message_status`        | `queued`, `sent`, `delivered`, `read`, `failed`, `blocked`          |
-| `trigger_source`        | `comment`, `dm`, `story`                                            |
-| `match_mode`            | `exact`, `contains`                                                 |
-| `sequence_step_kind`    | `text`, `media`, `typing`                                           |
-| `ai_agent_mode`         | `copilot`, `autonomous`                                             |
-| `content_kind`          | `feed`, `reel`, `story`, `carousel`                                 |
-| `campaign_status`       | `draft`, `scheduled`, `running`, `paused`, `completed`, `cancelled` |
-| `window_policy`         | `standard_24h`, `human_agent_7d`, `private_reply_7d`, `blocked`     |
+| Tipo                    | Valores                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| `workspace_role`        | `owner`, `admin`, `agent`, `viewer`                                                  |
+| `interaction_channel`   | `dm`, `comment`, `story_reply`, `mention`, `reaction`, `postback`                    |
+| `interaction_direction` | `inbound`, `outbound`                                                                |
+| `message_status`        | `queued`, `sent`, `delivered`, `read`, `failed`, `blocked`                           |
+| `trigger_source`        | `comment`, `dm`, `story`, `whatsapp`                                                 |
+| `match_mode`            | `exact`, `contains`                                                                  |
+| `sequence_step_kind`    | `text`, `media`, `typing`                                                            |
+| `ai_agent_mode`         | `copilot`, `autonomous`                                                              |
+| `content_kind`          | `feed`, `reel`, `story`, `carousel`                                                  |
+| `campaign_status`       | `draft`, `scheduled`, `running`, `paused`, `completed`, `cancelled`                  |
+| `window_policy`         | `standard_24h`, `human_agent_7d`, `private_reply_7d`, `whatsapp_template`, `blocked` |
 
 ## 3. Catálogo de tabelas
 
 ### Tenancy e integrações
 
-| Tabela                     | Responsabilidade                                                 |
-| -------------------------- | ---------------------------------------------------------------- |
-| `workspaces`               | Tenant, nome, slug e configurações                               |
-| `workspace_members`        | Associação usuário/workspace e papel                             |
-| `instagram_accounts`       | Perfil, scopes, webhook, validade e estado da conexão            |
-| `integration_credentials`  | Tokens/API keys cifrados; sem acesso `anon/authenticated`        |
-| `integration_oauth_states` | States Meta curtos, de uso único e protegidos contra replay      |
-| `integration_audit_logs`   | Auditoria sanitizada de conectar, validar, renovar e desconectar |
+| Tabela                       | Responsabilidade                                                 |
+| ---------------------------- | ---------------------------------------------------------------- |
+| `workspaces`                 | Tenant, nome, slug e configurações                               |
+| `workspace_members`          | Associação usuário/workspace e papel                             |
+| `instagram_accounts`         | Perfil, scopes, webhook, validade e estado da conexão            |
+| `whatsapp_accounts`          | WABA, telefone, scopes, webhook e estado da conexão              |
+| `whatsapp_message_templates` | Cache completo de templates e status oficial da WABA             |
+| `integration_credentials`    | Tokens/API keys cifrados; sem acesso `anon/authenticated`        |
+| `integration_oauth_states`   | States Meta curtos, de uso único e protegidos contra replay      |
+| `integration_audit_logs`     | Auditoria sanitizada de conectar, validar, renovar e desconectar |
 
 ### CRM e Inbox
 
-| Tabela                | Responsabilidade                                       |
-| --------------------- | ------------------------------------------------------ |
-| `contacts`            | Identidade Instagram, opt-out, IA e últimas interações |
-| `tags`                | Taxonomia manual ou automática do workspace            |
-| `contact_tags`        | Relação N:N entre contatos e tags                      |
-| `conversations`       | Caixa, status da janela e atribuição                   |
-| `messages`            | Mensagens visíveis na conversa                         |
-| `interactions_log`    | Auditoria normalizada de entrada, saída e bloqueios    |
-| `outbound_deliveries` | Claim persistente e resultado de cada DM externa       |
-| `conversation_notes`  | Notas internas da equipe, sem envio ao Instagram       |
+| Tabela                | Responsabilidade                                                |
+| --------------------- | --------------------------------------------------------------- |
+| `contacts`            | Identidade Instagram/WhatsApp, opt-out, IA e últimas interações |
+| `tags`                | Taxonomia manual ou automática do workspace                     |
+| `contact_tags`        | Relação N:N entre contatos e tags                               |
+| `conversations`       | Caixa, status da janela e atribuição                            |
+| `messages`            | Mensagens visíveis na conversa                                  |
+| `interactions_log`    | Auditoria normalizada de entrada, saída e bloqueios             |
+| `outbound_deliveries` | Claim persistente e resultado de cada DM externa                |
+| `conversation_notes`  | Notas internas da equipe, sem envio ao Instagram                |
 
 ### Conteúdo e Insights
 
@@ -105,19 +110,22 @@ Agrega contas alcançadas, DMs recebidas/enviadas, comentários e novos contatos
 
 ### `contact_messaging_eligibility`
 
-Calcula, por contato, a elegibilidade na janela padrão de 24 horas e na janela humana de sete dias. É uma pré-visualização; o envio ainda deve chamar `evaluateCompliance` com os dados atuais.
+Calcula, por contato, a elegibilidade na janela padrão de 24 horas, `HUMAN_AGENT` do Instagram e template obrigatório do WhatsApp. É uma pré-visualização; o envio ainda chama o motor de compliance com os dados atuais.
 
 ## 5. Funções e triggers
 
-| Objeto                       | Função                                                 |
-| ---------------------------- | ------------------------------------------------------ |
-| `set_updated_at`             | Atualiza `updated_at` antes de alterações              |
-| `is_workspace_member`        | Confirma associação do usuário autenticado             |
-| `has_workspace_role`         | Confirma papel permitido no workspace                  |
-| `handle_new_user`            | Cria workspace e membro `owner` após cadastro          |
-| `on_auth_user_created`       | Liga `auth.users` ao provisionamento do tenant         |
-| `set_*_updated_at`           | Triggers gerados para tabelas mutáveis                 |
-| `search_knowledge_documents` | Busca full-text PT-BR da base, restrita à service role |
+| Objeto                           | Função                                                 |
+| -------------------------------- | ------------------------------------------------------ |
+| `set_updated_at`                 | Atualiza `updated_at` antes de alterações              |
+| `is_workspace_member`            | Confirma associação do usuário autenticado             |
+| `has_workspace_role`             | Confirma papel permitido no workspace                  |
+| `handle_new_user`                | Cria workspace e membro `owner` após cadastro          |
+| `on_auth_user_created`           | Liga `auth.users` ao provisionamento do tenant         |
+| `set_*_updated_at`               | Triggers gerados para tabelas mutáveis                 |
+| `search_knowledge_documents`     | Busca full-text PT-BR da base, restrita à service role |
+| `ingest_whatsapp_inbound`        | Ingestão WhatsApp transacional e idempotente           |
+| `apply_whatsapp_delivery_status` | Delivery receipt monotônico e atômico                  |
+| `process_meta_data_deletion`     | Exclusão transacional de dados Instagram/WhatsApp      |
 
 As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e parâmetros explícitos para evitar que a policy recursiva consulte diretamente a própria tabela protegida.
 
@@ -136,9 +144,9 @@ As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e par�
 
 ## 7. Índices e garantias de unicidade
 
-- contatos: um `instagram_user_id` por workspace;
+- contatos: um `instagram_user_id` ou `(whatsapp_account_id, whatsapp_user_id)` por workspace;
 - interações: um `meta_event_id` por workspace quando presente;
-- mensagens: uma linha por `interaction_id` quando presente;
+- mensagens: uma linha por `interaction_id` e um ID de provedor por workspace/canal;
 - entregas externas: uma chave idempotente por workspace e um único vínculo no `interactions_log`;
 - credenciais: uma por workspace, provedor, tipo e `scope_key`;
 - cooldown: um registro por gatilho/contato;

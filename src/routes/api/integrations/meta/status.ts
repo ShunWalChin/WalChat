@@ -10,6 +10,10 @@ import {
   META_REQUIRED_SCOPES,
   META_WEBHOOK_FIELDS,
 } from '../../../../server/meta-api.server'
+import {
+  WHATSAPP_REQUIRED_SCOPES,
+  WHATSAPP_WEBHOOK_FIELDS,
+} from '../../../../server/whatsapp-api.server'
 
 export const Route = createFileRoute('/api/integrations/meta/status')({
   server: {
@@ -25,14 +29,26 @@ export const Route = createFileRoute('/api/integrations/meta/status')({
             .eq('workspace_id', context.workspaceId)
             .order('created_at')
           if (error) throw error
-          const { data: credentials, error: credentialsError } =
-            await context.admin
+          const [
+            { data: credentials, error: credentialsError },
+            { data: whatsappAccounts, error: whatsappError },
+          ] = await Promise.all([
+            context.admin
               .from('integration_credentials')
               .select('scope_key,expires_at')
               .eq('workspace_id', context.workspaceId)
               .eq('provider', 'meta')
-              .eq('credential_type', 'access_token')
+              .eq('credential_type', 'access_token'),
+            context.supabase
+              .from('whatsapp_accounts')
+              .select(
+                'id,waba_id,phone_number_id,display_phone_number,verified_name,quality_rating,status,scopes,subscribed_fields,token_expires_at,webhook_subscribed_at,permissions_validated_at,last_sync_at,connection_error',
+              )
+              .eq('workspace_id', context.workspaceId)
+              .order('created_at'),
+          ])
           if (credentialsError) throw credentialsError
+          if (whatsappError) throw whatsappError
           const credentialMap = new Map(
             credentials.map((item) => [item.scope_key, item.expires_at]),
           )
@@ -46,6 +62,7 @@ export const Route = createFileRoute('/api/integrations/meta/status')({
                 hasValidCredentialEncryptionKey(),
               ),
               liveMode: env.DEMO_MODE === 'false',
+              graphVersion: env.META_GRAPH_VERSION,
               callbackUrl: `${env.APP_ORIGIN}/api/public/webhooks/instagram`,
               oauthRedirectUrl:
                 env.META_OAUTH_REDIRECT_URI ??
@@ -58,6 +75,27 @@ export const Route = createFileRoute('/api/integrations/meta/status')({
                 tokenExpiresAt:
                   credentialMap.get(account.id) ?? account.token_expires_at,
               })),
+              whatsapp: {
+                embeddedSignupConfigured: Boolean(
+                  env.META_APP_ID &&
+                  env.META_APP_SECRET &&
+                  env.META_VERIFY_TOKEN &&
+                  env.META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID &&
+                  hasValidCredentialEncryptionKey(),
+                ),
+                appId: env.META_APP_ID ?? null,
+                configurationId:
+                  env.META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID ?? null,
+                callbackUrl: `${env.APP_ORIGIN}/api/public/webhooks/whatsapp`,
+                requiredScopes: WHATSAPP_REQUIRED_SCOPES,
+                webhookFields: WHATSAPP_WEBHOOK_FIELDS,
+                accounts: whatsappAccounts.map((account) => ({
+                  ...account,
+                  tokenStored: credentialMap.has(account.id),
+                  tokenExpiresAt:
+                    credentialMap.get(account.id) ?? account.token_expires_at,
+                })),
+              },
             },
             { headers: { 'Cache-Control': 'no-store' } },
           )

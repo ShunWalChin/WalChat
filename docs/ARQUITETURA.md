@@ -2,7 +2,7 @@
 
 ## 1. Objetivo
 
-O Wal Chat centraliza atendimento, automações e conteúdo de contas profissionais do Instagram. A arquitetura separa recepção de eventos, processamento assíncrono e envio para que uma indisponibilidade da Meta, do modelo de IA ou de um worker não bloqueie o webhook público.
+O Wal Chat centraliza atendimento e automações de Instagram Professional e WhatsApp Business, além do conteúdo editorial. A arquitetura separa recepção de eventos, processamento assíncrono e envio para que uma indisponibilidade da Meta, do modelo de IA ou de um worker não bloqueie o webhook público.
 
 ## 2. Contextos do sistema
 
@@ -14,7 +14,7 @@ flowchart TB
     end
     subgraph Async["Processamento assíncrono"]
       Redis["Redis"]
-      WebhookWorker["Worker Instagram"]
+      WebhookWorker["Worker Meta multicanal"]
       Scheduler["Scheduler"]
     end
     subgraph Dados["Dados isolados"]
@@ -54,9 +54,9 @@ Fornece Auth, Postgres, REST, Realtime e Storage. O banco é a fonte de verdade 
 
 O endpoint de webhook calcula SHA-256 do corpo bruto e usa o hash como `jobId`. Eventos repetidos são ignorados pelo índice único do banco e pelo identificador da fila. Uma redelivery da Meta após falha terminal abre no máximo uma nova rodada reivindicada no Postgres. Jobs falhos usam até cinco tentativas com backoff exponencial.
 
-### Worker Instagram
+### Worker Meta multicanal
 
-Consome `instagram-webhooks`, identifica a conta destinatária e chama a RPC transacional `ingest_instagram_inbound`. A RPC cria ou repara contato, interação, conversa e mensagem, com incremento atômico de não lidas. O worker não envia mensagens diretamente; ele cria `scheduled_jobs` deduplicados para concentrar o envio no scheduler.
+Consome a fila histórica `instagram-webhooks`, identifica o objeto do payload e chama `ingest_instagram_inbound` ou `ingest_whatsapp_inbound`. As RPCs criam ou reparam contato, interação, conversa e mensagem, com incremento atômico de não lidas. Delivery receipts do WhatsApp usam uma RPC monotônica. O worker não envia mensagens diretamente; cria `scheduled_jobs` deduplicados para concentrar o envio no scheduler.
 
 ### Scheduler
 
@@ -68,7 +68,8 @@ Executa a cada 60 segundos e reivindica até 50 jobs por ciclo numa transação 
 
 ### Integrações externas
 
-- Meta Graph API: webhook, DMs, Private Reply e publicação futura.
+- Instagram API: login profissional, webhooks, DMs, Private Reply e publicação futura.
+- WhatsApp Cloud API: Embedded Signup, WABA, telefone, templates, mensagens e statuses.
 - OpenAI Responses API: provedor padrão para agentes, com `store: false`, safety identifier e configuração por workspace.
 - Gemini 2.5 Flash: provedor opcional preservado para workspaces que o selecionarem.
 - SMTP: não configurado no MVP; necessário para confirmação e recuperação de contas.
@@ -92,7 +93,7 @@ sequenceDiagram
       A->>D: upsert webhook_events
       A->>Q: job idempotente
       A-->>M: 200 recebido
-      Q->>W: process-instagram-event
+      Q->>W: process-meta-event
       W->>D: contato + interação + gatilho
       W->>D: scheduled_job
       S->>D: lock do job vencido
@@ -120,7 +121,7 @@ O webhook responde rapidamente após persistência/enfileiramento. Nenhuma chama
 | Origem           | Confiança                 | Controle                                                |
 | ---------------- | ------------------------- | ------------------------------------------------------- |
 | Navegador        | Não confiável             | JWT, RLS, Zod, chaves públicas somente                  |
-| Webhook Meta     | Não confiável até validar | HMAC do corpo bruto e tipo `instagram`                  |
+| Webhook Meta     | Não confiável até validar | HMAC do corpo bruto e objeto Instagram/WhatsApp         |
 | Redis            | Interno                   | Rede Docker isolada e payload mínimo                    |
 | Worker/Scheduler | Backend privilegiado      | Service role e logs estruturados                        |
 | OpenAI/Gemini    | Serviço externo           | Contexto limitado, sem secrets e opt-out pós-processado |

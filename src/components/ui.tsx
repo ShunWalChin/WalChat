@@ -59,8 +59,8 @@ export function ComplianceBanner({ compact = false }: { compact?: boolean }) {
       <div>
         <strong>Proteção Meta ativa</strong>
         <p>
-          Janela de 24h, opt-out, cooldown e elegibilidade são validados antes
-          de cada envio.
+          Janela de 24h, template WhatsApp, opt-out, cooldown e elegibilidade
+          são validados antes de cada envio.
         </p>
       </div>
       <span className="safe-label">META-SAFE</span>

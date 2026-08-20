@@ -13,6 +13,7 @@ const serverEnvSchema = z.object({
   META_PUBLISH_TOKEN: z.string().optional(),
   META_VERIFY_TOKEN: z.string().min(8).optional(),
   META_OAUTH_REDIRECT_URI: z.string().url().optional(),
+  META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID: z.string().optional(),
   META_GRAPH_VERSION: z
     .string()
     .regex(/^v\d+\.\d+$/)
@@ -42,6 +43,8 @@ export function getServerEnv() {
     META_PUBLISH_TOKEN: process.env.META_PUBLISH_TOKEN,
     META_VERIFY_TOKEN: process.env.META_VERIFY_TOKEN,
     META_OAUTH_REDIRECT_URI: process.env.META_OAUTH_REDIRECT_URI,
+    META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID:
+      process.env.META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID,
     META_GRAPH_VERSION: process.env.META_GRAPH_VERSION,
     GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,

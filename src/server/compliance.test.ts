@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   evaluateCompliance,
+  evaluateWhatsAppCompliance,
   MAX_META_TEXT_CHARS,
   OPT_OUT_FOOTER,
   withOptOut,
@@ -160,5 +161,73 @@ describe('evaluateCompliance', () => {
         message: 'Oi',
       }).reason,
     ).toBe('invalid_interaction_time')
+  })
+})
+
+describe('evaluateWhatsAppCompliance', () => {
+  it('permite texto livre apenas dentro da janela e adiciona opt-out em automação', () => {
+    const allowed = evaluateWhatsAppCompliance({
+      now,
+      lastInboundAt: '2026-07-21T11:00:00.000Z',
+      isAutomated: true,
+      message: 'Recebi sua mensagem.',
+    })
+    const expired = evaluateWhatsAppCompliance({
+      now,
+      lastInboundAt: '2026-07-20T11:00:00.000Z',
+      isAutomated: false,
+      message: 'Olá',
+    })
+    expect(allowed).toMatchObject({ allowed: true, policy: 'standard_24h' })
+    expect(allowed.body.endsWith(OPT_OUT_FOOTER)).toBe(true)
+    expect(expired.reason).toBe('whatsapp_template_required')
+  })
+
+  it('fora de 24h aceita somente template aprovado', () => {
+    const base = {
+      now,
+      lastInboundAt: null,
+      isAutomated: false,
+      message: 'retomada',
+    }
+    expect(
+      evaluateWhatsAppCompliance({
+        ...base,
+        template: {
+          name: 'retomada',
+          language: 'pt_BR',
+          status: 'APPROVED',
+          hasOptOut: false,
+        },
+      }),
+    ).toMatchObject({ allowed: true, policy: 'whatsapp_template' })
+    expect(
+      evaluateWhatsAppCompliance({
+        ...base,
+        template: {
+          name: 'retomada',
+          language: 'pt_BR',
+          status: 'PENDING',
+          hasOptOut: true,
+        },
+      }).reason,
+    ).toBe('whatsapp_template_not_approved')
+  })
+
+  it('exige opt-out em template usado por automação', () => {
+    expect(
+      evaluateWhatsAppCompliance({
+        now,
+        lastInboundAt: null,
+        isAutomated: true,
+        message: 'retomada',
+        template: {
+          name: 'retomada',
+          language: 'pt_BR',
+          status: 'APPROVED',
+          hasOptOut: false,
+        },
+      }).reason,
+    ).toBe('whatsapp_template_missing_opt_out')
   })
 })

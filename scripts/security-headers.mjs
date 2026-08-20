@@ -13,13 +13,14 @@ export function buildSecurityHeaders({ isHttps, supabaseUrl }) {
     "object-src 'none'",
     "frame-ancestors 'none'",
     "form-action 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-inline' https://connect.facebook.net",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob: https:",
     "worker-src 'self' blob:",
-    `connect-src ${[...connectSources].join(' ')}`,
+    `connect-src ${[...connectSources].join(' ')} https://graph.facebook.com https://www.facebook.com`,
+    "frame-src 'self' https://www.facebook.com https://web.facebook.com",
     "manifest-src 'self'",
   ]
   if (isHttps) directives.push('upgrade-insecure-requests')

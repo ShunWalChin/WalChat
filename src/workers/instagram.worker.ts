@@ -3,6 +3,7 @@ import { Queue, Worker } from 'bullmq'
 import IORedis from 'ioredis'
 import { getServerEnv } from '../server/env.server'
 import { processInstagramWebhook } from '../server/webhook-processor.server'
+import { processWhatsAppWebhook } from '../server/whatsapp-webhook-processor.server'
 import { writeWorkerHeartbeat } from '../server/worker-heartbeat'
 import {
   reconcileWebhookOutbox,
@@ -25,7 +26,9 @@ const outboxQueue = new Queue('instagram-webhooks', {
 const worker = new Worker(
   'instagram-webhooks',
   async (job) => {
-    return processInstagramWebhook(job.data.payload, job.data.metaEventKey)
+    return job.data.payload?.object === 'whatsapp_business_account'
+      ? processWhatsAppWebhook(job.data.payload, job.data.metaEventKey)
+      : processInstagramWebhook(job.data.payload, job.data.metaEventKey)
   },
   { connection, concurrency: 12, limiter: { max: 120, duration: 1_000 } },
 )

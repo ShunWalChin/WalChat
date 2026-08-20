@@ -41,12 +41,18 @@ type GoLiveStatus = {
     activatedAt: string | null
   }
   activeAccount: { id: string; username: string } | null
+  activeWhatsApp: {
+    id: string
+    name: string | null
+    phone: string | null
+  } | null
   generatedAt: string
 }
 type WebhookEvent = {
   id: string
   meta_event_key: string
-  instagram_user_id: string | null
+  provider: 'instagram' | 'whatsapp'
+  external_account_id: string | null
   event_type: string | null
   status: 'queued' | 'processing' | 'processed' | 'failed' | 'ignored'
   attempts: number
@@ -204,7 +210,7 @@ function OperationsPage() {
           </h2>
           <p>
             {enabled
-              ? `Workspace ativo${goLive?.activeAccount ? ` com @${goLive.activeAccount.username}` : ''}. O gateway ainda reaplica compliance em cada envio.`
+              ? `Workspace ativo${goLive?.activeAccount ? ` com Instagram @${goLive.activeAccount.username}` : ''}${goLive?.activeWhatsApp ? ` e WhatsApp ${goLive.activeWhatsApp.phone ?? goLive.activeWhatsApp.name ?? 'conectado'}` : ''}. O gateway ainda reaplica compliance em cada envio.`
               : 'Nada sai para a Meta até todas as verificações críticas passarem e um administrador confirmar a ativação.'}
           </p>
         </div>
@@ -380,7 +386,7 @@ function OperationsPage() {
         <div className="card-head">
           <div>
             <span className="eyebrow">OBSERVABILIDADE</span>
-            <h3>Eventos do Instagram</h3>
+            <h3>Eventos do Instagram e WhatsApp</h3>
           </div>
           <Webhook size={21} />
         </div>
@@ -405,6 +411,7 @@ function OperationsPage() {
             <thead>
               <tr>
                 <th>Recebido</th>
+                <th>Canal</th>
                 <th>Tipo</th>
                 <th>Status</th>
                 <th>Tentativas</th>
@@ -419,6 +426,11 @@ function OperationsPage() {
                   <td>
                     <Clock3 size={14} />{' '}
                     {new Date(event.received_at).toLocaleString('pt-BR')}
+                  </td>
+                  <td>
+                    <span className={`channel-badge ${event.provider}`}>
+                      {event.provider === 'whatsapp' ? 'WhatsApp' : 'Instagram'}
+                    </span>
                   </td>
                   <td>{event.event_type ?? 'não classificado'}</td>
                   <td>
@@ -451,7 +463,7 @@ function OperationsPage() {
               ))}
               {webhooks && webhooks.events.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="table-empty">
+                  <td colSpan={8} className="table-empty">
                     Nenhum evento recebido para este workspace.
                   </td>
                 </tr>

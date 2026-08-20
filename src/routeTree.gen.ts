@@ -29,6 +29,8 @@ import { Route as AppOperacoesRouteImport } from './routes/_app/operacoes'
 import { Route as AppPublicarRouteImport } from './routes/_app/publicar'
 import { Route as AppReengajamentoRouteImport } from './routes/_app/reengajamento'
 import { Route as AppSequenciasRouteImport } from './routes/_app/sequencias'
+import { Route as ApiContactsRouteImport } from './routes/api/contacts'
+import { Route as ApiDashboardRouteImport } from './routes/api/dashboard'
 import { Route as ApiDataDeletionRouteImport } from './routes/api/data-deletion'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiInboxRouteImport } from './routes/api/inbox'
@@ -49,6 +51,13 @@ import { Route as ApiIntegrationsMetaStartRouteImport } from './routes/api/integ
 import { Route as ApiIntegrationsMetaStatusRouteImport } from './routes/api/integrations/meta/status'
 import { Route as ApiIntegrationsMetaValidateRouteImport } from './routes/api/integrations/meta/validate'
 import { Route as ApiPublicWebhooksInstagramRouteImport } from './routes/api/public/webhooks/instagram'
+import { Route as ApiPublicWebhooksWhatsappRouteImport } from './routes/api/public/webhooks/whatsapp'
+import { Route as ApiIntegrationsMetaWhatsappCompleteRouteImport } from './routes/api/integrations/meta/whatsapp/complete'
+import { Route as ApiIntegrationsMetaWhatsappDisconnectRouteImport } from './routes/api/integrations/meta/whatsapp/disconnect'
+import { Route as ApiIntegrationsMetaWhatsappRegisterRouteImport } from './routes/api/integrations/meta/whatsapp/register'
+import { Route as ApiIntegrationsMetaWhatsappTemplatesRouteImport } from './routes/api/integrations/meta/whatsapp/templates'
+import { Route as ApiIntegrationsMetaWhatsappValidateRouteImport } from './routes/api/integrations/meta/whatsapp/validate'
+import { Route as ApiIntegrationsMetaWhatsappMediaMediaIdRouteImport } from './routes/api/integrations/meta/whatsapp/media/$mediaId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -148,6 +157,16 @@ const AppSequenciasRoute = AppSequenciasRouteImport.update({
   id: '/sequencias',
   path: '/sequencias',
   getParentRoute: () => AppRoute,
+} as any)
+const ApiContactsRoute = ApiContactsRouteImport.update({
+  id: '/api/contacts',
+  path: '/api/contacts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDashboardRoute = ApiDashboardRouteImport.update({
+  id: '/api/dashboard',
+  path: '/api/dashboard',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiDataDeletionRoute = ApiDataDeletionRouteImport.update({
   id: '/api/data-deletion',
@@ -256,6 +275,48 @@ const ApiPublicWebhooksInstagramRoute =
     path: '/api/public/webhooks/instagram',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWebhooksWhatsappRoute =
+  ApiPublicWebhooksWhatsappRouteImport.update({
+    id: '/api/public/webhooks/whatsapp',
+    path: '/api/public/webhooks/whatsapp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsMetaWhatsappCompleteRoute =
+  ApiIntegrationsMetaWhatsappCompleteRouteImport.update({
+    id: '/api/integrations/meta/whatsapp/complete',
+    path: '/api/integrations/meta/whatsapp/complete',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsMetaWhatsappDisconnectRoute =
+  ApiIntegrationsMetaWhatsappDisconnectRouteImport.update({
+    id: '/api/integrations/meta/whatsapp/disconnect',
+    path: '/api/integrations/meta/whatsapp/disconnect',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsMetaWhatsappRegisterRoute =
+  ApiIntegrationsMetaWhatsappRegisterRouteImport.update({
+    id: '/api/integrations/meta/whatsapp/register',
+    path: '/api/integrations/meta/whatsapp/register',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsMetaWhatsappTemplatesRoute =
+  ApiIntegrationsMetaWhatsappTemplatesRouteImport.update({
+    id: '/api/integrations/meta/whatsapp/templates',
+    path: '/api/integrations/meta/whatsapp/templates',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsMetaWhatsappValidateRoute =
+  ApiIntegrationsMetaWhatsappValidateRouteImport.update({
+    id: '/api/integrations/meta/whatsapp/validate',
+    path: '/api/integrations/meta/whatsapp/validate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsMetaWhatsappMediaMediaIdRoute =
+  ApiIntegrationsMetaWhatsappMediaMediaIdRouteImport.update({
+    id: '/api/integrations/meta/whatsapp/media/$mediaId',
+    path: '/api/integrations/meta/whatsapp/media/$mediaId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -277,6 +338,8 @@ export interface FileRoutesByFullPath {
   '/publicar': typeof AppPublicarRoute
   '/reengajamento': typeof AppReengajamentoRoute
   '/sequencias': typeof AppSequenciasRoute
+  '/api/contacts': typeof ApiContactsRoute
+  '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/health': typeof ApiHealthRoute
   '/api/inbox': typeof ApiInboxRoute
@@ -297,6 +360,13 @@ export interface FileRoutesByFullPath {
   '/api/integrations/meta/status': typeof ApiIntegrationsMetaStatusRoute
   '/api/integrations/meta/validate': typeof ApiIntegrationsMetaValidateRoute
   '/api/public/webhooks/instagram': typeof ApiPublicWebhooksInstagramRoute
+  '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
+  '/api/integrations/meta/whatsapp/complete': typeof ApiIntegrationsMetaWhatsappCompleteRoute
+  '/api/integrations/meta/whatsapp/disconnect': typeof ApiIntegrationsMetaWhatsappDisconnectRoute
+  '/api/integrations/meta/whatsapp/register': typeof ApiIntegrationsMetaWhatsappRegisterRoute
+  '/api/integrations/meta/whatsapp/templates': typeof ApiIntegrationsMetaWhatsappTemplatesRoute
+  '/api/integrations/meta/whatsapp/validate': typeof ApiIntegrationsMetaWhatsappValidateRoute
+  '/api/integrations/meta/whatsapp/media/$mediaId': typeof ApiIntegrationsMetaWhatsappMediaMediaIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -318,6 +388,8 @@ export interface FileRoutesByTo {
   '/publicar': typeof AppPublicarRoute
   '/reengajamento': typeof AppReengajamentoRoute
   '/sequencias': typeof AppSequenciasRoute
+  '/api/contacts': typeof ApiContactsRoute
+  '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/health': typeof ApiHealthRoute
   '/api/inbox': typeof ApiInboxRoute
@@ -338,6 +410,13 @@ export interface FileRoutesByTo {
   '/api/integrations/meta/status': typeof ApiIntegrationsMetaStatusRoute
   '/api/integrations/meta/validate': typeof ApiIntegrationsMetaValidateRoute
   '/api/public/webhooks/instagram': typeof ApiPublicWebhooksInstagramRoute
+  '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
+  '/api/integrations/meta/whatsapp/complete': typeof ApiIntegrationsMetaWhatsappCompleteRoute
+  '/api/integrations/meta/whatsapp/disconnect': typeof ApiIntegrationsMetaWhatsappDisconnectRoute
+  '/api/integrations/meta/whatsapp/register': typeof ApiIntegrationsMetaWhatsappRegisterRoute
+  '/api/integrations/meta/whatsapp/templates': typeof ApiIntegrationsMetaWhatsappTemplatesRoute
+  '/api/integrations/meta/whatsapp/validate': typeof ApiIntegrationsMetaWhatsappValidateRoute
+  '/api/integrations/meta/whatsapp/media/$mediaId': typeof ApiIntegrationsMetaWhatsappMediaMediaIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -361,6 +440,8 @@ export interface FileRoutesById {
   '/_app/publicar': typeof AppPublicarRoute
   '/_app/reengajamento': typeof AppReengajamentoRoute
   '/_app/sequencias': typeof AppSequenciasRoute
+  '/api/contacts': typeof ApiContactsRoute
+  '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/health': typeof ApiHealthRoute
   '/api/inbox': typeof ApiInboxRoute
@@ -381,6 +462,13 @@ export interface FileRoutesById {
   '/api/integrations/meta/status': typeof ApiIntegrationsMetaStatusRoute
   '/api/integrations/meta/validate': typeof ApiIntegrationsMetaValidateRoute
   '/api/public/webhooks/instagram': typeof ApiPublicWebhooksInstagramRoute
+  '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
+  '/api/integrations/meta/whatsapp/complete': typeof ApiIntegrationsMetaWhatsappCompleteRoute
+  '/api/integrations/meta/whatsapp/disconnect': typeof ApiIntegrationsMetaWhatsappDisconnectRoute
+  '/api/integrations/meta/whatsapp/register': typeof ApiIntegrationsMetaWhatsappRegisterRoute
+  '/api/integrations/meta/whatsapp/templates': typeof ApiIntegrationsMetaWhatsappTemplatesRoute
+  '/api/integrations/meta/whatsapp/validate': typeof ApiIntegrationsMetaWhatsappValidateRoute
+  '/api/integrations/meta/whatsapp/media/$mediaId': typeof ApiIntegrationsMetaWhatsappMediaMediaIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -404,6 +492,8 @@ export interface FileRouteTypes {
     | '/publicar'
     | '/reengajamento'
     | '/sequencias'
+    | '/api/contacts'
+    | '/api/dashboard'
     | '/api/data-deletion'
     | '/api/health'
     | '/api/inbox'
@@ -424,6 +514,13 @@ export interface FileRouteTypes {
     | '/api/integrations/meta/status'
     | '/api/integrations/meta/validate'
     | '/api/public/webhooks/instagram'
+    | '/api/public/webhooks/whatsapp'
+    | '/api/integrations/meta/whatsapp/complete'
+    | '/api/integrations/meta/whatsapp/disconnect'
+    | '/api/integrations/meta/whatsapp/register'
+    | '/api/integrations/meta/whatsapp/templates'
+    | '/api/integrations/meta/whatsapp/validate'
+    | '/api/integrations/meta/whatsapp/media/$mediaId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -445,6 +542,8 @@ export interface FileRouteTypes {
     | '/publicar'
     | '/reengajamento'
     | '/sequencias'
+    | '/api/contacts'
+    | '/api/dashboard'
     | '/api/data-deletion'
     | '/api/health'
     | '/api/inbox'
@@ -465,6 +564,13 @@ export interface FileRouteTypes {
     | '/api/integrations/meta/status'
     | '/api/integrations/meta/validate'
     | '/api/public/webhooks/instagram'
+    | '/api/public/webhooks/whatsapp'
+    | '/api/integrations/meta/whatsapp/complete'
+    | '/api/integrations/meta/whatsapp/disconnect'
+    | '/api/integrations/meta/whatsapp/register'
+    | '/api/integrations/meta/whatsapp/templates'
+    | '/api/integrations/meta/whatsapp/validate'
+    | '/api/integrations/meta/whatsapp/media/$mediaId'
   id:
     | '__root__'
     | '/'
@@ -487,6 +593,8 @@ export interface FileRouteTypes {
     | '/_app/publicar'
     | '/_app/reengajamento'
     | '/_app/sequencias'
+    | '/api/contacts'
+    | '/api/dashboard'
     | '/api/data-deletion'
     | '/api/health'
     | '/api/inbox'
@@ -507,6 +615,13 @@ export interface FileRouteTypes {
     | '/api/integrations/meta/status'
     | '/api/integrations/meta/validate'
     | '/api/public/webhooks/instagram'
+    | '/api/public/webhooks/whatsapp'
+    | '/api/integrations/meta/whatsapp/complete'
+    | '/api/integrations/meta/whatsapp/disconnect'
+    | '/api/integrations/meta/whatsapp/register'
+    | '/api/integrations/meta/whatsapp/templates'
+    | '/api/integrations/meta/whatsapp/validate'
+    | '/api/integrations/meta/whatsapp/media/$mediaId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -515,6 +630,8 @@ export interface RootRouteChildren {
   ExclusaoDeDadosRoute: typeof ExclusaoDeDadosRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
+  ApiContactsRoute: typeof ApiContactsRoute
+  ApiDashboardRoute: typeof ApiDashboardRoute
   ApiDataDeletionRoute: typeof ApiDataDeletionRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiInboxRoute: typeof ApiInboxRoute
@@ -535,6 +652,13 @@ export interface RootRouteChildren {
   ApiIntegrationsMetaStatusRoute: typeof ApiIntegrationsMetaStatusRoute
   ApiIntegrationsMetaValidateRoute: typeof ApiIntegrationsMetaValidateRoute
   ApiPublicWebhooksInstagramRoute: typeof ApiPublicWebhooksInstagramRoute
+  ApiPublicWebhooksWhatsappRoute: typeof ApiPublicWebhooksWhatsappRoute
+  ApiIntegrationsMetaWhatsappCompleteRoute: typeof ApiIntegrationsMetaWhatsappCompleteRoute
+  ApiIntegrationsMetaWhatsappDisconnectRoute: typeof ApiIntegrationsMetaWhatsappDisconnectRoute
+  ApiIntegrationsMetaWhatsappRegisterRoute: typeof ApiIntegrationsMetaWhatsappRegisterRoute
+  ApiIntegrationsMetaWhatsappTemplatesRoute: typeof ApiIntegrationsMetaWhatsappTemplatesRoute
+  ApiIntegrationsMetaWhatsappValidateRoute: typeof ApiIntegrationsMetaWhatsappValidateRoute
+  ApiIntegrationsMetaWhatsappMediaMediaIdRoute: typeof ApiIntegrationsMetaWhatsappMediaMediaIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -679,6 +803,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSequenciasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/contacts': {
+      id: '/api/contacts'
+      path: '/api/contacts'
+      fullPath: '/api/contacts'
+      preLoaderRoute: typeof ApiContactsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dashboard': {
+      id: '/api/dashboard'
+      path: '/api/dashboard'
+      fullPath: '/api/dashboard'
+      preLoaderRoute: typeof ApiDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/data-deletion': {
       id: '/api/data-deletion'
       path: '/api/data-deletion'
@@ -819,6 +957,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksInstagramRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/whatsapp': {
+      id: '/api/public/webhooks/whatsapp'
+      path: '/api/public/webhooks/whatsapp'
+      fullPath: '/api/public/webhooks/whatsapp'
+      preLoaderRoute: typeof ApiPublicWebhooksWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/meta/whatsapp/complete': {
+      id: '/api/integrations/meta/whatsapp/complete'
+      path: '/api/integrations/meta/whatsapp/complete'
+      fullPath: '/api/integrations/meta/whatsapp/complete'
+      preLoaderRoute: typeof ApiIntegrationsMetaWhatsappCompleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/meta/whatsapp/disconnect': {
+      id: '/api/integrations/meta/whatsapp/disconnect'
+      path: '/api/integrations/meta/whatsapp/disconnect'
+      fullPath: '/api/integrations/meta/whatsapp/disconnect'
+      preLoaderRoute: typeof ApiIntegrationsMetaWhatsappDisconnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/meta/whatsapp/register': {
+      id: '/api/integrations/meta/whatsapp/register'
+      path: '/api/integrations/meta/whatsapp/register'
+      fullPath: '/api/integrations/meta/whatsapp/register'
+      preLoaderRoute: typeof ApiIntegrationsMetaWhatsappRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/meta/whatsapp/templates': {
+      id: '/api/integrations/meta/whatsapp/templates'
+      path: '/api/integrations/meta/whatsapp/templates'
+      fullPath: '/api/integrations/meta/whatsapp/templates'
+      preLoaderRoute: typeof ApiIntegrationsMetaWhatsappTemplatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/meta/whatsapp/validate': {
+      id: '/api/integrations/meta/whatsapp/validate'
+      path: '/api/integrations/meta/whatsapp/validate'
+      fullPath: '/api/integrations/meta/whatsapp/validate'
+      preLoaderRoute: typeof ApiIntegrationsMetaWhatsappValidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/meta/whatsapp/media/$mediaId': {
+      id: '/api/integrations/meta/whatsapp/media/$mediaId'
+      path: '/api/integrations/meta/whatsapp/media/$mediaId'
+      fullPath: '/api/integrations/meta/whatsapp/media/$mediaId'
+      preLoaderRoute: typeof ApiIntegrationsMetaWhatsappMediaMediaIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -866,6 +1053,8 @@ const rootRouteChildren: RootRouteChildren = {
   ExclusaoDeDadosRoute: ExclusaoDeDadosRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
+  ApiContactsRoute: ApiContactsRoute,
+  ApiDashboardRoute: ApiDashboardRoute,
   ApiDataDeletionRoute: ApiDataDeletionRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiInboxRoute: ApiInboxRoute,
@@ -886,6 +1075,19 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIntegrationsMetaStatusRoute: ApiIntegrationsMetaStatusRoute,
   ApiIntegrationsMetaValidateRoute: ApiIntegrationsMetaValidateRoute,
   ApiPublicWebhooksInstagramRoute: ApiPublicWebhooksInstagramRoute,
+  ApiPublicWebhooksWhatsappRoute: ApiPublicWebhooksWhatsappRoute,
+  ApiIntegrationsMetaWhatsappCompleteRoute:
+    ApiIntegrationsMetaWhatsappCompleteRoute,
+  ApiIntegrationsMetaWhatsappDisconnectRoute:
+    ApiIntegrationsMetaWhatsappDisconnectRoute,
+  ApiIntegrationsMetaWhatsappRegisterRoute:
+    ApiIntegrationsMetaWhatsappRegisterRoute,
+  ApiIntegrationsMetaWhatsappTemplatesRoute:
+    ApiIntegrationsMetaWhatsappTemplatesRoute,
+  ApiIntegrationsMetaWhatsappValidateRoute:
+    ApiIntegrationsMetaWhatsappValidateRoute,
+  ApiIntegrationsMetaWhatsappMediaMediaIdRoute:
+    ApiIntegrationsMetaWhatsappMediaMediaIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

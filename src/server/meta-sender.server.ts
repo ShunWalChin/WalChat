@@ -47,7 +47,7 @@ export class MetaProviderResponseError extends Error {
 /** Mantém PII e payloads da Graph API fora de exceções, banco e logs. */
 export async function parseMetaSendResponse(
   response: Response,
-  operation: 'message' | 'private_reply',
+  operation: 'message' | 'private_reply' | 'whatsapp_message',
 ) {
   const payload = (await response
     .json()

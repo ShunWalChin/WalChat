@@ -106,6 +106,15 @@ export async function checkRuntimeReadiness(input?: {
       metaConfigured: Boolean(
         env.META_APP_ID && env.META_APP_SECRET && env.META_VERIFY_TOKEN,
       ),
+      instagramConfigured: Boolean(
+        env.META_APP_ID && env.META_APP_SECRET && env.META_VERIFY_TOKEN,
+      ),
+      whatsappEmbeddedSignupConfigured: Boolean(
+        env.META_APP_ID &&
+        env.META_APP_SECRET &&
+        env.META_VERIFY_TOKEN &&
+        env.META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID,
+      ),
       credentialEncryptionConfigured: hasValidCredentialEncryptionKey(),
       openaiConfigured: Boolean(env.OPENAI_API_KEY),
       geminiConfigured: Boolean(env.GOOGLE_GENERATIVE_AI_API_KEY),

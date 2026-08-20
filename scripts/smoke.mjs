@@ -45,6 +45,14 @@ assert(
   verification.ok && (await verification.text()) === 'wal_ok',
   'Verificação GET do webhook falhou.',
 )
+const whatsappVerification = await fetch(
+  `${appUrl}/api/public/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(process.env.META_VERIFY_TOKEN)}&hub.challenge=wal_wa_ok`,
+)
+assert(
+  whatsappVerification.ok &&
+    (await whatsappVerification.text()) === 'wal_wa_ok',
+  'Verificação GET do webhook WhatsApp falhou.',
+)
 
 // O comentário sintético aciona o gatilho seedado e percorre a fila até o scheduler.
 const payload = {
@@ -89,6 +97,25 @@ assert(
   webhook.ok && webhookResult.received && webhookResult.backend === 'bullmq',
   `Webhook assinado falhou: ${JSON.stringify(webhookResult)}`,
 )
+const whatsappPayload = {
+  object: 'whatsapp_business_account',
+  entry: [],
+}
+const whatsappRawBody = JSON.stringify(whatsappPayload)
+const whatsappSignature = `sha256=${createHmac('sha256', metaSecret).update(whatsappRawBody).digest('hex')}`
+const whatsappWebhook = await fetch(`${appUrl}/api/public/webhooks/whatsapp`, {
+  method: 'POST',
+  headers: {
+    'content-type': 'application/json',
+    'x-hub-signature-256': whatsappSignature,
+  },
+  body: whatsappRawBody,
+})
+const whatsappWebhookResult = await whatsappWebhook.json()
+assert(
+  whatsappWebhook.ok && whatsappWebhookResult.received,
+  `Webhook WhatsApp assinado falhou: ${JSON.stringify(whatsappWebhookResult)}`,
+)
 
 await new Promise((resolve) => setTimeout(resolve, 1_500))
 const admin = createClient(supabaseUrl, secretKey, {
@@ -123,6 +150,7 @@ console.log(
       rls: 'ok',
       webhookVerification: 'ok',
       webhookSignature: 'ok',
+      whatsappWebhook: 'ok',
       queue: webhookResult.backend,
       worker: 'ok',
       scheduler: completedJobs > 0 ? 'ok' : 'pending-next-tick',

@@ -49,8 +49,9 @@ const manualSections = [
     id: 'meta',
     number: '03',
     title: 'Configurar a Meta',
-    description: 'Aplicativo, OAuth, permissões e webhooks do Instagram.',
-    keywords: 'meta instagram oauth app review webhook scopes callback token',
+    description: 'Instagram, WhatsApp, permissões, webhooks e templates.',
+    keywords:
+      'meta instagram whatsapp waba telefone embedded signup oauth app review webhook scopes callback token template',
   },
   {
     id: 'ia',
@@ -111,8 +112,9 @@ const goLiveItems = [
   'SMTP, recuperação de senha e contas nominais configurados',
   'Meta Business, App Review e Advanced Access aprovados',
   'Conta Instagram Professional piloto conectada e validada',
-  'Webhook real recebido uma única vez e observado na Central',
-  'DM manual, opt-out, cooldown e Private Reply testados',
+  'WABA e telefone WhatsApp piloto conectados e validados',
+  'Webhooks reais dos dois canais observados na Central',
+  'DM, template, opt-out, cooldown e Private Reply testados',
   'OpenAI ou Gemini com orçamento, limite e alerta configurados',
   'Backup restaurado em ambiente isolado',
   'Responsável do piloto e procedimento de incidente definidos',
@@ -389,9 +391,9 @@ function ManualPage() {
                 id="meta"
                 number="03"
                 icon={<Instagram />}
-                eyebrow="INSTAGRAM PROFESSIONAL"
+                eyebrow="INSTAGRAM + WHATSAPP BUSINESS"
                 title="Configurar a Meta"
-                description="Prepare o aplicativo Meta antes de iniciar o OAuth pelo Wal Chat."
+                description="Prepare o aplicativo Meta antes de iniciar o Instagram Login ou o Embedded Signup do WhatsApp."
               >
                 <div className="manual-two-columns">
                   <div>
@@ -399,6 +401,7 @@ function ManualPage() {
                     <ul className="manual-bullet-list">
                       <li>Portfólio empresarial e aplicativo Meta.</li>
                       <li>Instagram Business ou Creator.</li>
+                      <li>WABA e número válido para WhatsApp Cloud API.</li>
                       <li>Usuário com acesso ao app e ao ativo.</li>
                       <li>
                         App Review e Advanced Access para contas externas.
@@ -414,6 +417,9 @@ function ManualPage() {
                       <code>instagram_business_manage_comments</code>
                       <code>instagram_business_content_publish</code>
                       <code>instagram_business_manage_insights</code>
+                      <code>business_management</code>
+                      <code>whatsapp_business_management</code>
+                      <code>whatsapp_business_messaging</code>
                     </div>
                   </div>
                 </div>
@@ -423,6 +429,13 @@ function ManualPage() {
                     id="meta-site"
                     label="Site URL"
                     value="https://wal-chat.64.181.178.125.nip.io"
+                    copied={copied}
+                    onCopy={copyValue}
+                  />
+                  <CopyValue
+                    id="meta-webhook-whatsapp"
+                    label="Webhook WhatsApp"
+                    value="https://wal-chat.64.181.178.125.nip.io/api/public/webhooks/whatsapp"
                     copied={copied}
                     onCopy={copyValue}
                   />
@@ -448,7 +461,9 @@ function ManualPage() {
                     onCopy={copyValue}
                   />
                 </div>
-                <h4 className="manual-subtitle">Fluxo dentro do Wal Chat</h4>
+                <h4 className="manual-subtitle">
+                  Instagram dentro do Wal Chat
+                </h4>
                 <ol className="manual-compact-steps">
                   <li>
                     <span>1</span> Entre como owner ou admin.
@@ -467,6 +482,30 @@ function ManualPage() {
                   <li>
                     <span>5</span> Confirme os eventos na{' '}
                     <Link to="/operacoes">Central de Go-Live</Link>.
+                  </li>
+                </ol>
+                <h4 className="manual-subtitle">WhatsApp dentro do Wal Chat</h4>
+                <ol className="manual-compact-steps">
+                  <li>
+                    <span>1</span> Publique uma configuração de Embedded Signup
+                    no Facebook Login for Business.
+                  </li>
+                  <li>
+                    <span>2</span> Em{' '}
+                    <Link to="/configuracoes">Configurações</Link>, clique em
+                    Conectar WhatsApp e conclua o fluxo da Meta.
+                  </li>
+                  <li>
+                    <span>3</span> Confirme WABA, telefone, três permissões e o
+                    webhook <code>messages</code>.
+                  </li>
+                  <li>
+                    <span>4</span> Se necessário, registre o telefone com o PIN
+                    de seis dígitos; o Wal Chat não salva esse PIN.
+                  </li>
+                  <li>
+                    <span>5</span> Sincronize templates e teste texto dentro de
+                    24h e template <code>APPROVED</code> fora da janela.
                   </li>
                 </ol>
                 <Callout tone="warning" title="Verify Token e App Secret">
@@ -752,11 +791,12 @@ function ManualPage() {
                         ciclo.
                       </ModuleRow>
                       <ModuleRow
-                        name="Dashboard, contatos e insights"
-                        status="Demo"
-                        tone="gray"
+                        name="Dashboard e contatos multicanal"
+                        status="Piloto"
+                        tone="blue"
                       >
-                        Não usar como fonte oficial de métricas ou CRM.
+                        CRM, mensagens e canais são reais; alcance depende da
+                        sincronização de Insights do Instagram.
                       </ModuleRow>
                       <ModuleRow
                         name="Campanhas e reengajamento"

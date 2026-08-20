@@ -1,6 +1,6 @@
 # Wal Chat
 
-Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento para contas profissionais do Instagram. O Wal Chat foi desenhado para creators e negócios brasileiros, com interface em PT-BR, proteção centralizada das regras de mensageria da Meta e operação isolada por workspace.
+Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento para Instagram Professional e WhatsApp Business. O Wal Chat foi desenhado para creators e negócios brasileiros, com interface em PT-BR, proteção centralizada das regras de mensageria da Meta e operação isolada por workspace.
 
 ![Cartão de apresentação do Wal Chat](public/og.png)
 
@@ -12,23 +12,25 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | Homologação HTTPS         | [wal-chat.64.181.178.125.nip.io](https://wal-chat.64.181.178.125.nip.io) |
 | Auth, Postgres e RLS      | Supabase isolado                                                         |
 | Filas e workers           | Redis + BullMQ                                                           |
-| Webhook Meta              | HMAC, idempotência, inbox e worker implementados                         |
+| Webhooks Meta             | Instagram + WhatsApp com HMAC, idempotência, Inbox e worker              |
 | Segurança de entrega      | Claim persistente; resposta ambígua não é reenviada automaticamente      |
-| Hardening do backend      | JWT + RLS, ingestão transacional, SKIP LOCKED e limites distribuídos      |
+| Hardening do backend      | JWT + RLS, ingestão transacional, SKIP LOCKED e limites distribuídos     |
 | Reconciliação da fila     | Postgres/BullMQ por `jobId` canônico                                     |
 | OAuth Instagram           | Login, token cifrado por tenant, assinatura e validação implementados    |
+| WhatsApp Cloud API        | Embedded Signup, WABA, telefone, templates e receipts implementados      |
 | OpenAI / Gemini           | Responses API + Gemini opcional, configuráveis por workspace             |
 | Modo atual da homologação | `DEMO_MODE=true`                                                         |
 | Live Mode Meta            | Depende de app, tokens, permissões e revisão da Meta                     |
 
-> OAuth, mensageria e IA estão preparados para teste integrado. A entrega real depende de credenciais Meta/OpenAI, conta Professional de teste e permissões concedidas; publicação e Insights ainda mantêm partes demonstrativas.
+> As integrações Instagram/WhatsApp e IA estão preparadas para teste integrado. A entrega real depende das credenciais, ativos de teste e permissões concedidas pela Meta; publicação e sincronização completa de Insights ainda mantêm partes demonstrativas.
 
 ## O que o sistema entrega
 
-- Dashboard de alcance, DMs, comentários e novos contatos.
+- Dashboard real de DMs, comentários, canais e novos contatos; alcance usa `insights_daily`.
 - Inbox unificada com Principal, Geral, Pedidos e IA off.
 - Contatos, tags, elegibilidade de mensageria e exportação CSV.
-- Gatilhos por comentário, DM ou resposta de story.
+- Gatilhos por comentário, DM, resposta de story ou mensagem do WhatsApp.
+- Embedded Signup do WhatsApp, registro do telefone, sincronização de templates e mídia autenticada.
 - Sequências com texto, mídia, typing e delays.
 - Agentes de IA em modo copiloto ou autônomo.
 - Reengajamento com filtro de elegibilidade e limite de taxa.
@@ -46,10 +48,10 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 
 ```mermaid
 flowchart LR
-    Meta["Meta Graph API"] -->|"Webhook assinado"| Webhook["TanStack Start / API"]
+    Meta["Instagram API + WhatsApp Cloud API"] -->|"Webhooks assinados"| Webhook["TanStack Start / API"]
     Browser["Dashboard React"] -->|"JWT do usuário"| Supabase["Supabase Auth + Postgres + RLS"]
     Webhook -->|"Evento idempotente"| Redis["Redis / BullMQ"]
-    Redis --> Worker["Worker Instagram"]
+    Redis --> Worker["Worker Meta multicanal"]
     Worker --> Supabase
     Worker --> Scheduler["scheduled_jobs"]
     Scheduler --> Compliance["Motor de compliance"]
@@ -168,29 +170,30 @@ Essa credencial existe apenas para desenvolvimento. Nunca reutilize a senha loca
 
 ## Variáveis de ambiente
 
-| Variável                       | Exposição | Finalidade                            |
-| ------------------------------ | --------- | ------------------------------------- |
-| `VITE_SUPABASE_URL`            | Pública   | URL usada pelo cliente web            |
-| `VITE_SUPABASE_ANON_KEY`       | Pública   | Chave publishable do Supabase         |
-| `SUPABASE_URL`                 | Backend   | URL interna do Supabase               |
-| `SUPABASE_SERVICE_ROLE_KEY`    | Secreta   | Acesso administrativo dos workers     |
-| `SUPABASE_PUBLISHABLE_KEY`     | Backend   | Cliente server-side sujeito a RLS      |
-| `REDIS_URL`                    | Backend   | Conexão BullMQ                        |
-| `META_APP_ID`                  | Secreta   | Identificador do aplicativo Meta      |
-| `META_APP_SECRET`              | Secreta   | HMAC do webhook e signed requests     |
-| `META_ACCESS_TOKEN`            | Secreta   | Mensageria e leitura da Graph API     |
-| `META_PUBLISH_TOKEN`           | Secreta   | Publicação de conteúdo                |
-| `META_VERIFY_TOKEN`            | Secreta   | Challenge inicial do webhook          |
-| `META_OAUTH_REDIRECT_URI`      | Backend   | Redirect exato do Instagram Login     |
-| `META_GRAPH_VERSION`           | Backend   | Versão da Graph API, como `v25.0`     |
-| `CREDENTIALS_ENCRYPTION_KEY`   | Secreta   | AES-256-GCM de tokens por tenant      |
-| `OPENAI_API_KEY`               | Secreta   | Responses API                         |
-| `OPENAI_MODEL`                 | Backend   | Modelo OpenAI padrão                  |
-| `OPENAI_PROJECT`               | Secreta   | Projeto OpenAI opcional               |
-| `OPENAI_ORGANIZATION`          | Secreta   | Organização OpenAI opcional           |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | Secreta   | Gemini 2.5 Flash                      |
-| `APP_ORIGIN`                   | Backend   | Origem pública da aplicação           |
-| `DEMO_MODE`                    | Backend   | Impede efeitos externos quando `true` |
+| Variável                                  | Exposição | Finalidade                                |
+| ----------------------------------------- | --------- | ----------------------------------------- |
+| `VITE_SUPABASE_URL`                       | Pública   | URL usada pelo cliente web                |
+| `VITE_SUPABASE_ANON_KEY`                  | Pública   | Chave publishable do Supabase             |
+| `SUPABASE_URL`                            | Backend   | URL interna do Supabase                   |
+| `SUPABASE_SERVICE_ROLE_KEY`               | Secreta   | Acesso administrativo dos workers         |
+| `SUPABASE_PUBLISHABLE_KEY`                | Backend   | Cliente server-side sujeito a RLS         |
+| `REDIS_URL`                               | Backend   | Conexão BullMQ                            |
+| `META_APP_ID`                             | Secreta   | Identificador do aplicativo Meta          |
+| `META_APP_SECRET`                         | Secreta   | HMAC do webhook e signed requests         |
+| `META_ACCESS_TOKEN`                       | Secreta   | Mensageria e leitura da Graph API         |
+| `META_PUBLISH_TOKEN`                      | Secreta   | Publicação de conteúdo                    |
+| `META_VERIFY_TOKEN`                       | Secreta   | Challenge inicial do webhook              |
+| `META_OAUTH_REDIRECT_URI`                 | Backend   | Redirect exato do Instagram Login         |
+| `META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID` | Backend   | Configuração publicada do Embedded Signup |
+| `META_GRAPH_VERSION`                      | Backend   | Versão da Graph API, como `v25.0`         |
+| `CREDENTIALS_ENCRYPTION_KEY`              | Secreta   | AES-256-GCM de tokens por tenant          |
+| `OPENAI_API_KEY`                          | Secreta   | Responses API                             |
+| `OPENAI_MODEL`                            | Backend   | Modelo OpenAI padrão                      |
+| `OPENAI_PROJECT`                          | Secreta   | Projeto OpenAI opcional                   |
+| `OPENAI_ORGANIZATION`                     | Secreta   | Organização OpenAI opcional               |
+| `GOOGLE_GENERATIVE_AI_API_KEY`            | Secreta   | Gemini 2.5 Flash                          |
+| `APP_ORIGIN`                              | Backend   | Origem pública da aplicação               |
+| `DEMO_MODE`                               | Backend   | Impede efeitos externos quando `true`     |
 
 Somente `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` podem chegar ao bundle do navegador. Nunca adicione o prefixo `VITE_` a tokens Meta, chaves administrativas ou credenciais de IA.
 
@@ -217,27 +220,34 @@ Somente `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` podem chegar ao bundle do
 
 ## API e webhook
 
-| Método      | Endpoint                              | Responsabilidade                              |
-| ----------- | ------------------------------------- | --------------------------------------------- |
-| `GET`       | `/api/health`                         | Liveness do processo, sem sondar dependências |
-| `GET`       | `/api/ready`                          | Readiness real de Supabase e Redis            |
-| `GET/POST`  | `/api/public/webhooks/instagram`      | Challenge, HMAC e fila Meta                   |
-| `POST`      | `/api/integrations/meta/start`        | Início OAuth com state de uso único           |
-| `GET`       | `/api/integrations/meta/status`       | Estado sanitizado da conexão                  |
-| `GET`       | `/api/integrations/meta/callback`     | Code exchange e token cifrado                 |
-| `POST`      | `/api/integrations/meta/validate`     | Revalidação de perfil, token e webhooks       |
-| `DELETE`    | `/api/integrations/meta/disconnect`   | Desassinatura e remoção da credencial         |
-| `GET/PUT`   | `/api/ai/settings`                    | Provedor, modelo e chave cifrada              |
-| `GET/*`     | `/api/ai/agents`, `/api/ai/knowledge` | CRUD autenticado de agentes e conhecimento    |
-| `POST`      | `/api/ai/suggest`                     | Playground/sugestão a partir do agente salvo  |
-| `GET/PATCH` | `/api/operations/go-live`             | Diagnóstico e kill switches do workspace      |
-| `GET/POST`  | `/api/operations/webhooks`            | Observabilidade e replay seguro de falhas     |
-| `GET/POST`  | `/api/integrations/meta/media`        | Cache e sincronização de publicações reais    |
-| `GET/PATCH` | `/api/inbox`                          | Conversas reais, mensagens, leitura e IA      |
-| `GET/*`     | `/api/triggers`                       | CRUD de gatilhos simples persistidos          |
-| `POST`      | `/api/messages/send`                  | Envio humano com compliance                   |
-| `POST`      | `/api/compliance/check`               | Decisão pura de elegibilidade                 |
-| `POST`      | `/api/data-deletion`                  | Signed request de exclusão da Meta            |
+| Método      | Endpoint                                    | Responsabilidade                              |
+| ----------- | ------------------------------------------- | --------------------------------------------- |
+| `GET`       | `/api/health`                               | Liveness do processo, sem sondar dependências |
+| `GET`       | `/api/ready`                                | Readiness real de Supabase e Redis            |
+| `GET/POST`  | `/api/public/webhooks/instagram`            | Challenge, HMAC e fila Meta                   |
+| `GET/POST`  | `/api/public/webhooks/whatsapp`             | Challenge, HMAC e fila WhatsApp               |
+| `POST`      | `/api/integrations/meta/start`              | Início OAuth com state de uso único           |
+| `GET`       | `/api/integrations/meta/status`             | Estado sanitizado da conexão                  |
+| `GET`       | `/api/integrations/meta/callback`           | Code exchange e token cifrado                 |
+| `POST`      | `/api/integrations/meta/validate`           | Revalidação de perfil, token e webhooks       |
+| `DELETE`    | `/api/integrations/meta/disconnect`         | Desassinatura e remoção da credencial         |
+| `POST`      | `/api/integrations/meta/whatsapp/complete`  | Finaliza Embedded Signup e assina a WABA      |
+| `POST`      | `/api/integrations/meta/whatsapp/validate`  | Revalida token, WABA, telefone e webhook      |
+| `GET/POST`  | `/api/integrations/meta/whatsapp/templates` | Lista e sincroniza templates oficiais         |
+| `POST`      | `/api/integrations/meta/whatsapp/register`  | Registra telefone com PIN efêmero             |
+| `GET/PUT`   | `/api/ai/settings`                          | Provedor, modelo e chave cifrada              |
+| `GET/*`     | `/api/ai/agents`, `/api/ai/knowledge`       | CRUD autenticado de agentes e conhecimento    |
+| `POST`      | `/api/ai/suggest`                           | Playground/sugestão a partir do agente salvo  |
+| `GET/PATCH` | `/api/operations/go-live`                   | Diagnóstico e kill switches do workspace      |
+| `GET/POST`  | `/api/operations/webhooks`                  | Observabilidade e replay seguro de falhas     |
+| `GET/POST`  | `/api/integrations/meta/media`              | Cache e sincronização de publicações reais    |
+| `GET/PATCH` | `/api/inbox`                                | Conversas reais, mensagens, leitura e IA      |
+| `GET`       | `/api/contacts`                             | CRM multicanal e elegibilidade                |
+| `GET`       | `/api/dashboard`                            | Métricas operacionais reais                   |
+| `GET/*`     | `/api/triggers`                             | CRUD de gatilhos simples persistidos          |
+| `POST`      | `/api/messages/send`                        | Envio humano com compliance                   |
+| `POST`      | `/api/compliance/check`                     | Decisão pura de elegibilidade                 |
+| `POST`      | `/api/data-deletion`                        | Signed request de exclusão da Meta            |
 
 Contratos, respostas e códigos HTTP: [API e webhooks](docs/API_E_WEBHOOKS.md).
 
@@ -302,6 +312,7 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 | [Banco de dados](docs/BANCO_DE_DADOS.md)                                            | Tabelas, RLS, GRANTs, views e jobs           |
 | [Segurança e compliance](docs/SEGURANCA_E_COMPLIANCE.md)                            | Regras Meta, secrets e controles             |
 | [Configuração Meta e OpenAI](docs/CONFIGURACAO_META_E_OPENAI.md)                    | Onboarding e testes com contas reais         |
+| [Instagram + WhatsApp Business](docs/INTEGRACOES_META_INSTAGRAM_WHATSAPP.md)        | Setup completo, callbacks, testes e operação |
 | [Mapa do código](docs/MAPA_DO_CODIGO.md)                                            | Responsabilidade de cada arquivo             |
 | [Guia de desenvolvimento](docs/GUIA_DE_DESENVOLVIMENTO.md)                          | Convenções, testes e extensão do produto     |
 | [Plano de produção](docs/PLANO_DE_PRODUCAO.md)                                      | Gates, riscos e sequência segura de go-live  |
@@ -314,9 +325,9 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 
 ## Limites conhecidos do MVP
 
-- Métricas editoriais, publicação e outros módulos visuais ainda usam dados demonstrativos até seus serviços Graph API serem ligados.
-- OAuth e tokens cifrados por workspace estão implementados, mas a homologação real depende do App ID/secret, conta Professional e permissões externas.
-- O endpoint de exclusão valida o signed request e devolve um protocolo; a rotina assíncrona de eliminação definitiva deve ser ligada ao processo operacional.
+- Alcance editorial e publicação ainda dependem dos serviços de sincronização/publicação da Instagram API; mensagens, CRM, Inbox e conexões já usam o backend real.
+- Instagram Login e WhatsApp Embedded Signup estão implementados, mas a homologação real depende do App ID/secret, WABA, telefone, conta Professional e Advanced Access.
+- O endpoint de exclusão valida o signed request, remove dados Instagram/WhatsApp em transação e devolve um protocolo consultável.
 - SMTP de produção é necessário para confirmação de e-mail e recuperação de senha.
 - Rate limiting por rota está versionado no Nginx; a validação no domínio final e o monitoramento/alertas seguem obrigatórios antes de tráfego em escala.
 

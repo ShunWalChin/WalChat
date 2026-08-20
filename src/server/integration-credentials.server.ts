@@ -24,6 +24,7 @@ export async function saveIntegrationCredential(input: {
   scopeKey: string
   value: string
   instagramAccountId?: string | null
+  whatsappAccountId?: string | null
   expiresAt?: string | null
   metadata?: Record<string, unknown>
 }) {
@@ -38,6 +39,7 @@ export async function saveIntegrationCredential(input: {
     {
       workspace_id: input.workspaceId,
       instagram_account_id: input.instagramAccountId ?? null,
+      whatsapp_account_id: input.whatsappAccountId ?? null,
       provider: input.provider,
       credential_type: input.credentialType,
       scope_key: input.scopeKey,
@@ -143,6 +145,41 @@ export async function getMetaAccountAccess(input: {
     accessToken,
     instagramUserId: account.instagram_user_id as string,
     expiresAt: stored?.expiresAt ?? null,
+  }
+}
+
+/** Resolve o token cifrado do telefone WhatsApp pertencente ao workspace. */
+export async function getWhatsAppAccountAccess(input: {
+  workspaceId: string
+  whatsappAccountId: string
+  allowNonConnected?: boolean
+}) {
+  const supabase = requireAdmin()
+  const { data: account, error } = await supabase
+    .from('whatsapp_accounts')
+    .select('id,waba_id,phone_number_id,status')
+    .eq('id', input.whatsappAccountId)
+    .eq('workspace_id', input.workspaceId)
+    .maybeSingle()
+  if (error) throw error
+  if (!account || (!input.allowNonConnected && account.status !== 'connected'))
+    throw new Error('Conta do WhatsApp não está conectada.')
+
+  const stored = await getIntegrationCredential({
+    workspaceId: input.workspaceId,
+    provider: 'meta',
+    credentialType: 'access_token',
+    scopeKey: account.id,
+  })
+  if (!stored?.value)
+    throw new Error('Token da conta WhatsApp não foi encontrado.')
+  if (stored.expiresAt && new Date(stored.expiresAt).getTime() <= Date.now())
+    throw new Error('Token da conta WhatsApp expirou e precisa ser renovado.')
+  return {
+    accessToken: stored.value,
+    wabaId: account.waba_id as string,
+    phoneNumberId: account.phone_number_id as string,
+    expiresAt: stored.expiresAt,
   }
 }
 

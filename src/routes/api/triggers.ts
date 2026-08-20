@@ -10,7 +10,7 @@ import { readJsonBody } from '../../server/request-body.server'
 
 const fields = {
   name: z.string().trim().min(2).max(100),
-  source: z.enum(['comment', 'dm', 'story']),
+  source: z.enum(['comment', 'dm', 'story', 'whatsapp']),
   keyword: z.string().trim().min(1).max(100),
   matchMode: z.enum(['exact', 'contains']),
   responseText: z.string().trim().min(1).max(1_000),

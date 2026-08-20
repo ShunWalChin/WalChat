@@ -112,6 +112,16 @@ Códigos:
 
 Em `503`, o endpoint envia `Retry-After: 10` para favorecer uma nova tentativa. Em live, Redis ausente falha fechado com `503`. Um reconciliador independente procura eventos persistidos que ficaram em `queued`, compara o estado do `jobId` no BullMQ e reenfileira somente quando o job canônico não existe.
 
+## `GET/POST /api/public/webhooks/whatsapp`
+
+Usa o mesmo challenge, Verify Token, HMAC SHA-256, limite de corpo, persistência idempotente e fila do webhook Instagram. O POST aceita somente o objeto `whatsapp_business_account`; o worker processa o campo `messages`, incluindo mensagens inbound e statuses de entrega.
+
+- resolve o workspace pelo `phone_number_id` e confirma o `waba_id`;
+- cria contato, interação, conversa e mensagem pela RPC `ingest_whatsapp_inbound`;
+- atualiza `sent`, `delivered`, `read` e `failed` sem regressão de status;
+- converte mídia em URL interna autenticada; o access token nunca chega ao browser;
+- agenda gatilho/IA somente na primeira ingestão do evento.
+
 ## `POST /api/ai/suggest`
 
 Gera uma sugestão curta em PT-BR usando o agente e a base persistidos no workspace. Exige JWT Supabase; persona e conhecimento enviados pelo navegador são ignorados por design.
@@ -144,13 +154,18 @@ Códigos: `200`, `400`, `401`, `403`, `500` ou `502`.
 
 ## Integração Meta
 
-| Método   | Endpoint                            | Uso                                                                  |
-| -------- | ----------------------------------- | -------------------------------------------------------------------- |
-| `POST`   | `/api/integrations/meta/start`      | Cria state de uso único, cookie HttpOnly e URL OAuth                 |
-| `GET`    | `/api/integrations/meta/callback`   | Confere cookie/state, troca token, assina webhook e cifra credencial |
-| `GET`    | `/api/integrations/meta/status`     | Retorna configuração, URLs e contas sem expor secrets                |
-| `POST`   | `/api/integrations/meta/validate`   | Relê perfil e `subscribed_apps`                                      |
-| `DELETE` | `/api/integrations/meta/disconnect` | Desassina webhooks e remove token cifrado                            |
+| Método     | Endpoint                                         | Uso                                                                  |
+| ---------- | ------------------------------------------------ | -------------------------------------------------------------------- |
+| `POST`     | `/api/integrations/meta/start`                   | Cria state de uso único, cookie HttpOnly e URL OAuth                 |
+| `GET`      | `/api/integrations/meta/callback`                | Confere cookie/state, troca token, assina webhook e cifra credencial |
+| `GET`      | `/api/integrations/meta/status`                  | Retorna configuração, URLs e contas sem expor secrets                |
+| `POST`     | `/api/integrations/meta/validate`                | Relê perfil e `subscribed_apps`                                      |
+| `DELETE`   | `/api/integrations/meta/disconnect`              | Desassina webhooks e remove token cifrado                            |
+| `POST`     | `/api/integrations/meta/whatsapp/complete`       | Valida Embedded Signup, WABA, telefone e assinatura                  |
+| `POST`     | `/api/integrations/meta/whatsapp/validate`       | Revalida token, scopes granulares, telefone e webhook                |
+| `POST`     | `/api/integrations/meta/whatsapp/register`       | Registra telefone com PIN de seis dígitos efêmero                    |
+| `GET/POST` | `/api/integrations/meta/whatsapp/templates`      | Lista cache e sincroniza templates da WABA                           |
+| `GET`      | `/api/integrations/meta/whatsapp/media/:mediaId` | Proxy autenticado de mídia inbound                                   |
 
 Mutações exigem `owner/admin`, bearer token e Origin confiável. O callback é público por protocolo, mas exige state simultaneamente no cookie e no Postgres.
 
@@ -166,7 +181,7 @@ Leitura exige associação ao workspace. Escrita exige `owner/admin`. A chave nu
 
 ## `POST /api/messages/send`
 
-Envio manual autenticado por `owner/admin/agent`. Recebe `contactId`, `message` e `humanAgent`. O backend relê contato e blocklist, aplica compliance, usa o token da conta do mesmo workspace e persiste tanto sucessos quanto bloqueios.
+Envio manual autenticado por `owner/admin/agent`. Recebe `contactId`, `message` e `humanAgent`; para WhatsApp fora de 24h, recebe um template já sincronizado (`name`, `language`, `components`). O backend relê contato, canal e blocklist, aplica compliance, usa o token da conta do mesmo workspace e persiste sucessos e bloqueios.
 
 Header obrigatório:
 

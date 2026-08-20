@@ -8,6 +8,7 @@ import {
   Flag,
   Info,
   LoaderCircle,
+  MessageCircle,
   Paperclip,
   Search,
   Send,
@@ -28,6 +29,9 @@ type InboxCategory = 'principal' | 'geral' | 'pedidos' | 'ia_off'
 type Conversation = {
   id: string
   contactId: string
+  platform: 'instagram' | 'whatsapp'
+  instagramAccountId: string | null
+  whatsappAccountId: string | null
   category: InboxCategory
   status: 'open' | 'pending' | 'resolved'
   priority: 'low' | 'normal' | 'high' | 'urgent'
@@ -50,6 +54,7 @@ type ChatMessage = {
   direction: 'inbound' | 'outbound'
   body: string | null
   media_url: string | null
+  message_type: string
   status: string
   is_ai_generated: boolean
   is_automated: boolean
@@ -70,12 +75,21 @@ type ConversationNote = {
   created_at: string
   updated_at: string
 }
+type WhatsAppTemplate = {
+  id: string
+  name: string
+  language: string
+  category: string | null
+  status: string
+  components: unknown[]
+}
 type InboxResponse = {
   conversations: Conversation[]
   selectedId: string | null
   messages: ChatMessage[]
   agents: Agent[]
   notes: ConversationNote[]
+  whatsappTemplates: WhatsAppTemplate[]
   currentUser: { id: string; email: string | null }
 }
 
@@ -114,6 +128,9 @@ function InboxPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
   const [notes, setNotes] = useState<ConversationNote[]>([])
+  const [whatsappTemplates, setWhatsAppTemplates] = useState<
+    WhatsAppTemplate[]
+  >([])
   const [currentUserId, setCurrentUserId] = useState('')
   const [noteDraft, setNoteDraft] = useState('')
   const [agentId, setAgentId] = useState('')
@@ -122,6 +139,8 @@ function InboxPage() {
   const [draftFromAi, setDraftFromAi] = useState(false)
   const [aiSources, setAiSources] = useState<AiSource[]>([])
   const [humanAgent, setHumanAgent] = useState(false)
+  const [templateId, setTemplateId] = useState('')
+  const [templateComponents, setTemplateComponents] = useState('[]')
   const [busy, setBusy] = useState<string | null>('load')
   const [error, setError] = useState('')
   const pendingSendKey = useRef<string | null>(null)
@@ -144,6 +163,12 @@ function InboxPage() {
         setMessages(result.messages)
         setAgents(result.agents)
         setNotes(result.notes)
+        setWhatsAppTemplates(result.whatsappTemplates)
+        setTemplateId((current) =>
+          result.whatsappTemplates.some((template) => template.id === current)
+            ? current
+            : (result.whatsappTemplates[0]?.id ?? ''),
+        )
         setCurrentUserId(result.currentUser.id)
         setAgentId((current) =>
           result.agents.some((agent) => agent.id === current)
@@ -167,6 +192,8 @@ function InboxPage() {
     setDraft('')
     setDraftFromAi(false)
     setAiSources([])
+    setTemplateId('')
+    setTemplateComponents('[]')
     pendingSendKey.current = null
     void loadInbox(tab)
   }, [loadInbox, tab])
@@ -180,6 +207,11 @@ function InboxPage() {
   }, [loadInbox, selectedId, tab])
 
   const selected = conversations.find((item) => item.id === selectedId) ?? null
+  const selectedTemplate =
+    whatsappTemplates.find((template) => template.id === templateId) ?? null
+  const requiresWhatsAppTemplate = Boolean(
+    selected?.platform === 'whatsapp' && !selected.open24h,
+  )
   const visible = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('pt-BR')
     if (!normalized) return conversations
@@ -194,7 +226,9 @@ function InboxPage() {
     selected &&
     selected.status !== 'resolved' &&
     !selected.optedOut &&
-    (selected.open24h || (selected.humanAgentEligible && humanAgent)),
+    (selected.platform === 'whatsapp'
+      ? selected.open24h || Boolean(selectedTemplate)
+      : selected.open24h || (selected.humanAgentEligible && humanAgent)),
   )
 
   async function selectConversation(conversationId: string) {
@@ -202,6 +236,8 @@ function InboxPage() {
     setDraft('')
     setDraftFromAi(false)
     setAiSources([])
+    setTemplateId('')
+    setTemplateComponents('[]')
     pendingSendKey.current = null
     try {
       await apiFetch('/api/inbox', {
@@ -242,7 +278,12 @@ function InboxPage() {
 
   /** Envia pela API autenticada; o backend decide novamente se a janela permite. */
   async function sendMessage() {
-    if (!selected || !draft.trim() || !canCompose) return
+    if (
+      !selected ||
+      !canCompose ||
+      (!draft.trim() && !requiresWhatsAppTemplate)
+    )
+      return
     if (humanAgent && draftFromAi) {
       setError('HUMAN_AGENT exige uma resposta escrita e revisada pelo humano.')
       return
@@ -252,14 +293,29 @@ function InboxPage() {
       pendingSendKey.current ?? `manual:${crypto.randomUUID()}`
     pendingSendKey.current = idempotencyKey
     try {
+      let components: Array<Record<string, unknown>> | undefined
+      if (requiresWhatsAppTemplate) {
+        const parsed = JSON.parse(templateComponents) as unknown
+        if (!Array.isArray(parsed))
+          throw new Error('Os componentes do template devem ser um array JSON.')
+        components = parsed as Array<Record<string, unknown>>
+      }
       await apiFetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify({
           contactId: selected.contactId,
-          message: draft,
+          message: requiresWhatsAppTemplate ? undefined : draft,
           humanAgent,
           aiGenerated: draftFromAi,
+          template:
+            requiresWhatsAppTemplate && selectedTemplate
+              ? {
+                  name: selectedTemplate.name,
+                  language: selectedTemplate.language,
+                  ...(components?.length ? { components } : {}),
+                }
+              : undefined,
         }),
       })
       setDraft('')
@@ -394,7 +450,14 @@ function InboxPage() {
                   {conversation.name}
                   <time>{timeLabel(conversation.lastMessageAt)}</time>
                 </strong>
-                <small>@{conversation.username}</small>
+                <small>
+                  {conversation.platform === 'whatsapp' ? (
+                    <MessageCircle size={12} aria-label="WhatsApp" />
+                  ) : (
+                    '@'
+                  )}
+                  {conversation.username}
+                </small>
                 <p>{conversation.preview || 'Nova interação'}</p>
               </span>
               {conversation.unread > 0 && <em>{conversation.unread}</em>}
@@ -413,7 +476,11 @@ function InboxPage() {
               <span className="avatar">{initials(selected.name)}</span>
               <div>
                 <strong>{selected.name}</strong>
-                <small>@{selected.username}</small>
+                <small>
+                  {selected.platform === 'whatsapp'
+                    ? `WhatsApp · ${selected.username}`
+                    : `Instagram · @${selected.username}`}
+                </small>
               </div>
               <span
                 className={`window-badge ${selected.open24h ? 'open' : 'closed'}`}
@@ -449,9 +516,11 @@ function InboxPage() {
                 <span>
                   {selected.optedOut
                     ? 'Contato opt-out: qualquer envio está bloqueado.'
-                    : selected.humanAgentEligible
-                      ? 'Só atendimento humano com HUMAN_AGENT está elegível.'
-                      : 'Janela encerrada: nenhuma mensagem está elegível.'}
+                    : selected.platform === 'whatsapp'
+                      ? 'Janela encerrada: selecione um template aprovado do WhatsApp.'
+                      : selected.humanAgentEligible
+                        ? 'Só atendimento humano com HUMAN_AGENT está elegível.'
+                        : 'Janela encerrada: nenhuma mensagem está elegível.'}
                 </span>
               </div>
             )}
@@ -476,6 +545,16 @@ function InboxPage() {
                         </span>
                       )}
                       <p>{message.body || 'Mídia recebida'}</p>
+                      {message.media_url && (
+                        <a
+                          className="message-media-link"
+                          href={message.media_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Abrir {message.message_type || 'mídia'}
+                        </a>
+                      )}
                       <time>
                         {timeLabel(message.created_at)} · {message.status}
                       </time>
@@ -511,6 +590,7 @@ function InboxPage() {
                   </select>
                 )}
                 {!selected.open24h &&
+                  selected.platform === 'instagram' &&
                   selected.humanAgentEligible &&
                   !selected.optedOut && (
                     <button
@@ -529,6 +609,46 @@ function InboxPage() {
                     </button>
                   )}
               </div>
+              {requiresWhatsAppTemplate && (
+                <div className="whatsapp-template-composer">
+                  <label>
+                    Template aprovado
+                    <select
+                      value={templateId}
+                      onChange={(event) => {
+                        setTemplateId(event.target.value)
+                        pendingSendKey.current = null
+                      }}
+                    >
+                      {whatsappTemplates.length === 0 && (
+                        <option value="">
+                          Sincronize templates em Configurações
+                        </option>
+                      )}
+                      {whatsappTemplates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name} · {template.language}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Componentes/variáveis JSON
+                    <textarea
+                      value={templateComponents}
+                      onChange={(event) => {
+                        setTemplateComponents(event.target.value)
+                        pendingSendKey.current = null
+                      }}
+                      spellCheck={false}
+                      placeholder='Ex.: [{"type":"body","parameters":[{"type":"text","text":"Ana"}]}]'
+                    />
+                    <small>
+                      Use <code>[]</code> quando o template não tiver variáveis.
+                    </small>
+                  </label>
+                </div>
+              )}
               <div className="composer-box">
                 <textarea
                   value={draft}
@@ -539,11 +659,13 @@ function InboxPage() {
                     pendingSendKey.current = null
                   }}
                   placeholder={
-                    canCompose
-                      ? 'Escreva no papo reto…'
-                      : 'Envio bloqueado pela janela Meta'
+                    requiresWhatsAppTemplate
+                      ? 'O conteúdo vem do template aprovado'
+                      : canCompose
+                        ? 'Escreva no papo reto…'
+                        : 'Envio bloqueado pela janela Meta'
                   }
-                  disabled={!canCompose}
+                  disabled={!canCompose || requiresWhatsAppTemplate}
                 />
                 <div>
                   <button
@@ -563,7 +685,12 @@ function InboxPage() {
                   <button
                     className="send-button"
                     onClick={() => void sendMessage()}
-                    disabled={!canCompose || !draft.trim() || busy === 'send'}
+                    disabled={
+                      !canCompose ||
+                      (!requiresWhatsAppTemplate && !draft.trim()) ||
+                      (requiresWhatsAppTemplate && !selectedTemplate) ||
+                      busy === 'send'
+                    }
                   >
                     {busy === 'send' ? (
                       <LoaderCircle className="spin" size={17} />
@@ -574,8 +701,10 @@ function InboxPage() {
                 </div>
               </div>
               <small className="optout-note">
-                <Info size={13} /> Automação inclui “Responda PARAR”;
-                HUMAN_AGENT nunca usa IA.
+                <Info size={13} />{' '}
+                {selected.platform === 'whatsapp'
+                  ? 'Texto livre exige janela de 24h; fora dela, somente template APPROVED.'
+                  : 'Automação inclui “Responda PARAR”; HUMAN_AGENT nunca usa IA.'}
               </small>
               {draftFromAi && aiSources.length > 0 && (
                 <div className="ai-source-strip">
@@ -616,7 +745,11 @@ function InboxPage() {
           <>
             <span className="avatar avatar-xl">{initials(selected.name)}</span>
             <h3>{selected.name}</h3>
-            <p>@{selected.username}</p>
+            <p>
+              {selected.platform === 'whatsapp'
+                ? selected.username
+                : `@${selected.username}`}
+            </p>
             <div className="contact-status">
               <StatusDot tone={selected.open24h ? 'green' : 'orange'}>
                 {selected.open24h ? 'Janela aberta' : 'Fora de 24h'}
@@ -714,9 +847,13 @@ function InboxPage() {
                 {selected.optedOut ? 'Opt-out registrado' : 'Sem opt-out'}
               </small>
               <small>
-                {selected.humanAgentEligible
-                  ? 'HUMAN_AGENT até 7d elegível'
-                  : 'HUMAN_AGENT indisponível'}
+                {selected.platform === 'whatsapp'
+                  ? selected.open24h
+                    ? 'Texto livre elegível em 24h'
+                    : 'Exige template aprovado'
+                  : selected.humanAgentEligible
+                    ? 'HUMAN_AGENT até 7d elegível'
+                    : 'HUMAN_AGENT indisponível'}
               </small>
             </div>
             <div className="info-block">

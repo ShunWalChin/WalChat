@@ -29,13 +29,20 @@ const noteSchema = z.object({
 })
 const deleteNoteSchema = z.object({ noteId: z.string().uuid() })
 
-function windowState(lastInboundAt: string | null, optedOutAt: string | null) {
+function windowState(
+  lastInboundAt: string | null,
+  optedOutAt: string | null,
+  platform: 'instagram' | 'whatsapp',
+) {
   if (!lastInboundAt || optedOutAt)
     return { open24h: false, humanAgentEligible: false, secondsLeft24h: 0 }
   const elapsed = Date.now() - new Date(lastInboundAt).getTime()
   return {
     open24h: elapsed >= 0 && elapsed <= 24 * 60 * 60_000,
-    humanAgentEligible: elapsed >= 0 && elapsed <= 7 * 24 * 60 * 60_000,
+    humanAgentEligible:
+      platform === 'instagram' &&
+      elapsed >= 0 &&
+      elapsed <= 7 * 24 * 60 * 60_000,
     secondsLeft24h: Math.max(
       0,
       Math.floor((24 * 60 * 60_000 - elapsed) / 1_000),
@@ -57,7 +64,7 @@ export const Route = createFileRoute('/api/inbox')({
           let conversationsQuery = context.supabase
             .from('conversations')
             .select(
-              'id,contact_id,instagram_account_id,category,status,priority,unread_count,last_message_preview,last_message_at,assigned_to',
+              'id,contact_id,platform,instagram_account_id,whatsapp_account_id,category,status,priority,unread_count,last_message_preview,last_message_at,assigned_to',
             )
             .eq('workspace_id', context.workspaceId)
             .order('last_message_at', { ascending: false, nullsFirst: false })
@@ -78,7 +85,7 @@ export const Route = createFileRoute('/api/inbox')({
             ? await context.supabase
                 .from('contacts')
                 .select(
-                  'id,username,full_name,avatar_url,ai_enabled,opted_out_at,last_inbound_at,first_seen_at',
+                  'id,platform,username,full_name,phone,whatsapp_user_id,avatar_url,ai_enabled,opted_out_at,last_inbound_at,first_seen_at',
                 )
                 .eq('workspace_id', context.workspaceId)
                 .in('id', contactIds)
@@ -89,11 +96,20 @@ export const Route = createFileRoute('/api/inbox')({
           )
           const resultConversations = conversations.map((conversation) => {
             const contact = contactsById.get(conversation.contact_id)
-            const username = contact?.username ?? 'instagram'
+            const platform =
+              conversation.platform === 'whatsapp'
+                ? ('whatsapp' as const)
+                : ('instagram' as const)
+            const username =
+              platform === 'whatsapp'
+                ? (contact?.phone ?? contact?.whatsapp_user_id ?? 'whatsapp')
+                : (contact?.username ?? 'instagram')
             return {
               id: conversation.id,
               contactId: conversation.contact_id,
               instagramAccountId: conversation.instagram_account_id,
+              whatsappAccountId: conversation.whatsapp_account_id,
+              platform,
               category: conversation.category,
               status: conversation.status,
               priority: conversation.priority,
@@ -101,7 +117,9 @@ export const Route = createFileRoute('/api/inbox')({
               unread: conversation.unread_count,
               preview: conversation.last_message_preview ?? '',
               lastMessageAt: conversation.last_message_at,
-              name: contact?.full_name ?? `@${username}`,
+              name:
+                contact?.full_name ??
+                (platform === 'instagram' ? `@${username}` : username),
               username,
               avatarUrl: contact?.avatar_url ?? null,
               aiEnabled: contact?.ai_enabled ?? false,
@@ -110,6 +128,7 @@ export const Route = createFileRoute('/api/inbox')({
               ...windowState(
                 contact?.last_inbound_at ?? null,
                 contact?.opted_out_at ?? null,
+                platform,
               ),
             }
           })
@@ -134,7 +153,7 @@ export const Route = createFileRoute('/api/inbox')({
                 context.supabase
                   .from('messages')
                   .select(
-                    'id,direction,body,media_url,status,is_ai_generated,is_automated,created_at',
+                    'id,platform,direction,body,media_url,message_type,status,is_ai_generated,is_automated,created_at',
                   )
                   .eq('workspace_id', context.workspaceId)
                   .eq('conversation_id', selectedId)
@@ -163,6 +182,25 @@ export const Route = createFileRoute('/api/inbox')({
           if (agentsError) throw agentsError
           if (notesError) throw notesError
 
+          const selectedConversation = resultConversations.find(
+            (item) => item.id === selectedId,
+          )
+          const { data: whatsappTemplates, error: templatesError } =
+            selectedConversation?.platform === 'whatsapp' &&
+            selectedConversation.whatsappAccountId
+              ? await context.supabase
+                  .from('whatsapp_message_templates')
+                  .select('id,name,language,category,status,components')
+                  .eq('workspace_id', context.workspaceId)
+                  .eq(
+                    'whatsapp_account_id',
+                    selectedConversation.whatsappAccountId,
+                  )
+                  .eq('status', 'APPROVED')
+                  .order('name')
+              : { data: [], error: null }
+          if (templatesError) throw templatesError
+
           return Response.json(
             {
               conversations: resultConversations,
@@ -170,6 +208,7 @@ export const Route = createFileRoute('/api/inbox')({
               messages,
               agents,
               notes,
+              whatsappTemplates,
               currentUser: {
                 id: context.user.id,
                 email: context.user.email ?? null,

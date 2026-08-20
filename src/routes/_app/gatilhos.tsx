@@ -1,4 +1,4 @@
-/** Gestão persistida de gatilhos simples por comentário, DM e story. */
+/** Gestão persistida de gatilhos por Instagram e WhatsApp. */
 import { createFileRoute } from '@tanstack/react-router'
 import {
   ArrowRight,
@@ -17,7 +17,7 @@ export const Route = createFileRoute('/_app/gatilhos')({
   component: TriggersPage,
 })
 
-type Source = 'comment' | 'dm' | 'story'
+type Source = 'comment' | 'dm' | 'story' | 'whatsapp'
 type Trigger = {
   id: string
   name: string
@@ -41,7 +41,13 @@ const initialForm: Omit<Trigger, 'id' | 'fired'> = {
 }
 
 function sourceLabel(source: Source) {
-  return source === 'comment' ? 'Comentário' : source === 'dm' ? 'DM' : 'Story'
+  return source === 'comment'
+    ? 'Comentário'
+    : source === 'dm'
+      ? 'DM Instagram'
+      : source === 'story'
+        ? 'Story'
+        : 'WhatsApp'
 }
 
 function TriggersPage() {
@@ -156,6 +162,7 @@ function TriggersPage() {
                 <option value="comment">Comentário</option>
                 <option value="dm">DM</option>
                 <option value="story">Story</option>
+                <option value="whatsapp">WhatsApp</option>
               </select>
             </label>
           </div>
@@ -228,6 +235,7 @@ function TriggersPage() {
             ['comment', 'Comentários'],
             ['dm', 'DM'],
             ['story', 'Story'],
+            ['whatsapp', 'WhatsApp'],
           ] as const
         ).map(([value, label]) => (
           <button

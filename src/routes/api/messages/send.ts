@@ -1,4 +1,4 @@
-/** Envio manual autenticado; ainda reaplica compliance e registra auditoria. */
+/** Gateway manual multicanal; revalida compliance imediatamente antes da Meta. */
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import {
@@ -6,17 +6,34 @@ import {
   assertTrustedOrigin,
   requireWorkspaceContext,
 } from '../../../server/api-auth.server'
+import { normalizeComplianceText } from '../../../server/compliance'
 import { sendInstagramMessage } from '../../../server/meta-sender.server'
 import { OutboundDeliveryError } from '../../../server/outbound-delivery.server'
 import { readJsonBody } from '../../../server/request-body.server'
 import { assertRateLimit } from '../../../server/rate-limit.server'
+import { sendWhatsAppMessage } from '../../../server/whatsapp-sender.server'
 
-const schema = z.object({
-  contactId: z.string().uuid(),
-  message: z.string().trim().min(1).max(1_000),
-  humanAgent: z.boolean().default(false),
-  aiGenerated: z.boolean().default(false),
+const templateSchema = z.object({
+  name: z.string().trim().min(1).max(512),
+  language: z.string().trim().min(2).max(35),
+  components: z.array(z.record(z.string(), z.unknown())).max(20).optional(),
 })
+
+const schema = z
+  .object({
+    contactId: z.string().uuid(),
+    message: z.string().trim().max(4_096).optional(),
+    humanAgent: z.boolean().default(false),
+    aiGenerated: z.boolean().default(false),
+    template: templateSchema.optional(),
+  })
+  .refine((value) => Boolean(value.message?.trim() || value.template), {
+    message: 'Informe uma mensagem ou template.',
+  })
+
+function templateHasOptOut(components: unknown) {
+  return normalizeComplianceText(JSON.stringify(components)).includes('parar')
+}
 
 export const Route = createFileRoute('/api/messages/send')({
   server: {
@@ -41,7 +58,7 @@ export const Route = createFileRoute('/api/messages/send')({
               context.supabase
                 .from('contacts')
                 .select(
-                  'id,instagram_account_id,instagram_user_id,last_inbound_at,opted_out_at',
+                  'id,platform,instagram_account_id,instagram_user_id,whatsapp_account_id,whatsapp_user_id,last_inbound_at,opted_out_at',
                 )
                 .eq('workspace_id', context.workspaceId)
                 .eq('id', body.contactId)
@@ -53,25 +70,117 @@ export const Route = createFileRoute('/api/messages/send')({
                 .eq('is_active', true),
             ])
           if (error) throw error
-          if (!contact || !contact.instagram_account_id)
+          if (!contact)
             return Response.json(
               { error: 'Contato não encontrado.' },
               { status: 404 },
             )
-          const result = await sendInstagramMessage({
-            workspaceId: context.workspaceId,
-            instagramAccountId: contact.instagram_account_id,
-            recipientId: contact.instagram_user_id,
-            contactId: contact.id,
-            idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
-            deliverySource: 'manual',
-            lastInboundAt: contact.last_inbound_at,
-            optedOutAt: contact.opted_out_at,
-            isAutomated: false,
-            requestedTag: body.humanAgent ? 'HUMAN_AGENT' : null,
-            message: body.message,
-            blocklist: (blocklist ?? []).map((item) => item.term),
-          })
+          const idempotencyKey =
+            request.headers.get('idempotency-key') ?? undefined
+          const blockedTerms = (blocklist ?? []).map((item) => item.term)
+
+          let result
+          let accountPayload: Record<string, unknown>
+          let messageType = 'text'
+          if (contact.platform === 'whatsapp') {
+            if (!contact.whatsapp_account_id || !contact.whatsapp_user_id)
+              return Response.json(
+                { error: 'Contato WhatsApp sem telefone conectado.' },
+                { status: 422 },
+              )
+            if (body.humanAgent)
+              return Response.json(
+                {
+                  error:
+                    'HUMAN_AGENT pertence ao Instagram; use template aprovado no WhatsApp fora de 24h.',
+                },
+                { status: 422 },
+              )
+            let template:
+              | {
+                  name: string
+                  language: string
+                  status: string
+                  hasOptOut: boolean
+                  components?: Array<Record<string, unknown>>
+                }
+              | undefined
+            if (body.template) {
+              const { data: storedTemplate, error: templateError } =
+                await context.supabase
+                  .from('whatsapp_message_templates')
+                  .select('name,language,status,components')
+                  .eq('workspace_id', context.workspaceId)
+                  .eq('whatsapp_account_id', contact.whatsapp_account_id)
+                  .eq('name', body.template.name)
+                  .eq('language', body.template.language)
+                  .maybeSingle()
+              if (templateError) throw templateError
+              if (!storedTemplate)
+                return Response.json(
+                  { error: 'Template não encontrado no cache da WABA.' },
+                  { status: 422 },
+                )
+              template = {
+                name: storedTemplate.name,
+                language: storedTemplate.language,
+                status: storedTemplate.status,
+                hasOptOut: templateHasOptOut(storedTemplate.components),
+                components: body.template.components,
+              }
+              messageType = 'template'
+            }
+            result = await sendWhatsAppMessage({
+              workspaceId: context.workspaceId,
+              whatsappAccountId: contact.whatsapp_account_id,
+              recipientId: contact.whatsapp_user_id,
+              contactId: contact.id,
+              idempotencyKey,
+              deliverySource: 'manual',
+              lastInboundAt: contact.last_inbound_at,
+              optedOutAt: contact.opted_out_at,
+              isAutomated: false,
+              message: body.message ?? body.template?.name ?? '',
+              template,
+              blocklist: blockedTerms,
+            })
+            accountPayload = {
+              platform: 'whatsapp',
+              instagram_account_id: null,
+              whatsapp_account_id: contact.whatsapp_account_id,
+            }
+          } else {
+            if (!contact.instagram_account_id || !contact.instagram_user_id)
+              return Response.json(
+                { error: 'Contato Instagram sem conta conectada.' },
+                { status: 422 },
+              )
+            if (body.template)
+              return Response.json(
+                { error: 'Templates pertencem somente ao WhatsApp.' },
+                { status: 422 },
+              )
+            result = await sendInstagramMessage({
+              workspaceId: context.workspaceId,
+              instagramAccountId: contact.instagram_account_id,
+              recipientId: contact.instagram_user_id,
+              contactId: contact.id,
+              idempotencyKey,
+              deliverySource: 'manual',
+              lastInboundAt: contact.last_inbound_at,
+              optedOutAt: contact.opted_out_at,
+              isAutomated: false,
+              requestedTag: body.humanAgent ? 'HUMAN_AGENT' : null,
+              message: body.message ?? '',
+              blocklist: blockedTerms,
+            })
+            accountPayload = {
+              platform: 'instagram',
+              instagram_account_id: contact.instagram_account_id,
+              whatsapp_account_id: null,
+            }
+          }
+
           const now = new Date().toISOString()
           const { data: conversation, error: conversationError } =
             await context.admin
@@ -79,24 +188,30 @@ export const Route = createFileRoute('/api/messages/send')({
               .upsert(
                 {
                   workspace_id: context.workspaceId,
-                  instagram_account_id: contact.instagram_account_id,
                   contact_id: contact.id,
+                  ...accountPayload,
                   last_message_preview: result.decision.body.slice(0, 180),
                   last_message_at: now,
                 },
-                { onConflict: 'workspace_id,contact_id,instagram_account_id' },
+                { onConflict: 'workspace_id,contact_id,platform' },
               )
               .select('id')
               .single()
           if (conversationError) throw conversationError
           const deliveryId =
             'deliveryId' in result ? result.deliveryId : undefined
+          const providerMessageId =
+            'result' in result &&
+            result.result &&
+            typeof result.result === 'object'
+              ? extractProviderMessageId(result.result)
+              : undefined
           const interactionPayload = {
             workspace_id: context.workspaceId,
-            instagram_account_id: contact.instagram_account_id,
             contact_id: contact.id,
             conversation_id: conversation.id,
             outbound_delivery_id: deliveryId ?? null,
+            ...accountPayload,
             channel: 'dm',
             direction: 'outbound',
             message_text: result.decision.body,
@@ -120,11 +235,14 @@ export const Route = createFileRoute('/api/messages/send')({
             .upsert(
               {
                 workspace_id: context.workspaceId,
+                platform: contact.platform,
                 conversation_id: conversation.id,
                 contact_id: contact.id,
                 interaction_id: interaction.id,
+                provider_message_id: providerMessageId ?? null,
                 direction: 'outbound',
                 body: result.decision.body,
+                message_type: messageType,
                 status: result.sent ? 'sent' : 'blocked',
                 is_ai_generated: body.aiGenerated,
                 is_automated: false,
@@ -136,6 +254,7 @@ export const Route = createFileRoute('/api/messages/send')({
             await context.admin
               .from('contacts')
               .update({ last_outbound_at: now, last_interaction_at: now })
+              .eq('workspace_id', context.workspaceId)
               .eq('id', contact.id)
           return Response.json(
             {
@@ -143,6 +262,7 @@ export const Route = createFileRoute('/api/messages/send')({
               policy: result.decision.policy,
               reason: result.decision.reason,
               replayed: 'replayed' in result ? result.replayed : false,
+              platform: contact.platform,
               ...(result.sent
                 ? {}
                 : { error: `Envio bloqueado: ${result.decision.reason}` }),
@@ -161,3 +281,12 @@ export const Route = createFileRoute('/api/messages/send')({
     },
   },
 })
+
+function extractProviderMessageId(result: Record<string, unknown>) {
+  if (typeof result.message_id === 'string') return result.message_id
+  if (!Array.isArray(result.messages)) return undefined
+  const first = result.messages[0]
+  return first && typeof first === 'object' && 'id' in first
+    ? String(first.id)
+    : undefined
+}

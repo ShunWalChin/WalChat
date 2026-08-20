@@ -4,6 +4,7 @@ import {
   sendInstagramMessage,
   sendInstagramPrivateReply,
 } from '../server/meta-sender.server'
+import { sendWhatsAppMessage } from '../server/whatsapp-sender.server'
 import {
   getMetaAccountAccess,
   saveIntegrationCredential,
@@ -137,6 +138,16 @@ async function refreshDueMetaTokens() {
       })
     }
   }
+  const { error: whatsappExpiryError } = await supabase
+    .from('whatsapp_accounts')
+    .update({
+      status: 'expired',
+      connection_error: 'access_token_expired',
+    })
+    .eq('status', 'connected')
+    .not('token_expires_at', 'is', null)
+    .lte('token_expires_at', new Date().toISOString())
+  if (whatsappExpiryError) throw whatsappExpiryError
 }
 
 /**
@@ -215,6 +226,8 @@ async function processSequenceJob(job: {
     : null
   const triggerId = payload.triggerId ? String(payload.triggerId) : null
   const position = Number(payload.position ?? 0)
+  const requestedPlatform =
+    payload.platform === 'whatsapp' ? 'whatsapp' : 'instagram'
 
   if (enrollmentId) {
     const enrollmentResult = await supabase
@@ -251,7 +264,7 @@ async function processSequenceJob(job: {
     supabase
       .from('contacts')
       .select(
-        'id,last_inbound_at,opted_out_at,instagram_user_id,instagram_account_id',
+        'id,platform,last_inbound_at,opted_out_at,instagram_user_id,instagram_account_id,whatsapp_user_id,whatsapp_account_id',
       )
       .eq('workspace_id', job.workspace_id)
       .eq('id', contactId)
@@ -265,14 +278,21 @@ async function processSequenceJob(job: {
   if (contactResult.error) throw contactResult.error
   if (blocklistResult.error) throw blocklistResult.error
   const contact = contactResult.data
-  if (!contact.instagram_account_id)
+  const platform = contact.platform ?? requestedPlatform
+  if (
+    platform === 'instagram' &&
+    (!contact.instagram_account_id || !contact.instagram_user_id)
+  )
     throw new Error('Contato não possui conta Instagram vinculada.')
+  if (
+    platform === 'whatsapp' &&
+    (!contact.whatsapp_account_id || !contact.whatsapp_user_id)
+  )
+    throw new Error('Contato não possui conta WhatsApp vinculada.')
 
   if (message) {
     const common = {
       workspaceId: job.workspace_id,
-      instagramAccountId: contact.instagram_account_id,
-      recipientId: senderId || contact.instagram_user_id,
       contactId: contact.id,
       idempotencyKey: `scheduled-job:${job.id}`,
       deliverySource: 'scheduled' as const,
@@ -285,7 +305,13 @@ async function processSequenceJob(job: {
       blocklist: blocklistResult.data.map((entry) => entry.term),
     }
     let result
-    if (commentId) {
+    if (platform === 'whatsapp') {
+      result = await sendWhatsAppMessage({
+        ...common,
+        whatsappAccountId: contact.whatsapp_account_id as string,
+        recipientId: senderId || (contact.whatsapp_user_id as string),
+      })
+    } else if (commentId) {
       // O insert ocorre antes da chamada externa: a PK funciona como claim
       // at-most-once mesmo com dois schedulers ou resposta HTTP ambígua.
       const { error: claimError } = await supabase
@@ -305,6 +331,8 @@ async function processSequenceJob(job: {
       try {
         result = await sendInstagramPrivateReply({
           ...common,
+          instagramAccountId: contact.instagram_account_id as string,
+          recipientId: senderId || (contact.instagram_user_id as string),
           instagramCommentId: commentId,
         })
         const { error: replyStatusError } = await supabase
@@ -330,19 +358,35 @@ async function processSequenceJob(job: {
         throw replyError
       }
     } else {
-      result = await sendInstagramMessage(common)
+      result = await sendInstagramMessage({
+        ...common,
+        instagramAccountId: contact.instagram_account_id as string,
+        recipientId: senderId || (contact.instagram_user_id as string),
+      })
     }
+    const accountPayload =
+      platform === 'whatsapp'
+        ? {
+            platform: 'whatsapp',
+            instagram_account_id: null,
+            whatsapp_account_id: contact.whatsapp_account_id,
+          }
+        : {
+            platform: 'instagram',
+            instagram_account_id: contact.instagram_account_id,
+            whatsapp_account_id: null,
+          }
     const { data: conversation, error: conversationError } = await supabase
       .from('conversations')
       .upsert(
         {
           workspace_id: job.workspace_id,
-          instagram_account_id: contact.instagram_account_id,
           contact_id: contact.id,
+          ...accountPayload,
           last_message_preview: result.decision.body.slice(0, 180),
           last_message_at: new Date().toISOString(),
         },
-        { onConflict: 'workspace_id,contact_id,instagram_account_id' },
+        { onConflict: 'workspace_id,contact_id,platform' },
       )
       .select('id')
       .single()
@@ -350,10 +394,10 @@ async function processSequenceJob(job: {
     const deliveryId = 'deliveryId' in result ? result.deliveryId : undefined
     const interactionPayload = {
       workspace_id: job.workspace_id,
-      instagram_account_id: contact.instagram_account_id,
       contact_id: contact.id,
       conversation_id: conversation.id,
       outbound_delivery_id: deliveryId ?? null,
+      ...accountPayload,
       channel: commentId ? 'comment' : 'dm',
       direction: 'outbound',
       message_text: result.decision.body,
@@ -371,12 +415,18 @@ async function processSequenceJob(job: {
     const { data: interaction, error: interactionError } =
       await interactionOperation.select('id').single()
     if (interactionError) throw interactionError
+    const providerMessageId =
+      'result' in result && result.result && typeof result.result === 'object'
+        ? extractScheduledProviderMessageId(result.result)
+        : undefined
     const { error: messageError } = await supabase.from('messages').upsert(
       {
         workspace_id: job.workspace_id,
+        platform,
         conversation_id: conversation.id,
         contact_id: contact.id,
         interaction_id: interaction.id,
+        provider_message_id: providerMessageId ?? null,
         direction: 'outbound',
         body: result.decision.body,
         status: result.sent ? 'sent' : 'blocked',
@@ -459,6 +509,9 @@ async function processSequenceJob(job: {
           payload: {
             enrollmentId,
             position: nextPosition,
+            platform,
+            whatsappAccountId:
+              platform === 'whatsapp' ? contact.whatsapp_account_id : null,
             senderId,
             instagramCommentId: commentId,
             commentCreatedAt,
@@ -480,6 +533,15 @@ async function processSequenceJob(job: {
         .eq('id', enrollmentId)
     }
   }
+}
+
+function extractScheduledProviderMessageId(result: Record<string, unknown>) {
+  if (typeof result.message_id === 'string') return result.message_id
+  if (!Array.isArray(result.messages)) return undefined
+  const first = result.messages[0]
+  return first && typeof first === 'object' && 'id' in first
+    ? String(first.id)
+    : undefined
 }
 
 /** Isola erros de um ciclo para que o processo continue no tick seguinte. */

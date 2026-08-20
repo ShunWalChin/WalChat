@@ -57,7 +57,7 @@ Este documento funciona como índice de manutenção. Os comentários nos arquiv
 | `src/routes/_app/publicar.tsx`      | Tipos de post, copy e preview Instagram          |
 | `src/routes/_app/auto-like.tsx`     | Modos de curtida automática                      |
 | `src/routes/_app/insights.tsx`      | Crescimento, heatmap, posts e leitura IA         |
-| `src/routes/_app/configuracoes.tsx` | OAuth Instagram, diagnóstico e provedor de IA    |
+| `src/routes/_app/configuracoes.tsx` | Instagram Login, WhatsApp Embedded Signup e IA   |
 | `src/routes/_app/manual.tsx`        | Manual HTML pesquisável, tutoriais e Go-Live     |
 | `src/lib/demo-data.ts`              | Fixtures visuais do MVP em modo demo             |
 
@@ -68,7 +68,11 @@ Este documento funciona como índice de manutenção. Os comentários nos arquiv
 | `src/routes/api/health.ts`                    | Saúde e presença de configuração            |
 | `src/routes/api/ready.ts`                     | Readiness real de Supabase e Redis          |
 | `src/routes/api/public/webhooks/instagram.ts` | Challenge, HMAC, parse e fila               |
+| `src/routes/api/public/webhooks/whatsapp.ts`  | Challenge, HMAC e fila WhatsApp             |
 | `src/routes/api/integrations/meta/*.ts`       | OAuth, status, validação e desconexão Meta  |
+| `src/routes/api/integrations/meta/whatsapp/*` | WABA, telefone, templates, mídia e conexão  |
+| `src/routes/api/contacts.ts`                  | CRM multicanal e elegibilidade              |
+| `src/routes/api/dashboard.ts`                 | Métricas reais dos dois canais              |
 | `src/routes/api/ai/settings.ts`               | Provedor/modelo e chave cifrada             |
 | `src/routes/api/ai/agents.ts`                 | CRUD autenticado de agentes                 |
 | `src/routes/api/ai/knowledge.ts`              | CRUD autenticado de conhecimento            |
@@ -81,46 +85,51 @@ Este documento funciona como índice de manutenção. Os comentários nos arquiv
 
 ## Domínio no backend
 
-| Arquivo                                        | Responsabilidade                                 |
-| ---------------------------------------------- | ------------------------------------------------ |
-| `src/server/env.server.ts`                     | Schema Zod de variáveis do servidor              |
-| `src/server/compliance.ts`                     | Regra pura de envio Meta-safe                    |
-| `src/server/meta-sender.server.ts`             | DMs e Private Replies após decisão               |
-| `src/server/outbound-delivery.server.ts`       | Claim idempotente e estados da entrega externa   |
-| `src/server/ai.server.ts`                      | OpenAI Responses/Gemini, agente e opt-out        |
-| `src/server/api-auth.server.ts`                | JWT, membership, RBAC, Origin e erros HTTP       |
-| `src/server/credentials-crypto.server.ts`      | AES-256-GCM dos secrets por tenant               |
-| `src/server/integration-credentials.server.ts` | Store cifrado e auditoria de integrações         |
-| `src/server/meta-api.server.ts`                | OAuth, perfil, subscribed_apps e refresh Meta    |
-| `src/server/supabase-admin.server.ts`          | Cliente service role e validação de bearer token |
-| `src/server/webhook-signature.server.ts`       | Assinatura e comparação HMAC constant-time       |
-| `src/server/queue.server.ts`                   | Persistência idempotente e enqueue BullMQ        |
-| `src/server/webhook-outbox.server.ts`          | Reconciliação entre Postgres e BullMQ            |
-| `src/server/webhook-processor.server.ts`       | Normalização, contatos, gatilhos e jobs          |
+| Arquivo                                           | Responsabilidade                                 |
+| ------------------------------------------------- | ------------------------------------------------ |
+| `src/server/env.server.ts`                        | Schema Zod de variáveis do servidor              |
+| `src/server/compliance.ts`                        | Regra pura de envio Meta-safe                    |
+| `src/server/meta-sender.server.ts`                | DMs e Private Replies após decisão               |
+| `src/server/outbound-delivery.server.ts`          | Claim idempotente e estados da entrega externa   |
+| `src/server/ai.server.ts`                         | OpenAI Responses/Gemini, agente e opt-out        |
+| `src/server/api-auth.server.ts`                   | JWT, membership, RBAC, Origin e erros HTTP       |
+| `src/server/credentials-crypto.server.ts`         | AES-256-GCM dos secrets por tenant               |
+| `src/server/integration-credentials.server.ts`    | Store cifrado e auditoria de integrações         |
+| `src/server/meta-api.server.ts`                   | OAuth, perfil, subscribed_apps e refresh Meta    |
+| `src/server/whatsapp-api.server.ts`               | Embedded Signup, WABA, telefone e templates      |
+| `src/server/whatsapp-sender.server.ts`            | Texto/template WhatsApp após compliance          |
+| `src/server/whatsapp-webhook-processor.server.ts` | Inbox, receipts, gatilhos e IA do WhatsApp       |
+| `src/server/supabase-admin.server.ts`             | Cliente service role e validação de bearer token |
+| `src/server/webhook-signature.server.ts`          | Assinatura e comparação HMAC constant-time       |
+| `src/server/queue.server.ts`                      | Persistência idempotente e enqueue BullMQ        |
+| `src/server/webhook-outbox.server.ts`             | Reconciliação entre Postgres e BullMQ            |
+| `src/server/webhook-processor.server.ts`          | Normalização, contatos, gatilhos e jobs          |
 
 ## Workers
 
 | Arquivo                           | Responsabilidade                                |
 | --------------------------------- | ----------------------------------------------- |
-| `src/workers/instagram.worker.ts` | Consome e processa eventos da fila              |
+| `src/workers/instagram.worker.ts` | Consome eventos Instagram e WhatsApp da fila    |
 | `src/workers/scheduler.worker.ts` | Lock, envio, auditoria, retry e próximos passos |
 
 ## Testes e ferramentas
 
-| Arquivo                                 | Responsabilidade                              |
-| --------------------------------------- | --------------------------------------------- |
-| `src/server/compliance.test.ts`         | Janela, opt-out, HUMAN_AGENT e cooldown       |
-| `src/server/credentials-crypto.test.ts` | Round-trip e adulteração do envelope cifrado  |
-| `src/server/meta-api.test.ts`           | OAuth, token e assinatura de campos Meta      |
-| `src/server/ai-runtime.test.ts`         | Timeout e retries conservadores da IA         |
-| `src/server/outbound-delivery.test.ts`  | Claim, replay e bloqueio de ambiguidade       |
-| `src/server/webhook-outbox.test.ts`     | Decisão de reconciliação Postgres/BullMQ      |
-| `src/server/webhook-processor.test.ts`  | Fontes que podem abrir a janela de 24h        |
-| `src/server/webhook-signature.test.ts`  | HMAC válido e payload adulterado              |
-| `scripts/smoke.mjs`                     | Teste integrado Auth/RLS/webhook/fila/workers |
-| `scripts/validate-routes.mjs`           | HTTP 200 nas 16 rotas e health                |
-| `scripts/server.mjs`                    | Adapter Node de produção e arquivos estáticos |
-| `scripts/generate-manual-pdf.py`        | Gera o manual PDF a partir do Markdown        |
+| Arquivo                                         | Responsabilidade                              |
+| ----------------------------------------------- | --------------------------------------------- |
+| `src/server/compliance.test.ts`                 | Janela, opt-out, HUMAN_AGENT e cooldown       |
+| `src/server/credentials-crypto.test.ts`         | Round-trip e adulteração do envelope cifrado  |
+| `src/server/meta-api.test.ts`                   | OAuth, token e assinatura de campos Meta      |
+| `src/server/whatsapp-api.test.ts`               | WABA, assinatura, paginação e erros seguros   |
+| `src/server/whatsapp-webhook-processor.test.ts` | Normalização de mensagens WhatsApp            |
+| `src/server/ai-runtime.test.ts`                 | Timeout e retries conservadores da IA         |
+| `src/server/outbound-delivery.test.ts`          | Claim, replay e bloqueio de ambiguidade       |
+| `src/server/webhook-outbox.test.ts`             | Decisão de reconciliação Postgres/BullMQ      |
+| `src/server/webhook-processor.test.ts`          | Fontes que podem abrir a janela de 24h        |
+| `src/server/webhook-signature.test.ts`          | HMAC válido e payload adulterado              |
+| `scripts/smoke.mjs`                             | Teste integrado Auth/RLS/webhook/fila/workers |
+| `scripts/validate-routes.mjs`                   | HTTP 200 nas 16 rotas e health                |
+| `scripts/server.mjs`                            | Adapter Node de produção e arquivos estáticos |
+| `scripts/generate-manual-pdf.py`                | Gera o manual PDF a partir do Markdown        |
 
 ## Banco
 

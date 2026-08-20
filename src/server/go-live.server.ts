@@ -6,6 +6,10 @@ import { OutboundDeliveryError } from './outbound-delivery.server'
 import { checkRuntimeReadiness } from './runtime-health.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
 import { META_REQUIRED_SCOPES, META_WEBHOOK_FIELDS } from './meta-api.server'
+import {
+  WHATSAPP_REQUIRED_SCOPES,
+  WHATSAPP_WEBHOOK_FIELDS,
+} from './whatsapp-api.server'
 
 export type GoLiveCheckStatus = 'pass' | 'fail' | 'warning'
 
@@ -49,6 +53,7 @@ export async function getWorkspaceGoLiveStatus(workspaceId: string) {
   const [
     { data: runtimeSettings, error: runtimeError },
     { data: accounts, error: accountsError },
+    { data: whatsappAccounts, error: whatsappAccountsError },
     { data: metaCredentials, error: credentialsError },
     { data: aiSettings, error: aiSettingsError },
     { data: aiCredentials, error: aiCredentialsError },
@@ -66,6 +71,13 @@ export async function getWorkspaceGoLiveStatus(workspaceId: string) {
       .from('instagram_accounts')
       .select(
         'id,username,status,scopes,subscribed_fields,token_expires_at,permissions_validated_at,connection_error',
+      )
+      .eq('workspace_id', workspaceId)
+      .order('created_at'),
+    supabase
+      .from('whatsapp_accounts')
+      .select(
+        'id,verified_name,display_phone_number,status,scopes,subscribed_fields,token_expires_at,permissions_validated_at,connection_error',
       )
       .eq('workspace_id', workspaceId)
       .order('created_at'),
@@ -100,6 +112,7 @@ export async function getWorkspaceGoLiveStatus(workspaceId: string) {
   for (const error of [
     runtimeError,
     accountsError,
+    whatsappAccountsError,
     credentialsError,
     aiSettingsError,
     aiCredentialsError,
@@ -133,6 +146,36 @@ export async function getWorkspaceGoLiveStatus(workspaceId: string) {
         (field) => !(activeAccount.subscribed_fields ?? []).includes(field),
       )
     : META_WEBHOOK_FIELDS
+  const activeWhatsApp = (whatsappAccounts ?? []).find((account) => {
+    const credentialExpiry = credentialByAccount.get(account.id)
+    const expiry = credentialExpiry ?? account.token_expires_at
+    return (
+      account.status === 'connected' &&
+      credentialByAccount.has(account.id) &&
+      (!expiry || new Date(expiry).getTime() > now.getTime())
+    )
+  })
+  const missingWhatsAppScopes = activeWhatsApp
+    ? WHATSAPP_REQUIRED_SCOPES.filter(
+        (scope) => !(activeWhatsApp.scopes ?? []).includes(scope),
+      )
+    : []
+  const missingWhatsAppFields = activeWhatsApp
+    ? WHATSAPP_WEBHOOK_FIELDS.filter(
+        (field) => !(activeWhatsApp.subscribed_fields ?? []).includes(field),
+      )
+    : []
+  const anyMetaChannel = Boolean(activeAccount || activeWhatsApp)
+  const connectedChannelPermissionsValid = Boolean(
+    anyMetaChannel &&
+    (!activeAccount || missingScopes.length === 0) &&
+    (!activeWhatsApp || missingWhatsAppScopes.length === 0),
+  )
+  const connectedChannelWebhooksValid = Boolean(
+    anyMetaChannel &&
+    (!activeAccount || missingWebhookFields.length === 0) &&
+    (!activeWhatsApp || missingWhatsAppFields.length === 0),
+  )
   const selectedAiProvider = aiSettings?.provider ?? 'openai'
   const tenantAiConfigured = (aiCredentials ?? []).some(
     (credential) => credential.provider === selectedAiProvider,
@@ -198,28 +241,45 @@ export async function getWorkspaceGoLiveStatus(workspaceId: string) {
     check(
       'meta_account',
       'meta',
-      'Conta profissional conectada',
-      Boolean(activeAccount),
-      `@${activeAccount?.username ?? 'instagram'} possui token válido.`,
-      'Conecte uma conta Business ou Creator e valide o token.',
+      'Canal Meta conectado',
+      anyMetaChannel,
+      [
+        activeAccount ? `Instagram @${activeAccount.username}` : null,
+        activeWhatsApp
+          ? `WhatsApp ${activeWhatsApp.display_phone_number ?? activeWhatsApp.verified_name ?? 'ativo'}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      'Conecte ao menos Instagram profissional ou WhatsApp Business.',
       { actionHref: '/configuracoes' },
     ),
     check(
       'meta_permissions',
       'meta',
       'Permissões aprovadas',
-      missingScopes.length === 0,
-      'Todos os scopes requeridos estão concedidos.',
-      `Scopes ausentes: ${missingScopes.join(', ')}`,
+      connectedChannelPermissionsValid,
+      'Todos os scopes dos canais conectados estão concedidos.',
+      `Scopes ausentes: ${[
+        ...(activeAccount
+          ? missingScopes.map((scope) => `Instagram/${scope}`)
+          : []),
+        ...missingWhatsAppScopes.map((scope) => `WhatsApp/${scope}`),
+      ].join(', ')}`,
       { actionHref: '/configuracoes' },
     ),
     check(
       'meta_webhooks',
       'meta',
       'Webhooks assinados',
-      missingWebhookFields.length === 0,
-      'Todos os campos operacionais estão assinados.',
-      `Campos ausentes: ${missingWebhookFields.join(', ')}`,
+      connectedChannelWebhooksValid,
+      'Todos os webhooks dos canais conectados estão assinados.',
+      `Campos ausentes: ${[
+        ...(activeAccount
+          ? missingWebhookFields.map((field) => `Instagram/${field}`)
+          : []),
+        ...missingWhatsAppFields.map((field) => `WhatsApp/${field}`),
+      ].join(', ')}`,
       { actionHref: '/configuracoes' },
     ),
     check(
@@ -268,6 +328,13 @@ export async function getWorkspaceGoLiveStatus(workspaceId: string) {
     settings,
     activeAccount: activeAccount
       ? { id: activeAccount.id, username: activeAccount.username }
+      : null,
+    activeWhatsApp: activeWhatsApp
+      ? {
+          id: activeWhatsApp.id,
+          name: activeWhatsApp.verified_name,
+          phone: activeWhatsApp.display_phone_number,
+        }
       : null,
     generatedAt: now.toISOString(),
   }

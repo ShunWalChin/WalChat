@@ -42,23 +42,41 @@ async function requestJson(path, init = {}) {
 const unauthorized = await fetch(`${appUrl}/api/integrations/meta/status`)
 assert(unauthorized.status === 401, 'Status Meta deve exigir autenticação.')
 
-const [meta, ai, agents, inbox, triggers, goLive, webhooks, media] =
-  await Promise.all([
-    requestJson('/api/integrations/meta/status'),
-    requestJson('/api/ai/settings'),
-    requestJson('/api/ai/agents'),
-    requestJson('/api/inbox'),
-    requestJson('/api/triggers'),
-    requestJson('/api/operations/go-live'),
-    requestJson('/api/operations/webhooks'),
-    requestJson('/api/integrations/meta/media'),
-  ])
+const [
+  meta,
+  ai,
+  agents,
+  inbox,
+  contacts,
+  dashboard,
+  triggers,
+  goLive,
+  webhooks,
+  media,
+] = await Promise.all([
+  requestJson('/api/integrations/meta/status'),
+  requestJson('/api/ai/settings'),
+  requestJson('/api/ai/agents'),
+  requestJson('/api/inbox'),
+  requestJson('/api/contacts'),
+  requestJson('/api/dashboard'),
+  requestJson('/api/triggers'),
+  requestJson('/api/operations/go-live'),
+  requestJson('/api/operations/webhooks'),
+  requestJson('/api/integrations/meta/media'),
+])
 
 assert(Array.isArray(meta.requiredScopes), 'Status Meta sem scopes.')
 assert(Array.isArray(meta.webhookFields), 'Status Meta sem campos de webhook.')
+assert(
+  Array.isArray(meta.whatsapp?.requiredScopes),
+  'Status WhatsApp sem scopes.',
+)
 assert(ai.settings?.provider, 'Configuração de IA ausente.')
 assert(Array.isArray(agents.agents), 'Lista de agentes inválida.')
 assert(Array.isArray(inbox.conversations), 'Inbox inválida.')
+assert(Array.isArray(contacts.contacts), 'CRM multicanal inválido.')
+assert(Array.isArray(dashboard.chart), 'Dashboard multicanal inválido.')
 assert(Array.isArray(triggers.triggers), 'Lista de gatilhos inválida.')
 assert(Array.isArray(goLive.checks), 'Diagnóstico de Go-Live inválido.')
 assert(Array.isArray(webhooks.events), 'Observabilidade de webhooks inválida.')
@@ -153,6 +171,8 @@ console.log(
       knowledgeCrud: 'ok',
       aiSuggestion: suggestion,
       inbox: 'ok',
+      contacts: 'ok',
+      dashboard: 'ok',
       triggers: 'ok',
       goLive: 'ok',
       goLiveKillSwitches: 'off',

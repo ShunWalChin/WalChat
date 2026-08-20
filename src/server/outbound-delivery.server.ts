@@ -59,21 +59,30 @@ export function normalizeIdempotencyKey(value: string | null | undefined) {
 /** O banco guarda somente o hash da intenção; nenhuma mensagem entra na chave. */
 export function fingerprintOutboundDelivery(input: {
   workspaceId: string
-  instagramAccountId: string
+  platform?: 'instagram' | 'whatsapp'
+  instagramAccountId?: string
+  whatsappAccountId?: string
   recipientId: string
   decision: ComplianceDecision
+  messageType?: 'text' | 'template'
+  templateName?: string
+  templateLanguage?: string
 }) {
   return createHash('sha256')
     .update(
       JSON.stringify([
         input.workspaceId,
-        input.instagramAccountId,
+        input.platform ?? 'instagram',
+        input.instagramAccountId ?? input.whatsappAccountId,
         input.recipientId,
         input.decision.allowed,
         input.decision.policy,
         input.decision.body,
         input.decision.tag ?? null,
         input.decision.reason ?? null,
+        input.messageType ?? 'text',
+        input.templateName ?? null,
+        input.templateLanguage ?? null,
       ]),
     )
     .digest('hex')
@@ -126,13 +135,18 @@ export function resolveExistingDelivery(
 /** Insere o claim antes da rede; conflito nunca dispara uma segunda chamada Meta. */
 export async function claimOutboundDelivery(input: {
   workspaceId: string
-  instagramAccountId: string
+  platform?: 'instagram' | 'whatsapp'
+  instagramAccountId?: string
+  whatsappAccountId?: string
   contactId: string
   recipientId: string
   idempotencyKey: string
   source: OutboundDeliverySource
   scheduledJobId?: string
   decision: ComplianceDecision
+  messageType?: 'text' | 'template'
+  templateName?: string
+  templateLanguage?: string
 }) {
   const supabase = getSupabaseAdmin()
   if (!supabase)
@@ -150,7 +164,9 @@ export async function claimOutboundDelivery(input: {
       request_fingerprint: requestFingerprint,
       source: input.source,
       scheduled_job_id: input.scheduledJobId ?? null,
-      instagram_account_id: input.instagramAccountId,
+      platform: input.platform ?? 'instagram',
+      instagram_account_id: input.instagramAccountId ?? null,
+      whatsapp_account_id: input.whatsappAccountId ?? null,
       contact_id: input.contactId,
       recipient_id: input.recipientId,
       message_body: input.decision.body,
@@ -158,6 +174,9 @@ export async function claimOutboundDelivery(input: {
       decision_reason: input.decision.reason ?? null,
       requested_tag: input.decision.tag ?? null,
       seconds_left_24h: input.decision.secondsLeft24h,
+      message_type: input.messageType ?? 'text',
+      template_name: input.templateName ?? null,
+      template_language: input.templateLanguage ?? null,
       status,
       completed_at: status === 'blocked' ? new Date().toISOString() : null,
     })

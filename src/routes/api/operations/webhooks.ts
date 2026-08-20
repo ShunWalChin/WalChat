@@ -7,7 +7,7 @@ import {
   requireWorkspaceContext,
 } from '../../../server/api-auth.server'
 import { writeIntegrationAudit } from '../../../server/integration-credentials.server'
-import { replayInstagramWebhook } from '../../../server/queue.server'
+import { replayMetaWebhook } from '../../../server/queue.server'
 import { readJsonBody } from '../../../server/request-body.server'
 
 const querySchema = z.object({
@@ -32,7 +32,7 @@ export const Route = createFileRoute('/api/operations/webhooks')({
           let eventsQuery = context.admin
             .from('webhook_events')
             .select(
-              'id,meta_event_key,instagram_user_id,event_type,status,attempts,last_error,received_at,processing_started_at,processed_at,duration_ms,replayed_at',
+              'id,meta_event_key,provider,external_account_id,event_type,status,attempts,last_error,received_at,processing_started_at,processed_at,duration_ms,replayed_at',
             )
             .eq('workspace_id', context.workspaceId)
             .order('received_at', { ascending: false })
@@ -99,7 +99,7 @@ export const Route = createFileRoute('/api/operations/webhooks')({
               { error: 'Somente eventos com falha podem ser reenfileirados.' },
               { status: 409 },
             )
-          const replay = await replayInstagramWebhook({
+          const replay = await replayMetaWebhook({
             metaEventKey: event.meta_event_key,
             payload: event.payload,
             replayedBy: context.user.id,

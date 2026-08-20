@@ -45,7 +45,7 @@ export async function reconcileWebhookOutbox(
 
     if (action === 'enqueue') {
       await queue.add(
-        'process-instagram-event',
+        'process-meta-event',
         {
           payload: event.payload,
           metaEventKey: event.meta_event_key,
