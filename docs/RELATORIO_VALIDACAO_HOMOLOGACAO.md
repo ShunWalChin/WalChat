@@ -190,6 +190,7 @@ database de ensaio foi descartada antes da aplicação em homologação.
 | Auditoria npm | Zero vulnerabilidades conhecidas |
 | Challenge do webhook WhatsApp | `200`, challenge preservado |
 | POST com HMAC inválido | `401` |
+| POST com HMAC válido | `200`, aceito pela BullMQ e marcado `processed` pelo worker |
 | Smoke público | 19 rotas e health aprovados |
 | Smoke autenticado | Meta, IA, Inbox, Contatos, Dashboard, Gatilhos, Go-Live e observabilidade aprovados |
 | Serviços | App, worker de webhooks, scheduler e Redis saudáveis |
