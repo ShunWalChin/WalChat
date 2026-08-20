@@ -172,3 +172,32 @@ O ambiente continua em `DEMO_MODE=true`. Os itens abaixo exigem contas e credenc
 - SMTP de produção para confirmação e recuperação de senha.
 
 Publicação, disparos reais, insights reais e geração por IA não devem ser marcados como produção ativa antes dessas configurações externas e da matriz em `CONFIGURACAO_META_E_OPENAI.md`.
+
+## Integração multicanal Meta — 20/08/2026
+
+A release `20260820-meta-multichannel-v1`, commit `5fcd9cd`, foi implantada na
+stack isolada `wal-chat` com `DEMO_MODE=true`. O banco foi copiado para uma
+database temporária, as três migrations foram executadas nessa cópia e a
+database de ensaio foi descartada antes da aplicação em homologação.
+
+| Verificação | Resultado |
+| --- | --- |
+| Backup PostgreSQL pré-migração | Aprovado; dump em `/opt/wal-chat/backups/20260820-meta-multichannel-pre/` |
+| Migrations `20260820210000` a `20260820212000` | Aprovadas primeiro em database isolada e depois em homologação |
+| Tabelas/RPCs WhatsApp | Contas, templates, ingestão transacional e status monotônico presentes |
+| Testes unitários | 20 arquivos e 60 testes aprovados |
+| TypeScript, ESLint, Prettier e build SSR | Aprovados |
+| Auditoria npm | Zero vulnerabilidades conhecidas |
+| Challenge do webhook WhatsApp | `200`, challenge preservado |
+| POST com HMAC inválido | `401` |
+| Smoke público | 19 rotas e health aprovados |
+| Smoke autenticado | Meta, IA, Inbox, Contatos, Dashboard, Gatilhos, Go-Live e observabilidade aprovados |
+| Serviços | App, worker de webhooks, scheduler e Redis saudáveis |
+| Kill switches | Disparos externos, Comment-to-DM e IA autônoma desligados |
+| Layout público | Sem overflow horizontal em 1440×900 e 375×812; console sem erros |
+
+O código está operacional, mas a habilitação real continua bloqueada de forma
+intencional. Ainda faltam o `META_APP_ID`, o Configuration ID do Embedded
+Signup, um telefone/WABA conectado e Advanced Access aprovado pela Meta. A
+conta Instagram já cadastrada não foi usada para disparos durante esta
+validação. Nenhum token, PIN ou secret foi registrado no relatório.
