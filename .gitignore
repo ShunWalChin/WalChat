@@ -12,6 +12,7 @@ dist-ssr
 status.env
 
 # Saídas transitórias de ferramentas e backups locais
+.npm-cache/
 tmp/
 backups/
 *.sql.gz

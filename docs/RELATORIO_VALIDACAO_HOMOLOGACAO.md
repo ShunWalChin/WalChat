@@ -3,9 +3,11 @@
 Data: 21 de julho de 2026
 Ambiente: `https://wal-chat.64.181.178.125.nip.io`
 
+> **Status em 30/07/2026:** este documento preserva a evidência histórica de 21/07, mas não representa uma aprovação atual de go-live. Uma revalidação somente leitura encontrou o scheduler sem acesso ao Supabase a partir do container e confirmou que o ambiente segue em `DEMO_MODE=true`. A correção de rede, readiness e healthchecks foi preparada na branch `agent/production-hardening-sprint-0`, mas ainda não foi implantada.
+
 ## Resultado executivo
 
-A homologação está acessível por HTTPS, utiliza uma instância Supabase isolada e passou pelos testes automatizados, smoke test de backend e verificação interativa no navegador.
+Na data original, a homologação estava acessível por HTTPS, utilizava uma instância Supabase isolada e passou pelos testes automatizados, smoke test de backend e verificação interativa no navegador. Esses resultados são uma fotografia daquele momento, não uma garantia contínua.
 
 ## Infraestrutura
 
@@ -106,14 +108,67 @@ As 16 rotas abaixo responderam HTTP 200:
 
 Nenhum erro ou warning foi registrado no console durante a navegação final dos módulos.
 
+## Validação da refatoração Meta/OpenAI
+
+Em 21/07/2026, a camada de integrações foi ampliada e validada localmente e na homologação:
+
+| Verificação                         | Resultado                                                 |
+| ----------------------------------- | --------------------------------------------------------- |
+| TypeScript `npx tsc --noEmit`       | Aprovado, zero erros                                      |
+| ESLint `npm run lint`               | Aprovado, zero erros/warnings                             |
+| Vitest `npm test`                   | 5 arquivos e 18 testes aprovados                          |
+| Build cliente + SSR `npm run build` | Aprovado                                                  |
+| PostgreSQL `npm run db:lint`        | Aprovado, zero erros de schema                            |
+| Recriação local `npm run db:reset`  | Não executada nesta máquina: Docker Desktop estava parado |
+| Backup pré-migração                 | Aprovado; código, schema e dados preservados no servidor  |
+| Migration `20260721180000`          | Aplicada sem reset e aprovada na instância de homologação |
+| Redis/BullMQ                        | Aprovado com política `noeviction`                        |
+
+A suíte cobre HMAC, criptografia autenticada, OAuth e troca de token, assinatura de campos, janelas 24h/7d, Private Reply única, HUMAN_AGENT, cooldown, blocklist, opt-out e canais que podem ou não renovar a janela. O reset local não foi substituído por uma afirmação simulada. No servidor isolado, a migration foi aplicada sem reset depois dos backups e validada pelos smokes autenticados, pelo build e pelos logs dos serviços.
+
+O smoke autenticado complementar (`scripts/smoke-integrations.mjs`) valida status Meta sanitizado, configuração de IA, agentes, sugestão com opt-out, Inbox, gatilhos e rejeição de acesso anônimo. Ele não substitui o teste externo com credenciais reais.
+
+Resultado do smoke autenticado das integrações:
+
+```json
+{
+  "privateApiAuth": "ok",
+  "metaStatus": "ok",
+  "aiSettings": "ok",
+  "agentsCrud": "ok",
+  "knowledgeCrud": "ok",
+  "aiSuggestion": "demo",
+  "inbox": "ok",
+  "triggers": "ok"
+}
+```
+
+Os backups de homologação foram preservados em `/opt/wal-chat/backups`. Na validação de 21/07, a aplicação, o worker, o scheduler e o Redis estavam ativos e os logs finais não apresentavam erros. A interface também foi corrigida para só indicar uma conta Meta como conectada quando o token criptografado correspondente realmente existe.
+
+## Revalidação local de hardening — 30/07/2026
+
+| Verificação                                | Resultado                                                               |
+| ------------------------------------------ | ----------------------------------------------------------------------- |
+| Formato, TypeScript e ESLint 10            | Aprovado                                                                |
+| Vitest                                     | 9 arquivos e 27 testes aprovados                                        |
+| Build cliente + SSR                        | Aprovado                                                                |
+| Auditoria npm completa e de produção       | Aprovado; zero vulnerabilidades conhecidas                              |
+| Imagem Docker Linux                        | Construída e executada no WSL                                           |
+| `/api/health`                              | Liveness `200`                                                          |
+| `/api/ready` sem dependências em modo demo | `200`, com dependências explicitamente `not_configured`                 |
+| Cabeçalhos HTTP de segurança               | CSP, Permissions-Policy, Referrer-Policy, nosniff e anti-framing ativos |
+| Deploy da correção                         | Não executado; exige aprovação específica                               |
+
+Ainda precisam de validação no ambiente integrado: readiness com Supabase e Redis reais, heartbeats dos dois workers, smoke autenticado, migrações, backup/restore e todos os fluxos externos com Meta/OpenAI.
+
 ## Dependências externas pendentes
 
 O ambiente continua em `DEMO_MODE=true`. Os itens abaixo exigem contas e credenciais que não foram fornecidas:
 
 - App Meta com permissões aprovadas e Advanced Access.
 - Tokens reais do Instagram Graph API.
-- OAuth por workspace para operação multi-tenant real.
-- Chave Gemini e política de orçamento.
+- Teste do OAuth já implementado com App ID/secret e conta Professional reais.
+- Chave OpenAI ou Gemini e política de orçamento.
 - SMTP de produção para confirmação e recuperação de senha.
 
-Publicação, disparos reais, insights reais e geração Gemini não devem ser marcados como produção ativa antes dessas configurações.
+Publicação, disparos reais, insights reais e geração por IA não devem ser marcados como produção ativa antes dessas configurações externas e da matriz em `CONFIGURACAO_META_E_OPENAI.md`.

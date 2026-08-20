@@ -2,12 +2,15 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { suggestInstagramReply } from '../../../server/ai.server'
+import {
+  apiErrorResponse,
+  assertTrustedOrigin,
+  requireWorkspaceContext,
+} from '../../../server/api-auth.server'
 
 // Limites explícitos reduzem custo, latência e exposição acidental de dados ao modelo.
 const bodySchema = z.object({
-  agentName: z.string().max(80).optional(),
-  persona: z.string().max(4_000).optional(),
-  knowledge: z.string().max(30_000).optional(),
+  agentId: z.string().uuid(),
   history: z
     .array(
       z.object({
@@ -23,23 +26,27 @@ export const Route = createFileRoute('/api/ai/suggest')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const parsed = bodySchema.safeParse(
-          await request.json().catch(() => null),
-        )
-        if (!parsed.success)
-          return Response.json({ error: 'Entrada inválida.' }, { status: 400 })
         try {
-          const suggestion = await suggestInstagramReply(parsed.data)
+          assertTrustedOrigin(request)
+          const context = await requireWorkspaceContext(request)
+          const parsed = bodySchema.parse(await request.json())
+          const result = await suggestInstagramReply({
+            workspaceId: context.workspaceId,
+            agentId: parsed.agentId,
+            history: parsed.history,
+            safetyIdentifier: `${context.workspaceId}:${context.user.id}`,
+          })
           return Response.json(
-            { suggestion },
+            {
+              suggestion: result.suggestion,
+              provider: result.provider,
+              model: result.model,
+              sources: result.sources,
+            },
             { headers: { 'Cache-Control': 'no-store' } },
           )
         } catch (error) {
-          console.error('ai_suggestion_failed', error)
-          return Response.json(
-            { error: 'Não foi possível gerar a sugestão.' },
-            { status: 502 },
-          )
+          return apiErrorResponse(error, 'Não foi possível gerar a sugestão.')
         }
       },
     },

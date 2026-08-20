@@ -12,24 +12,51 @@ Todos os exemplos usam `https://wal-chat.64.181.178.125.nip.io`. Em desenvolvime
 
 ## `GET /api/health`
 
-Indica se o processo está ativo e quais integrações possuem configuração mínima.
+Liveness: indica somente se o processo HTTP está ativo. Não prova acesso a banco, fila ou serviços externos.
 
 ```json
 {
   "ok": true,
   "service": "wal-chat",
+  "status": "alive",
   "timestamp": "2026-07-21T15:57:11.664Z",
-  "integrations": {
+  "configuredIntegrations": {
     "supabase": true,
     "redis": true,
     "meta": true,
     "gemini": false
   },
-  "mode": "demo"
+  "mode": "demo",
+  "readinessUrl": "/api/ready"
 }
 ```
 
-O campo de integração significa “configuração presente”, não aprovação externa concluída.
+`configuredIntegrations` significa somente “variáveis presentes”; não representa conexão nem aprovação externa concluída.
+
+## `GET /api/ready`
+
+Readiness: executa sondagens curtas em Supabase e Redis. Retorna `200` quando o processo está apto a receber tráfego e `503` quando uma dependência configurada não responde ou uma dependência obrigatória está ausente em modo live.
+
+```json
+{
+  "ok": true,
+  "service": "wal-chat",
+  "status": "ready",
+  "mode": "live",
+  "checks": {
+    "supabase": { "status": "up" },
+    "redis": { "status": "up" }
+  },
+  "capabilities": {
+    "meta": true,
+    "encryption": true,
+    "openai": true,
+    "gemini": false
+  }
+}
+```
+
+As razões de falha são sanitizadas e nunca incluem URL, credencial, token ou stack trace. O Compose de produção usa este endpoint no healthcheck da aplicação.
 
 ## `GET /api/public/webhooks/instagram`
 
@@ -83,39 +110,85 @@ Códigos:
 - `401`: assinatura inválida;
 - `503`: segredo ausente ou fila temporariamente indisponível.
 
-Em `503`, o endpoint envia `Retry-After: 10` para favorecer uma nova tentativa.
+Em `503`, o endpoint envia `Retry-After: 10` para favorecer uma nova tentativa. Em live, Redis ausente falha fechado com `503`. Um reconciliador independente procura eventos persistidos que ficaram em `queued`, compara o estado do `jobId` no BullMQ e reenfileira somente quando o job canônico não existe.
 
 ## `POST /api/ai/suggest`
 
-Gera uma sugestão curta em PT-BR. O serviço usa no máximo cinco mensagens e sempre pós-processa a resposta com `Responda PARAR`.
+Gera uma sugestão curta em PT-BR usando o agente e a base persistidos no workspace. Exige JWT Supabase; persona e conhecimento enviados pelo navegador são ignorados por design.
 
 Request:
 
 ```json
 {
-  "agentName": "Wal Vendas",
-  "persona": "Direto, parceiro e sem pressão.",
-  "knowledge": "O guia é gratuito e está disponível no site.",
+  "agentId": "00000000-0000-0000-0000-000000000000",
   "history": [{ "role": "user", "content": "Quero o guia" }]
 }
 ```
 
 Limites:
 
-- `agentName`: 80 caracteres;
-- `persona`: 4.000 caracteres;
-- `knowledge`: 30.000 caracteres;
+- `agentId`: UUID de um agente ativo do workspace;
 - `history`: uma a cinco mensagens, até 4.000 caracteres cada.
 
 Resposta:
 
 ```json
 {
-  "suggestion": "Fechou! Separei tudo por aqui 👊\n\nResponda PARAR"
+  "suggestion": "Fechou! Separei tudo por aqui 👊\n\nResponda PARAR",
+  "provider": "openai",
+  "model": "gpt-5.6-sol"
 }
 ```
 
-Códigos: `200`, `400` ou `502`.
+Códigos: `200`, `400`, `401`, `403`, `500` ou `502`.
+
+## Integração Meta
+
+| Método   | Endpoint                            | Uso                                                                  |
+| -------- | ----------------------------------- | -------------------------------------------------------------------- |
+| `POST`   | `/api/integrations/meta/start`      | Cria state de uso único, cookie HttpOnly e URL OAuth                 |
+| `GET`    | `/api/integrations/meta/callback`   | Confere cookie/state, troca token, assina webhook e cifra credencial |
+| `GET`    | `/api/integrations/meta/status`     | Retorna configuração, URLs e contas sem expor secrets                |
+| `POST`   | `/api/integrations/meta/validate`   | Relê perfil e `subscribed_apps`                                      |
+| `DELETE` | `/api/integrations/meta/disconnect` | Desassina webhooks e remove token cifrado                            |
+
+Mutações exigem `owner/admin`, bearer token e Origin confiável. O callback é público por protocolo, mas exige state simultaneamente no cookie e no Postgres.
+
+## Configurações e agentes de IA
+
+| Método                  | Endpoint            | Uso                                                 |
+| ----------------------- | ------------------- | --------------------------------------------------- |
+| `GET/PUT`               | `/api/ai/settings`  | Provedor, modelo, limites e API key cifrada         |
+| `GET/POST/PATCH/DELETE` | `/api/ai/agents`    | CRUD de personas e modos                            |
+| `GET/POST/PATCH/DELETE` | `/api/ai/knowledge` | CRUD da base textual, sempre filtrada por workspace |
+
+Leitura exige associação ao workspace. Escrita exige `owner/admin`. A chave nunca é devolvida; o status informa apenas `configured` e a origem `tenant`, `server` ou `none`.
+
+## `POST /api/messages/send`
+
+Envio manual autenticado por `owner/admin/agent`. Recebe `contactId`, `message` e `humanAgent`. O backend relê contato e blocklist, aplica compliance, usa o token da conta do mesmo workspace e persiste tanto sucessos quanto bloqueios.
+
+Header obrigatório:
+
+```text
+Idempotency-Key: manual:<uuid>
+```
+
+A chave deve ter de 16 a 128 caracteres e usar somente letras, números, `.`, `_`, `:` ou `-`. O cliente conserva a mesma chave quando uma tentativa falha de forma ambígua. O backend cria o claim em `outbound_deliveries` antes da chamada externa:
+
+- uma entrega `sent` ou `blocked` é reproduzida sem chamar a Meta novamente;
+- a mesma chave com payload diferente retorna `409 idempotency_conflict`;
+- estados `claimed` e `unknown` retornam `409`, bloqueando retry automático;
+- chave ausente ou inválida retorna `400`.
+
+A resposta de sucesso inclui `replayed`, que informa se o resultado foi lido do claim persistido.
+
+## Inbox e gatilhos
+
+- `GET /api/inbox`: lista até 100 conversas da categoria, contato sanitizado, janela calculada, até 200 mensagens e agentes ativos.
+- `PATCH /api/inbox`: marca leitura e altera categoria/IA do contato; exige `owner/admin/agent`.
+- `GET /api/triggers`: lista gatilhos e quantidade de contatos em cooldown.
+- `POST/PATCH/DELETE /api/triggers`: cria, altera ou exclui gatilhos simples; exige `owner/admin`.
 
 ## `POST /api/compliance/check`
 
@@ -151,6 +224,7 @@ Motivos de bloqueio possíveis:
 - `human_agent_is_not_automation`;
 - `trigger_cooldown`;
 - `comment_already_replied`;
+- `outside_private_reply_window`;
 - `blocked_content`.
 
 ## `POST /api/data-deletion`
@@ -176,6 +250,40 @@ O MVP gera o protocolo validado. A exclusão assíncrona das tabelas e arquivos 
 
 Essas camadas protegem contra retries normais da Meta e concorrência entre workers.
 
+## Idempotência dos envios
+
+1. O chamador fornece uma chave estável por ação.
+2. O backend calcula um fingerprint de workspace, conta, destinatário e decisão final de compliance.
+3. `outbound_deliveries` possui unicidade em `(workspace_id, idempotency_key)`.
+4. O claim é gravado antes da chamada à Graph API.
+5. Sucesso e bloqueio podem ser reproduzidos; entrega ambígua nunca é reenviada automaticamente.
+6. Scheduler usa `scheduled-job:<job-id>`; Inbox usa `manual:<uuid>`.
+
+Private Reply mantém sua trava independente por ID de comentário, porque a Meta permite apenas uma resposta privada automática por comentário.
+
 ## Autenticação dos endpoints
 
-O webhook e a exclusão são públicos por definição do protocolo, mas autenticados por assinatura. Os endpoints de IA e compliance pertencem à superfície autenticada da aplicação; antes do Live Mode, mantenha-os atrás da sessão/JWT e limite requisições no proxy ou na aplicação.
+O webhook e a exclusão são públicos por definição do protocolo, mas autenticados por assinatura. Integrações, configurações/agentes de IA e envio manual exigem JWT Supabase e membership explícito. O preview de compliance é uma função pública sem persistência nem efeitos externos. O Nginx versionado aplica limites separados ao tráfego geral, webhook, OAuth e endpoints de envio/IA; a sintaxe e o comportamento `429` ainda devem ser validados na infraestrutura de destino.
+
+## Endpoints operacionais V1
+
+### `GET/PATCH /api/operations/go-live`
+
+`GET` devolve checks sanitizados, resumo e estado dos três switches do workspace. `PATCH` exige `owner/admin`; para ligar `externalSendsEnabled`, exige a confirmação literal `ATIVAR PRODUCAO` e todos os checks críticos verdes. Desligar a chave principal também desliga Comment-to-DM e IA autônoma.
+
+### `GET/POST /api/operations/webhooks`
+
+`GET` lista até 100 eventos do workspace e contadores por estado, sem expor o payload bruto. `POST` reenfileira somente evento `failed`, exige `owner/admin` e registra auditoria.
+
+### `GET/POST /api/integrations/meta/media`
+
+`GET` retorna o cache das últimas publicações. `POST` exige `owner/admin`, usa o token cifrado da conta informada e atualiza `posts_cache` com os dados da Graph API.
+
+### Extensões de Inbox, gatilhos e IA
+
+- `/api/inbox`: atribuição, prioridade, status e notas internas; notas nunca são mensagens externas.
+- `/api/triggers`: aceita `postId` e devolve métricas de `automation_runs`.
+- `/api/ai/knowledge`: registra tipo, URL de origem, checksum, status e último uso.
+- `/api/ai/suggest`: devolve a sugestão e as fontes recuperadas da base do tenant.
+
+Veja os fluxos, gates e matriz de aceite em [Atualização operacional V1](ATUALIZACAO_OPERACIONAL_V1.md).

@@ -17,19 +17,36 @@ import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AppAgentesRouteImport } from './routes/_app/agentes'
 import { Route as AppAutoLikeRouteImport } from './routes/_app/auto-like'
 import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
+import { Route as AppCommentToDmRouteImport } from './routes/_app/comment-to-dm'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app/configuracoes'
 import { Route as AppContatosRouteImport } from './routes/_app/contatos'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppGatilhosRouteImport } from './routes/_app/gatilhos'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
 import { Route as AppInsightsRouteImport } from './routes/_app/insights'
+import { Route as AppOperacoesRouteImport } from './routes/_app/operacoes'
 import { Route as AppPublicarRouteImport } from './routes/_app/publicar'
 import { Route as AppReengajamentoRouteImport } from './routes/_app/reengajamento'
 import { Route as AppSequenciasRouteImport } from './routes/_app/sequencias'
 import { Route as ApiDataDeletionRouteImport } from './routes/api/data-deletion'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiInboxRouteImport } from './routes/api/inbox'
+import { Route as ApiReadyRouteImport } from './routes/api/ready'
+import { Route as ApiTriggersRouteImport } from './routes/api/triggers'
+import { Route as ApiAiAgentsRouteImport } from './routes/api/ai/agents'
+import { Route as ApiAiKnowledgeRouteImport } from './routes/api/ai/knowledge'
+import { Route as ApiAiSettingsRouteImport } from './routes/api/ai/settings'
 import { Route as ApiAiSuggestRouteImport } from './routes/api/ai/suggest'
 import { Route as ApiComplianceCheckRouteImport } from './routes/api/compliance/check'
+import { Route as ApiMessagesSendRouteImport } from './routes/api/messages/send'
+import { Route as ApiOperationsGoLiveRouteImport } from './routes/api/operations/go-live'
+import { Route as ApiOperationsWebhooksRouteImport } from './routes/api/operations/webhooks'
+import { Route as ApiIntegrationsMetaCallbackRouteImport } from './routes/api/integrations/meta/callback'
+import { Route as ApiIntegrationsMetaDisconnectRouteImport } from './routes/api/integrations/meta/disconnect'
+import { Route as ApiIntegrationsMetaMediaRouteImport } from './routes/api/integrations/meta/media'
+import { Route as ApiIntegrationsMetaStartRouteImport } from './routes/api/integrations/meta/start'
+import { Route as ApiIntegrationsMetaStatusRouteImport } from './routes/api/integrations/meta/status'
+import { Route as ApiIntegrationsMetaValidateRouteImport } from './routes/api/integrations/meta/validate'
 import { Route as ApiPublicWebhooksInstagramRouteImport } from './routes/api/public/webhooks/instagram'
 
 const IndexRoute = IndexRouteImport.update({
@@ -71,6 +88,11 @@ const AppCalendarioRoute = AppCalendarioRouteImport.update({
   path: '/calendario',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCommentToDmRoute = AppCommentToDmRouteImport.update({
+  id: '/comment-to-dm',
+  path: '/comment-to-dm',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
@@ -101,6 +123,11 @@ const AppInsightsRoute = AppInsightsRouteImport.update({
   path: '/insights',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperacoesRoute = AppOperacoesRouteImport.update({
+  id: '/operacoes',
+  path: '/operacoes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPublicarRoute = AppPublicarRouteImport.update({
   id: '/publicar',
   path: '/publicar',
@@ -126,6 +153,36 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInboxRoute = ApiInboxRouteImport.update({
+  id: '/api/inbox',
+  path: '/api/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReadyRoute = ApiReadyRouteImport.update({
+  id: '/api/ready',
+  path: '/api/ready',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTriggersRoute = ApiTriggersRouteImport.update({
+  id: '/api/triggers',
+  path: '/api/triggers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiAgentsRoute = ApiAiAgentsRouteImport.update({
+  id: '/api/ai/agents',
+  path: '/api/ai/agents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiKnowledgeRoute = ApiAiKnowledgeRouteImport.update({
+  id: '/api/ai/knowledge',
+  path: '/api/ai/knowledge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiSettingsRoute = ApiAiSettingsRouteImport.update({
+  id: '/api/ai/settings',
+  path: '/api/ai/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAiSuggestRoute = ApiAiSuggestRouteImport.update({
   id: '/api/ai/suggest',
   path: '/api/ai/suggest',
@@ -136,6 +193,57 @@ const ApiComplianceCheckRoute = ApiComplianceCheckRouteImport.update({
   path: '/api/compliance/check',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMessagesSendRoute = ApiMessagesSendRouteImport.update({
+  id: '/api/messages/send',
+  path: '/api/messages/send',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOperationsGoLiveRoute = ApiOperationsGoLiveRouteImport.update({
+  id: '/api/operations/go-live',
+  path: '/api/operations/go-live',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOperationsWebhooksRoute = ApiOperationsWebhooksRouteImport.update({
+  id: '/api/operations/webhooks',
+  path: '/api/operations/webhooks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIntegrationsMetaCallbackRoute =
+  ApiIntegrationsMetaCallbackRouteImport.update({
+    id: '/api/integrations/meta/callback',
+    path: '/api/integrations/meta/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsMetaDisconnectRoute =
+  ApiIntegrationsMetaDisconnectRouteImport.update({
+    id: '/api/integrations/meta/disconnect',
+    path: '/api/integrations/meta/disconnect',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsMetaMediaRoute =
+  ApiIntegrationsMetaMediaRouteImport.update({
+    id: '/api/integrations/meta/media',
+    path: '/api/integrations/meta/media',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsMetaStartRoute =
+  ApiIntegrationsMetaStartRouteImport.update({
+    id: '/api/integrations/meta/start',
+    path: '/api/integrations/meta/start',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsMetaStatusRoute =
+  ApiIntegrationsMetaStatusRouteImport.update({
+    id: '/api/integrations/meta/status',
+    path: '/api/integrations/meta/status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsMetaValidateRoute =
+  ApiIntegrationsMetaValidateRouteImport.update({
+    id: '/api/integrations/meta/validate',
+    path: '/api/integrations/meta/validate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksInstagramRoute =
   ApiPublicWebhooksInstagramRouteImport.update({
     id: '/api/public/webhooks/instagram',
@@ -151,19 +259,36 @@ export interface FileRoutesByFullPath {
   '/agentes': typeof AppAgentesRoute
   '/auto-like': typeof AppAutoLikeRoute
   '/calendario': typeof AppCalendarioRoute
+  '/comment-to-dm': typeof AppCommentToDmRoute
   '/configuracoes': typeof AppConfiguracoesRoute
   '/contatos': typeof AppContatosRoute
   '/dashboard': typeof AppDashboardRoute
   '/gatilhos': typeof AppGatilhosRoute
   '/inbox': typeof AppInboxRoute
   '/insights': typeof AppInsightsRoute
+  '/operacoes': typeof AppOperacoesRoute
   '/publicar': typeof AppPublicarRoute
   '/reengajamento': typeof AppReengajamentoRoute
   '/sequencias': typeof AppSequenciasRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/inbox': typeof ApiInboxRoute
+  '/api/ready': typeof ApiReadyRoute
+  '/api/triggers': typeof ApiTriggersRoute
+  '/api/ai/agents': typeof ApiAiAgentsRoute
+  '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
+  '/api/ai/settings': typeof ApiAiSettingsRoute
   '/api/ai/suggest': typeof ApiAiSuggestRoute
   '/api/compliance/check': typeof ApiComplianceCheckRoute
+  '/api/messages/send': typeof ApiMessagesSendRoute
+  '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
+  '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
+  '/api/integrations/meta/callback': typeof ApiIntegrationsMetaCallbackRoute
+  '/api/integrations/meta/disconnect': typeof ApiIntegrationsMetaDisconnectRoute
+  '/api/integrations/meta/media': typeof ApiIntegrationsMetaMediaRoute
+  '/api/integrations/meta/start': typeof ApiIntegrationsMetaStartRoute
+  '/api/integrations/meta/status': typeof ApiIntegrationsMetaStatusRoute
+  '/api/integrations/meta/validate': typeof ApiIntegrationsMetaValidateRoute
   '/api/public/webhooks/instagram': typeof ApiPublicWebhooksInstagramRoute
 }
 export interface FileRoutesByTo {
@@ -174,19 +299,36 @@ export interface FileRoutesByTo {
   '/agentes': typeof AppAgentesRoute
   '/auto-like': typeof AppAutoLikeRoute
   '/calendario': typeof AppCalendarioRoute
+  '/comment-to-dm': typeof AppCommentToDmRoute
   '/configuracoes': typeof AppConfiguracoesRoute
   '/contatos': typeof AppContatosRoute
   '/dashboard': typeof AppDashboardRoute
   '/gatilhos': typeof AppGatilhosRoute
   '/inbox': typeof AppInboxRoute
   '/insights': typeof AppInsightsRoute
+  '/operacoes': typeof AppOperacoesRoute
   '/publicar': typeof AppPublicarRoute
   '/reengajamento': typeof AppReengajamentoRoute
   '/sequencias': typeof AppSequenciasRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/inbox': typeof ApiInboxRoute
+  '/api/ready': typeof ApiReadyRoute
+  '/api/triggers': typeof ApiTriggersRoute
+  '/api/ai/agents': typeof ApiAiAgentsRoute
+  '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
+  '/api/ai/settings': typeof ApiAiSettingsRoute
   '/api/ai/suggest': typeof ApiAiSuggestRoute
   '/api/compliance/check': typeof ApiComplianceCheckRoute
+  '/api/messages/send': typeof ApiMessagesSendRoute
+  '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
+  '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
+  '/api/integrations/meta/callback': typeof ApiIntegrationsMetaCallbackRoute
+  '/api/integrations/meta/disconnect': typeof ApiIntegrationsMetaDisconnectRoute
+  '/api/integrations/meta/media': typeof ApiIntegrationsMetaMediaRoute
+  '/api/integrations/meta/start': typeof ApiIntegrationsMetaStartRoute
+  '/api/integrations/meta/status': typeof ApiIntegrationsMetaStatusRoute
+  '/api/integrations/meta/validate': typeof ApiIntegrationsMetaValidateRoute
   '/api/public/webhooks/instagram': typeof ApiPublicWebhooksInstagramRoute
 }
 export interface FileRoutesById {
@@ -199,19 +341,36 @@ export interface FileRoutesById {
   '/_app/agentes': typeof AppAgentesRoute
   '/_app/auto-like': typeof AppAutoLikeRoute
   '/_app/calendario': typeof AppCalendarioRoute
+  '/_app/comment-to-dm': typeof AppCommentToDmRoute
   '/_app/configuracoes': typeof AppConfiguracoesRoute
   '/_app/contatos': typeof AppContatosRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/gatilhos': typeof AppGatilhosRoute
   '/_app/inbox': typeof AppInboxRoute
   '/_app/insights': typeof AppInsightsRoute
+  '/_app/operacoes': typeof AppOperacoesRoute
   '/_app/publicar': typeof AppPublicarRoute
   '/_app/reengajamento': typeof AppReengajamentoRoute
   '/_app/sequencias': typeof AppSequenciasRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/inbox': typeof ApiInboxRoute
+  '/api/ready': typeof ApiReadyRoute
+  '/api/triggers': typeof ApiTriggersRoute
+  '/api/ai/agents': typeof ApiAiAgentsRoute
+  '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
+  '/api/ai/settings': typeof ApiAiSettingsRoute
   '/api/ai/suggest': typeof ApiAiSuggestRoute
   '/api/compliance/check': typeof ApiComplianceCheckRoute
+  '/api/messages/send': typeof ApiMessagesSendRoute
+  '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
+  '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
+  '/api/integrations/meta/callback': typeof ApiIntegrationsMetaCallbackRoute
+  '/api/integrations/meta/disconnect': typeof ApiIntegrationsMetaDisconnectRoute
+  '/api/integrations/meta/media': typeof ApiIntegrationsMetaMediaRoute
+  '/api/integrations/meta/start': typeof ApiIntegrationsMetaStartRoute
+  '/api/integrations/meta/status': typeof ApiIntegrationsMetaStatusRoute
+  '/api/integrations/meta/validate': typeof ApiIntegrationsMetaValidateRoute
   '/api/public/webhooks/instagram': typeof ApiPublicWebhooksInstagramRoute
 }
 export interface FileRouteTypes {
@@ -224,19 +383,36 @@ export interface FileRouteTypes {
     | '/agentes'
     | '/auto-like'
     | '/calendario'
+    | '/comment-to-dm'
     | '/configuracoes'
     | '/contatos'
     | '/dashboard'
     | '/gatilhos'
     | '/inbox'
     | '/insights'
+    | '/operacoes'
     | '/publicar'
     | '/reengajamento'
     | '/sequencias'
     | '/api/data-deletion'
     | '/api/health'
+    | '/api/inbox'
+    | '/api/ready'
+    | '/api/triggers'
+    | '/api/ai/agents'
+    | '/api/ai/knowledge'
+    | '/api/ai/settings'
     | '/api/ai/suggest'
     | '/api/compliance/check'
+    | '/api/messages/send'
+    | '/api/operations/go-live'
+    | '/api/operations/webhooks'
+    | '/api/integrations/meta/callback'
+    | '/api/integrations/meta/disconnect'
+    | '/api/integrations/meta/media'
+    | '/api/integrations/meta/start'
+    | '/api/integrations/meta/status'
+    | '/api/integrations/meta/validate'
     | '/api/public/webhooks/instagram'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -247,19 +423,36 @@ export interface FileRouteTypes {
     | '/agentes'
     | '/auto-like'
     | '/calendario'
+    | '/comment-to-dm'
     | '/configuracoes'
     | '/contatos'
     | '/dashboard'
     | '/gatilhos'
     | '/inbox'
     | '/insights'
+    | '/operacoes'
     | '/publicar'
     | '/reengajamento'
     | '/sequencias'
     | '/api/data-deletion'
     | '/api/health'
+    | '/api/inbox'
+    | '/api/ready'
+    | '/api/triggers'
+    | '/api/ai/agents'
+    | '/api/ai/knowledge'
+    | '/api/ai/settings'
     | '/api/ai/suggest'
     | '/api/compliance/check'
+    | '/api/messages/send'
+    | '/api/operations/go-live'
+    | '/api/operations/webhooks'
+    | '/api/integrations/meta/callback'
+    | '/api/integrations/meta/disconnect'
+    | '/api/integrations/meta/media'
+    | '/api/integrations/meta/start'
+    | '/api/integrations/meta/status'
+    | '/api/integrations/meta/validate'
     | '/api/public/webhooks/instagram'
   id:
     | '__root__'
@@ -271,19 +464,36 @@ export interface FileRouteTypes {
     | '/_app/agentes'
     | '/_app/auto-like'
     | '/_app/calendario'
+    | '/_app/comment-to-dm'
     | '/_app/configuracoes'
     | '/_app/contatos'
     | '/_app/dashboard'
     | '/_app/gatilhos'
     | '/_app/inbox'
     | '/_app/insights'
+    | '/_app/operacoes'
     | '/_app/publicar'
     | '/_app/reengajamento'
     | '/_app/sequencias'
     | '/api/data-deletion'
     | '/api/health'
+    | '/api/inbox'
+    | '/api/ready'
+    | '/api/triggers'
+    | '/api/ai/agents'
+    | '/api/ai/knowledge'
+    | '/api/ai/settings'
     | '/api/ai/suggest'
     | '/api/compliance/check'
+    | '/api/messages/send'
+    | '/api/operations/go-live'
+    | '/api/operations/webhooks'
+    | '/api/integrations/meta/callback'
+    | '/api/integrations/meta/disconnect'
+    | '/api/integrations/meta/media'
+    | '/api/integrations/meta/start'
+    | '/api/integrations/meta/status'
+    | '/api/integrations/meta/validate'
     | '/api/public/webhooks/instagram'
   fileRoutesById: FileRoutesById
 }
@@ -295,8 +505,23 @@ export interface RootRouteChildren {
   TermosRoute: typeof TermosRoute
   ApiDataDeletionRoute: typeof ApiDataDeletionRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiInboxRoute: typeof ApiInboxRoute
+  ApiReadyRoute: typeof ApiReadyRoute
+  ApiTriggersRoute: typeof ApiTriggersRoute
+  ApiAiAgentsRoute: typeof ApiAiAgentsRoute
+  ApiAiKnowledgeRoute: typeof ApiAiKnowledgeRoute
+  ApiAiSettingsRoute: typeof ApiAiSettingsRoute
   ApiAiSuggestRoute: typeof ApiAiSuggestRoute
   ApiComplianceCheckRoute: typeof ApiComplianceCheckRoute
+  ApiMessagesSendRoute: typeof ApiMessagesSendRoute
+  ApiOperationsGoLiveRoute: typeof ApiOperationsGoLiveRoute
+  ApiOperationsWebhooksRoute: typeof ApiOperationsWebhooksRoute
+  ApiIntegrationsMetaCallbackRoute: typeof ApiIntegrationsMetaCallbackRoute
+  ApiIntegrationsMetaDisconnectRoute: typeof ApiIntegrationsMetaDisconnectRoute
+  ApiIntegrationsMetaMediaRoute: typeof ApiIntegrationsMetaMediaRoute
+  ApiIntegrationsMetaStartRoute: typeof ApiIntegrationsMetaStartRoute
+  ApiIntegrationsMetaStatusRoute: typeof ApiIntegrationsMetaStatusRoute
+  ApiIntegrationsMetaValidateRoute: typeof ApiIntegrationsMetaValidateRoute
   ApiPublicWebhooksInstagramRoute: typeof ApiPublicWebhooksInstagramRoute
 }
 
@@ -358,6 +583,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCalendarioRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/comment-to-dm': {
+      id: '/_app/comment-to-dm'
+      path: '/comment-to-dm'
+      fullPath: '/comment-to-dm'
+      preLoaderRoute: typeof AppCommentToDmRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/configuracoes': {
       id: '/_app/configuracoes'
       path: '/configuracoes'
@@ -400,6 +632,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInsightsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operacoes': {
+      id: '/_app/operacoes'
+      path: '/operacoes'
+      fullPath: '/operacoes'
+      preLoaderRoute: typeof AppOperacoesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/publicar': {
       id: '/_app/publicar'
       path: '/publicar'
@@ -435,6 +674,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/inbox': {
+      id: '/api/inbox'
+      path: '/api/inbox'
+      fullPath: '/api/inbox'
+      preLoaderRoute: typeof ApiInboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ready': {
+      id: '/api/ready'
+      path: '/api/ready'
+      fullPath: '/api/ready'
+      preLoaderRoute: typeof ApiReadyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/triggers': {
+      id: '/api/triggers'
+      path: '/api/triggers'
+      fullPath: '/api/triggers'
+      preLoaderRoute: typeof ApiTriggersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai/agents': {
+      id: '/api/ai/agents'
+      path: '/api/ai/agents'
+      fullPath: '/api/ai/agents'
+      preLoaderRoute: typeof ApiAiAgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai/knowledge': {
+      id: '/api/ai/knowledge'
+      path: '/api/ai/knowledge'
+      fullPath: '/api/ai/knowledge'
+      preLoaderRoute: typeof ApiAiKnowledgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai/settings': {
+      id: '/api/ai/settings'
+      path: '/api/ai/settings'
+      fullPath: '/api/ai/settings'
+      preLoaderRoute: typeof ApiAiSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/ai/suggest': {
       id: '/api/ai/suggest'
       path: '/api/ai/suggest'
@@ -447,6 +728,69 @@ declare module '@tanstack/react-router' {
       path: '/api/compliance/check'
       fullPath: '/api/compliance/check'
       preLoaderRoute: typeof ApiComplianceCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/messages/send': {
+      id: '/api/messages/send'
+      path: '/api/messages/send'
+      fullPath: '/api/messages/send'
+      preLoaderRoute: typeof ApiMessagesSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/operations/go-live': {
+      id: '/api/operations/go-live'
+      path: '/api/operations/go-live'
+      fullPath: '/api/operations/go-live'
+      preLoaderRoute: typeof ApiOperationsGoLiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/operations/webhooks': {
+      id: '/api/operations/webhooks'
+      path: '/api/operations/webhooks'
+      fullPath: '/api/operations/webhooks'
+      preLoaderRoute: typeof ApiOperationsWebhooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/meta/callback': {
+      id: '/api/integrations/meta/callback'
+      path: '/api/integrations/meta/callback'
+      fullPath: '/api/integrations/meta/callback'
+      preLoaderRoute: typeof ApiIntegrationsMetaCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/meta/disconnect': {
+      id: '/api/integrations/meta/disconnect'
+      path: '/api/integrations/meta/disconnect'
+      fullPath: '/api/integrations/meta/disconnect'
+      preLoaderRoute: typeof ApiIntegrationsMetaDisconnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/meta/media': {
+      id: '/api/integrations/meta/media'
+      path: '/api/integrations/meta/media'
+      fullPath: '/api/integrations/meta/media'
+      preLoaderRoute: typeof ApiIntegrationsMetaMediaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/meta/start': {
+      id: '/api/integrations/meta/start'
+      path: '/api/integrations/meta/start'
+      fullPath: '/api/integrations/meta/start'
+      preLoaderRoute: typeof ApiIntegrationsMetaStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/meta/status': {
+      id: '/api/integrations/meta/status'
+      path: '/api/integrations/meta/status'
+      fullPath: '/api/integrations/meta/status'
+      preLoaderRoute: typeof ApiIntegrationsMetaStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/meta/validate': {
+      id: '/api/integrations/meta/validate'
+      path: '/api/integrations/meta/validate'
+      fullPath: '/api/integrations/meta/validate'
+      preLoaderRoute: typeof ApiIntegrationsMetaValidateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/webhooks/instagram': {
@@ -463,12 +807,14 @@ interface AppRouteChildren {
   AppAgentesRoute: typeof AppAgentesRoute
   AppAutoLikeRoute: typeof AppAutoLikeRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
+  AppCommentToDmRoute: typeof AppCommentToDmRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
   AppContatosRoute: typeof AppContatosRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppGatilhosRoute: typeof AppGatilhosRoute
   AppInboxRoute: typeof AppInboxRoute
   AppInsightsRoute: typeof AppInsightsRoute
+  AppOperacoesRoute: typeof AppOperacoesRoute
   AppPublicarRoute: typeof AppPublicarRoute
   AppReengajamentoRoute: typeof AppReengajamentoRoute
   AppSequenciasRoute: typeof AppSequenciasRoute
@@ -478,12 +824,14 @@ const AppRouteChildren: AppRouteChildren = {
   AppAgentesRoute: AppAgentesRoute,
   AppAutoLikeRoute: AppAutoLikeRoute,
   AppCalendarioRoute: AppCalendarioRoute,
+  AppCommentToDmRoute: AppCommentToDmRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
   AppContatosRoute: AppContatosRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppGatilhosRoute: AppGatilhosRoute,
   AppInboxRoute: AppInboxRoute,
   AppInsightsRoute: AppInsightsRoute,
+  AppOperacoesRoute: AppOperacoesRoute,
   AppPublicarRoute: AppPublicarRoute,
   AppReengajamentoRoute: AppReengajamentoRoute,
   AppSequenciasRoute: AppSequenciasRoute,
@@ -499,8 +847,23 @@ const rootRouteChildren: RootRouteChildren = {
   TermosRoute: TermosRoute,
   ApiDataDeletionRoute: ApiDataDeletionRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiInboxRoute: ApiInboxRoute,
+  ApiReadyRoute: ApiReadyRoute,
+  ApiTriggersRoute: ApiTriggersRoute,
+  ApiAiAgentsRoute: ApiAiAgentsRoute,
+  ApiAiKnowledgeRoute: ApiAiKnowledgeRoute,
+  ApiAiSettingsRoute: ApiAiSettingsRoute,
   ApiAiSuggestRoute: ApiAiSuggestRoute,
   ApiComplianceCheckRoute: ApiComplianceCheckRoute,
+  ApiMessagesSendRoute: ApiMessagesSendRoute,
+  ApiOperationsGoLiveRoute: ApiOperationsGoLiveRoute,
+  ApiOperationsWebhooksRoute: ApiOperationsWebhooksRoute,
+  ApiIntegrationsMetaCallbackRoute: ApiIntegrationsMetaCallbackRoute,
+  ApiIntegrationsMetaDisconnectRoute: ApiIntegrationsMetaDisconnectRoute,
+  ApiIntegrationsMetaMediaRoute: ApiIntegrationsMetaMediaRoute,
+  ApiIntegrationsMetaStartRoute: ApiIntegrationsMetaStartRoute,
+  ApiIntegrationsMetaStatusRoute: ApiIntegrationsMetaStatusRoute,
+  ApiIntegrationsMetaValidateRoute: ApiIntegrationsMetaValidateRoute,
   ApiPublicWebhooksInstagramRoute: ApiPublicWebhooksInstagramRoute,
 }
 export const routeTree = rootRouteImport

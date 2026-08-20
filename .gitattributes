@@ -1,0 +1,7 @@
+# Arquivos executados no Linux devem preservar LF mesmo quando o clone é usado no Windows.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.mjs text eol=lf
+*.sql text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

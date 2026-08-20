@@ -13,12 +13,14 @@ ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 
 COPY . .
 RUN npm run build
+RUN npm prune --omit=dev
 
 # O estágio final roda sem root e sem ferramentas de build.
 FROM node:22-bookworm-slim AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production
+ENV NODE_OPTIONS=--enable-source-maps
 ENV HOST=0.0.0.0
 ENV PORT=3000
 

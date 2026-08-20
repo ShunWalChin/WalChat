@@ -72,7 +72,12 @@ export const Route = createFileRoute('/api/public/webhooks/instagram')({
             { status: 200, headers: { 'Cache-Control': 'no-store' } },
           )
         } catch (error) {
-          console.error('instagram_webhook_enqueue_failed', error)
+          console.error(
+            JSON.stringify({
+              event: 'instagram_webhook_enqueue_failed',
+              error: error instanceof Error ? error.name : 'unknown_error',
+            }),
+          )
           return Response.json(
             { error: 'Falha temporária ao enfileirar.' },
             { status: 503, headers: { 'Retry-After': '10' } },

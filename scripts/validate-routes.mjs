@@ -1,4 +1,4 @@
-/** Smoke HTTP barato: confirma health e renderização SSR das 16 rotas do MVP. */
+/** Smoke HTTP barato: confirma health e renderização SSR das 18 rotas do MVP. */
 const appUrl = (process.env.SMOKE_APP_URL ?? 'http://127.0.0.1:3001').replace(
   /\/$/,
   '',
@@ -7,9 +7,11 @@ const appUrl = (process.env.SMOKE_APP_URL ?? 'http://127.0.0.1:3001').replace(
 const routes = [
   '/',
   '/dashboard',
+  '/operacoes',
   '/inbox',
   '/contatos',
   '/gatilhos',
+  '/comment-to-dm',
   '/sequencias',
   '/agentes',
   '/reengajamento',

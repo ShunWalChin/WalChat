@@ -44,44 +44,58 @@ Este documento funciona como índice de manutenção. Os comentários nos arquiv
 
 ## Módulos do produto
 
-| Arquivo                             | Responsabilidade                             |
-| ----------------------------------- | -------------------------------------------- |
-| `src/routes/_app/dashboard.tsx`     | KPIs, gráfico, atividade e atalhos           |
-| `src/routes/_app/inbox.tsx`         | Abas, conversa, janela Meta e sugestão de IA |
-| `src/routes/_app/contatos.tsx`      | Contatos, tags, busca e CSV                  |
-| `src/routes/_app/gatilhos.tsx`      | Regras por palavra/origem e estado           |
-| `src/routes/_app/sequencias.tsx`    | Editor de blocos e delays                    |
-| `src/routes/_app/agentes.tsx`       | Personas, modos e playground                 |
-| `src/routes/_app/reengajamento.tsx` | Segmentação, elegibilidade e preview         |
-| `src/routes/_app/calendario.tsx`    | Agenda mês/semana e drag-and-drop            |
-| `src/routes/_app/publicar.tsx`      | Tipos de post, copy e preview Instagram      |
-| `src/routes/_app/auto-like.tsx`     | Modos de curtida automática                  |
-| `src/routes/_app/insights.tsx`      | Crescimento, heatmap, posts e leitura IA     |
-| `src/routes/_app/configuracoes.tsx` | Conta Instagram, webhook e proteções         |
-| `src/lib/demo-data.ts`              | Fixtures visuais do MVP em modo demo         |
+| Arquivo                             | Responsabilidade                                 |
+| ----------------------------------- | ------------------------------------------------ |
+| `src/routes/_app/dashboard.tsx`     | KPIs, gráfico, atividade e atalhos               |
+| `src/routes/_app/inbox.tsx`         | Abas, conversa, janela Meta e sugestão de IA     |
+| `src/routes/_app/contatos.tsx`      | Contatos, tags, busca e CSV                      |
+| `src/routes/_app/gatilhos.tsx`      | Regras por palavra/origem e estado               |
+| `src/routes/_app/sequencias.tsx`    | Editor de blocos e delays                        |
+| `src/routes/_app/agentes.tsx`       | CRUD real de personas, conhecimento e playground |
+| `src/routes/_app/reengajamento.tsx` | Segmentação, elegibilidade e preview             |
+| `src/routes/_app/calendario.tsx`    | Agenda mês/semana e drag-and-drop                |
+| `src/routes/_app/publicar.tsx`      | Tipos de post, copy e preview Instagram          |
+| `src/routes/_app/auto-like.tsx`     | Modos de curtida automática                      |
+| `src/routes/_app/insights.tsx`      | Crescimento, heatmap, posts e leitura IA         |
+| `src/routes/_app/configuracoes.tsx` | OAuth Instagram, diagnóstico e provedor de IA    |
+| `src/lib/demo-data.ts`              | Fixtures visuais do MVP em modo demo             |
 
 ## API
 
-| Arquivo                                       | Responsabilidade                        |
-| --------------------------------------------- | --------------------------------------- |
-| `src/routes/api/health.ts`                    | Saúde e presença de configuração        |
-| `src/routes/api/public/webhooks/instagram.ts` | Challenge, HMAC, parse e fila           |
-| `src/routes/api/ai/suggest.ts`                | Validação do contexto e sugestão Gemini |
-| `src/routes/api/compliance/check.ts`          | Prévia do motor de elegibilidade        |
-| `src/routes/api/data-deletion.ts`             | Signed request de exclusão Meta         |
+| Arquivo                                       | Responsabilidade                            |
+| --------------------------------------------- | ------------------------------------------- |
+| `src/routes/api/health.ts`                    | Saúde e presença de configuração            |
+| `src/routes/api/ready.ts`                     | Readiness real de Supabase e Redis          |
+| `src/routes/api/public/webhooks/instagram.ts` | Challenge, HMAC, parse e fila               |
+| `src/routes/api/integrations/meta/*.ts`       | OAuth, status, validação e desconexão Meta  |
+| `src/routes/api/ai/settings.ts`               | Provedor/modelo e chave cifrada             |
+| `src/routes/api/ai/agents.ts`                 | CRUD autenticado de agentes                 |
+| `src/routes/api/ai/knowledge.ts`              | CRUD autenticado de conhecimento            |
+| `src/routes/api/ai/suggest.ts`                | Sugestão a partir do agente salvo           |
+| `src/routes/api/inbox.ts`                     | Conversas/mensagens reais e estado da Inbox |
+| `src/routes/api/triggers.ts`                  | CRUD dos gatilhos processados pelo worker   |
+| `src/routes/api/messages/send.ts`             | Envio humano com compliance                 |
+| `src/routes/api/compliance/check.ts`          | Prévia do motor de elegibilidade            |
+| `src/routes/api/data-deletion.ts`             | Signed request de exclusão Meta             |
 
 ## Domínio no backend
 
-| Arquivo                                  | Responsabilidade                                 |
-| ---------------------------------------- | ------------------------------------------------ |
-| `src/server/env.server.ts`               | Schema Zod de variáveis do servidor              |
-| `src/server/compliance.ts`               | Regra pura de envio Meta-safe                    |
-| `src/server/meta-sender.server.ts`       | DMs e Private Replies após decisão               |
-| `src/server/ai.server.ts`                | Gemini e resposta demo, com opt-out              |
-| `src/server/supabase-admin.server.ts`    | Cliente service role e validação de bearer token |
-| `src/server/webhook-signature.server.ts` | Assinatura e comparação HMAC constant-time       |
-| `src/server/queue.server.ts`             | Persistência idempotente e enqueue BullMQ        |
-| `src/server/webhook-processor.server.ts` | Normalização, contatos, gatilhos e jobs          |
+| Arquivo                                        | Responsabilidade                                 |
+| ---------------------------------------------- | ------------------------------------------------ |
+| `src/server/env.server.ts`                     | Schema Zod de variáveis do servidor              |
+| `src/server/compliance.ts`                     | Regra pura de envio Meta-safe                    |
+| `src/server/meta-sender.server.ts`             | DMs e Private Replies após decisão               |
+| `src/server/outbound-delivery.server.ts`       | Claim idempotente e estados da entrega externa   |
+| `src/server/ai.server.ts`                      | OpenAI Responses/Gemini, agente e opt-out        |
+| `src/server/api-auth.server.ts`                | JWT, membership, RBAC, Origin e erros HTTP       |
+| `src/server/credentials-crypto.server.ts`      | AES-256-GCM dos secrets por tenant               |
+| `src/server/integration-credentials.server.ts` | Store cifrado e auditoria de integrações         |
+| `src/server/meta-api.server.ts`                | OAuth, perfil, subscribed_apps e refresh Meta    |
+| `src/server/supabase-admin.server.ts`          | Cliente service role e validação de bearer token |
+| `src/server/webhook-signature.server.ts`       | Assinatura e comparação HMAC constant-time       |
+| `src/server/queue.server.ts`                   | Persistência idempotente e enqueue BullMQ        |
+| `src/server/webhook-outbox.server.ts`          | Reconciliação entre Postgres e BullMQ            |
+| `src/server/webhook-processor.server.ts`       | Normalização, contatos, gatilhos e jobs          |
 
 ## Workers
 
@@ -92,22 +106,30 @@ Este documento funciona como índice de manutenção. Os comentários nos arquiv
 
 ## Testes e ferramentas
 
-| Arquivo                                | Responsabilidade                              |
-| -------------------------------------- | --------------------------------------------- |
-| `src/server/compliance.test.ts`        | Janela, opt-out, HUMAN_AGENT e cooldown       |
-| `src/server/webhook-signature.test.ts` | HMAC válido e payload adulterado              |
-| `scripts/smoke.mjs`                    | Teste integrado Auth/RLS/webhook/fila/workers |
-| `scripts/validate-routes.mjs`          | HTTP 200 nas 16 rotas e health                |
-| `scripts/server.mjs`                   | Adapter Node de produção e arquivos estáticos |
-| `scripts/generate-manual-pdf.py`       | Gera o manual PDF a partir do Markdown        |
+| Arquivo                                 | Responsabilidade                              |
+| --------------------------------------- | --------------------------------------------- |
+| `src/server/compliance.test.ts`         | Janela, opt-out, HUMAN_AGENT e cooldown       |
+| `src/server/credentials-crypto.test.ts` | Round-trip e adulteração do envelope cifrado  |
+| `src/server/meta-api.test.ts`           | OAuth, token e assinatura de campos Meta      |
+| `src/server/ai-runtime.test.ts`         | Timeout e retries conservadores da IA         |
+| `src/server/outbound-delivery.test.ts`  | Claim, replay e bloqueio de ambiguidade       |
+| `src/server/webhook-outbox.test.ts`     | Decisão de reconciliação Postgres/BullMQ      |
+| `src/server/webhook-processor.test.ts`  | Fontes que podem abrir a janela de 24h        |
+| `src/server/webhook-signature.test.ts`  | HMAC válido e payload adulterado              |
+| `scripts/smoke.mjs`                     | Teste integrado Auth/RLS/webhook/fila/workers |
+| `scripts/validate-routes.mjs`           | HTTP 200 nas 16 rotas e health                |
+| `scripts/server.mjs`                    | Adapter Node de produção e arquivos estáticos |
+| `scripts/generate-manual-pdf.py`        | Gera o manual PDF a partir do Markdown        |
 
 ## Banco
 
-| Arquivo                                                | Responsabilidade                                     |
-| ------------------------------------------------------ | ---------------------------------------------------- |
-| `supabase/config.toml`                                 | Serviços, portas e Auth local                        |
-| `supabase/migrations/20260721120000_wal_chat_core.sql` | Schema integral, RLS, views, triggers e GRANTs       |
-| `supabase/seed.sql`                                    | Tenant, conta Instagram e automações de demonstração |
+| Arquivo                                                                | Responsabilidade                                     |
+| ---------------------------------------------------------------------- | ---------------------------------------------------- |
+| `supabase/config.toml`                                                 | Serviços, portas e Auth local                        |
+| `supabase/migrations/20260721120000_wal_chat_core.sql`                 | Schema integral, RLS, views, triggers e GRANTs       |
+| `supabase/migrations/20260721180000_integrations_meta_openai.sql`      | OAuth, secrets cifrados, IA e RBAC                   |
+| `supabase/migrations/20260730223000_outbound_delivery_idempotency.sql` | Claim de DMs e vínculo de auditoria                  |
+| `supabase/seed.sql`                                                    | Tenant, conta Instagram e automações de demonstração |
 
 ## Implantação
 
@@ -129,14 +151,16 @@ Este documento funciona como índice de manutenção. Os comentários nos arquiv
 
 ## Documentação e evidências
 
-| Arquivo                                           | Responsabilidade                |
-| ------------------------------------------------- | ------------------------------- |
-| `README.md`                                       | Porta de entrada do projeto     |
-| `docs/ARQUITETURA.md`                             | Componentes e fluxos            |
-| `docs/API_E_WEBHOOKS.md`                          | Contratos HTTP                  |
-| `docs/BANCO_DE_DADOS.md`                          | Modelo de dados e acesso        |
-| `docs/SEGURANCA_E_COMPLIANCE.md`                  | Controles e checklist Live Mode |
-| `docs/GUIA_DE_DESENVOLVIMENTO.md`                 | Convenções e Definition of Done |
-| `docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md` | Runbook completo                |
-| `docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md`         | Resultado da homologação        |
-| `output/pdf/manual-interno-wal-chat.pdf`          | Versão distribuível do manual   |
+| Arquivo                                           | Responsabilidade                     |
+| ------------------------------------------------- | ------------------------------------ |
+| `README.md`                                       | Porta de entrada do projeto          |
+| `docs/ARQUITETURA.md`                             | Componentes e fluxos                 |
+| `docs/API_E_WEBHOOKS.md`                          | Contratos HTTP                       |
+| `docs/BANCO_DE_DADOS.md`                          | Modelo de dados e acesso             |
+| `docs/SEGURANCA_E_COMPLIANCE.md`                  | Controles e checklist Live Mode      |
+| `docs/CONFIGURACAO_META_E_OPENAI.md`              | Onboarding real e matriz de testes   |
+| `docs/GUIA_DE_DESENVOLVIMENTO.md`                 | Convenções e Definition of Done      |
+| `docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md` | Runbook completo                     |
+| `docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md`         | Resultado da homologação             |
+| `docs/VALIDACAO_PRODUCAO_REAL_V1.md`              | Escopo, gates e evidências do piloto |
+| `output/pdf/manual-interno-wal-chat.pdf`          | Versão distribuível do manual        |

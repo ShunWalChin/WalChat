@@ -15,6 +15,7 @@ x-app-base: &app-base
     - host.docker.internal:host-gateway
   networks:
     - wal-chat-internal
+    - supabase-wal-chat
   security_opt:
     - no-new-privileges:true
   cap_drop:
@@ -38,7 +39,7 @@ services:
         - CMD
         - node
         - -e
-        - fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+        - fetch('http://127.0.0.1:3000/api/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       retries: 10
@@ -50,6 +51,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'node', 'scripts/check-worker-health.mjs', 'webhooks', '90']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   scheduler:
     <<: *app-base
@@ -57,6 +64,13 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test:
+        ['CMD', 'node', 'scripts/check-worker-health.mjs', 'scheduler', '150']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   redis:
     image: redis:7.4-alpine
@@ -69,7 +83,7 @@ services:
         '--maxmemory',
         '256mb',
         '--maxmemory-policy',
-        'allkeys-lru',
+        'noeviction',
       ]
     restart: unless-stopped
     init: true
@@ -94,6 +108,9 @@ networks:
   wal-chat-internal:
     name: wal-chat-internal
     driver: bridge
+  supabase-wal-chat:
+    name: supabase_network_wal_chat_prod
+    external: true
 
 volumes:
   wal-chat-redis:

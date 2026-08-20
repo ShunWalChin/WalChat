@@ -128,13 +128,13 @@ npm run validate:routes
 npm run smoke
 ```
 
-O smoke precisa terminar com `health`, `auth`, `rls`, `webhookVerification`, `webhookSignature`, `worker` e `scheduler` em `ok`.
+O smoke precisa terminar com `health`, `auth`, `rls`, `webhookVerification`, `webhookSignature`, `worker` e `scheduler` em `ok`. Além disso, `GET /api/ready` precisa retornar `200` no ambiente integrado.
 
 ## 9. Logs e observabilidade
 
 - Servidor: JSON com `event`, erro resumido e contexto não sensível.
-- Worker: eventos BullMQ e falhas de processamento.
-- Scheduler: `scheduled_job_failed` com job ID.
+- Worker: eventos BullMQ, falhas de processamento e heartbeat em `/tmp`.
+- Scheduler: `scheduled_job_failed` com job ID e heartbeat atualizado após cada ciclo bem-sucedido.
 - Nginx: status, upstream e latência.
 - Nunca registrar Authorization, signed requests, chaves ou corpo integral contendo dados sensíveis.
 
@@ -145,7 +145,7 @@ Métricas recomendadas para evolução:
 - jobs `failed` e `pending` atrasados;
 - bloqueios por motivo de compliance;
 - erros e rate limits da Graph API;
-- consumo e falhas do Gemini.
+- consumo, custo e falhas dos provedores OpenAI/Gemini.
 
 ## 10. Fluxo Git
 
@@ -156,12 +156,16 @@ Métricas recomendadas para evolução:
 5. Abra PR com impacto, validações e limites conhecidos.
 6. Nunca inclua `.env*`, dumps, chaves ou tokens.
 
+O workflow `.github/workflows/ci.yml` repete geração de rotas, tipos, lint, formato, testes, build, auditoria das dependências de produção e build da imagem Docker. O PR só está tecnicamente pronto quando todos esses jobs passam.
+
 ## 11. Definition of Done
 
 - [ ] Código e documentação refletem o mesmo comportamento.
 - [ ] Multi-tenancy/RLS revisados.
 - [ ] Compliance revalidado no envio.
 - [ ] Testes, lint, tipos e build passam.
+- [ ] Readiness e healthchecks dos workers passam no ambiente alvo.
+- [ ] `npm audit --omit=dev` não aponta vulnerabilidades.
 - [ ] Sem secrets no diff.
 - [ ] Migrations têm rollback operacional documentado.
 - [ ] Modo demo continua sem efeitos externos.

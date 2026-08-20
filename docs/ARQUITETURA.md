@@ -24,13 +24,13 @@ flowchart TB
     end
     subgraph Externos["Serviços externos"]
       Meta["Meta Graph API"]
-      Gemini["Gemini 2.5 Flash"]
+      AI["OpenAI Responses API / Gemini"]
     end
 
     Nginx --> App
     App --> Auth
     App --> DB
-    App --> Gemini
+    App --> AI
     Meta --> Nginx
     App --> Redis
     Redis --> WebhookWorker
@@ -69,7 +69,8 @@ Executa a cada 60 segundos e processa até 50 jobs vencidos por ciclo. Um update
 ### Integrações externas
 
 - Meta Graph API: webhook, DMs, Private Reply e publicação futura.
-- Gemini 2.5 Flash: sugestões em PT-BR com histórico limitado às cinco últimas mensagens.
+- OpenAI Responses API: provedor padrão para agentes, com `store: false`, safety identifier e configuração por workspace.
+- Gemini 2.5 Flash: provedor opcional preservado para workspaces que o selecionarem.
 - SMTP: não configurado no MVP; necessário para confirmação e recuperação de contas.
 
 ## 4. Fluxo do webhook
@@ -101,7 +102,7 @@ sequenceDiagram
     end
 ```
 
-O webhook responde rapidamente após persistência/enfileiramento. Nenhuma chamada lenta ao Gemini ou envio de DM é executado no request da Meta.
+O webhook responde rapidamente após persistência/enfileiramento. Nenhuma chamada de IA ou envio de DM é executado no request da Meta.
 
 ## 5. Fluxo de autenticação e tenancy
 
@@ -110,7 +111,7 @@ O webhook responde rapidamente após persistência/enfileiramento. Nenhuma chama
 3. O cliente envia o JWT Supabase.
 4. Policies consultam `workspace_members` via `is_workspace_member` e `has_workspace_role`.
 5. Entidades com `workspace_id` ficam invisíveis a usuários de outros tenants.
-6. `private.instagram_credentials` é acessível somente à service role.
+6. `integration_credentials` cifra tokens/API keys com AES-256-GCM e é acessível somente à service role.
 
 ## 6. Limites de confiança
 
@@ -120,26 +121,28 @@ O webhook responde rapidamente após persistência/enfileiramento. Nenhuma chama
 | Webhook Meta     | Não confiável até validar | HMAC do corpo bruto e tipo `instagram`                  |
 | Redis            | Interno                   | Rede Docker isolada e payload mínimo                    |
 | Worker/Scheduler | Backend privilegiado      | Service role e logs estruturados                        |
-| Gemini           | Serviço externo           | Contexto limitado, sem secrets e opt-out pós-processado |
+| OpenAI/Gemini    | Serviço externo           | Contexto limitado, sem secrets e opt-out pós-processado |
 | Meta Graph API   | Serviço externo           | Tokens no backend, timeout/retry operacional            |
 
 ## 7. Disponibilidade e falhas
 
-- Redis indisponível: o webhook pode persistir no outbox Supabase; a reconciliação do outbox ainda deve ser automatizada.
+- `/api/health` é liveness do processo; `/api/ready` sonda Supabase e Redis e controla a entrada de tráfego.
+- Os workers gravam heartbeats atômicos em `/tmp`; o Compose os considera unhealthy quando o heartbeat atrasa ou registra falha.
+- Redis indisponível: em live, o webhook retorna `503` para a Meta tentar novamente; o fallback outbox é aceito somente em demo até existir reconciliação automática.
 - Supabase indisponível: o endpoint retorna `503` para a Meta tentar novamente.
 - Meta indisponível: o scheduler registra erro e reagenda com backoff.
-- Gemini indisponível: a API retorna `502`; em demo usa resposta local segura.
+- IA indisponível: live falha sem enviar; somente demo pode usar resposta local determinística.
 - Job duplicado: hash do evento e índices únicos evitam processamento duplicado.
 - Processo encerrado: handlers `SIGTERM`/`SIGINT` fecham servidor, worker e conexões.
 
 ## 8. Ambientes
 
-| Ambiente              | Dados                       | Efeitos externos          | Uso                    |
-| --------------------- | --------------------------- | ------------------------- | ---------------------- |
-| Interface demo        | Dados em memória            | Bloqueados                | Demonstração rápida    |
-| Desenvolvimento local | Supabase/Redis locais       | Bloqueados por padrão     | Implementação e testes |
-| Homologação           | Stack isolada no servidor   | `DEMO_MODE=true`          | Testes públicos        |
-| Produção real         | Projeto e secrets dedicados | Permitidos após aprovação | Operação do cliente    |
+| Ambiente              | Dados                                    | Efeitos externos          | Uso                    |
+| --------------------- | ---------------------------------------- | ------------------------- | ---------------------- |
+| Interface demo        | Dados em memória                         | Bloqueados                | Demonstração rápida    |
+| Desenvolvimento local | Supabase/Redis locais                    | Bloqueados por padrão     | Implementação e testes |
+| Homologação           | Supabase CLI isolado                     | `DEMO_MODE=true`          | Testes públicos        |
+| Produção real         | Supabase gerenciado ou self-host oficial | Permitidos após aprovação | Operação do cliente    |
 
 ## 9. Decisões registradas
 
@@ -149,3 +152,4 @@ O webhook responde rapidamente após persistência/enfileiramento. Nenhuma chama
 - Private Reply usa tabela dedicada com unicidade por comentário.
 - Secrets não recebem prefixo `VITE_`.
 - A homologação usa portas, containers, rede, volume e projeto Supabase exclusivos.
+- O acesso da aplicação containerizada ao Supabase usa a origem HTTPS pública, evitando dependência de loopback do host.

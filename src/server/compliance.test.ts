@@ -1,6 +1,11 @@
 /** Matriz unitária das regras que podem permitir ou bloquear uma mensagem Meta. */
 import { describe, expect, it } from 'vitest'
-import { evaluateCompliance, OPT_OUT_FOOTER } from './compliance'
+import {
+  evaluateCompliance,
+  MAX_META_TEXT_CHARS,
+  OPT_OUT_FOOTER,
+  withOptOut,
+} from './compliance'
 
 const now = new Date('2026-07-21T12:00:00.000Z')
 
@@ -91,5 +96,39 @@ describe('evaluateCompliance', () => {
         blocklist: ['ganhe dinheiro'],
       }).reason,
     ).toBe('blocked_content')
+  })
+
+  it('trata private reply como janela própria de 7 dias, sem abrir DM comum', () => {
+    const allowed = evaluateCompliance({
+      now,
+      lastInboundAt: null,
+      instagramCommentId: 'comment_2',
+      commentCreatedAt: '2026-07-15T12:00:01.000Z',
+      isAutomated: true,
+      message: 'Te mandei os detalhes.',
+    })
+    const expired = evaluateCompliance({
+      now,
+      lastInboundAt: null,
+      instagramCommentId: 'comment_3',
+      commentCreatedAt: '2026-07-14T11:59:59.000Z',
+      isAutomated: true,
+      message: 'Te mandei os detalhes.',
+    })
+    expect(allowed).toMatchObject({
+      allowed: true,
+      policy: 'private_reply_7d',
+    })
+    expect(expired).toMatchObject({
+      allowed: false,
+      reason: 'outside_private_reply_window',
+    })
+  })
+
+  it('mantém o rodapé no fim sem exceder o limite do texto Meta', () => {
+    const body = withOptOut(`${'a'.repeat(1_200)}\n\n${OPT_OUT_FOOTER}`)
+    expect(body).toHaveLength(MAX_META_TEXT_CHARS)
+    expect(body.endsWith(OPT_OUT_FOOTER)).toBe(true)
+    expect(body.match(/Responda PARAR/g)).toHaveLength(1)
   })
 })

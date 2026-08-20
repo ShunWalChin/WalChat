@@ -9,6 +9,7 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import app from '../dist/server/server.js'
+import { buildSecurityHeaders } from './security-headers.mjs'
 
 const port = Number(process.env.PORT ?? 3000)
 const host = process.env.HOST ?? '0.0.0.0'
@@ -28,6 +29,12 @@ const server = http.createServer(async (incoming, outgoing) => {
     const url = new URL(incoming.url ?? '/', origin)
     const method = incoming.method ?? 'GET'
     const hasBody = method !== 'GET' && method !== 'HEAD'
+    const securityHeaders = buildSecurityHeaders({
+      isHttps: url.protocol === 'https:',
+      supabaseUrl: process.env.VITE_SUPABASE_URL,
+    })
+    for (const [name, value] of Object.entries(securityHeaders))
+      outgoing.setHeader(name, value)
 
     if (
       (method === 'GET' || method === 'HEAD') &&
@@ -63,7 +70,7 @@ const server = http.createServer(async (incoming, outgoing) => {
     console.error(
       JSON.stringify({
         event: 'http_request_failed',
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.name : 'unknown_error',
       }),
     )
     if (!outgoing.headersSent) {
