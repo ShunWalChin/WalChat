@@ -1,6 +1,6 @@
 /** Página pública, acessível e responsiva de agendamento de leads. */
 import { createFileRoute } from '@tanstack/react-router'
-import { addDays, format, parseISO } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   ArrowLeft,
@@ -43,6 +43,17 @@ function groupSlots(slots: Slot[]) {
   return groups
 }
 
+function zonedLabel(
+  iso: string,
+  timezone: string,
+  options: Intl.DateTimeFormatOptions,
+) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: timezone,
+    ...options,
+  }).format(new Date(iso))
+}
+
 function PublicBookingPage() {
   const { slug } = Route.useParams()
   const [calendar, setCalendar] = useState<PublicCalendar | null>(null)
@@ -66,11 +77,9 @@ function PublicBookingPage() {
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const from = format(new Date(), 'yyyy-MM-dd')
-    const to = format(addDays(new Date(), 20), 'yyyy-MM-dd')
     try {
       const response = await fetch(
-        `/api/public/bookings/${encodeURIComponent(slug)}?from=${from}&to=${to}`,
+        `/api/public/bookings/${encodeURIComponent(slug)}`,
       )
       const payload = (await response.json()) as PublicCalendar & {
         error?: string
@@ -163,14 +172,25 @@ function PublicBookingPage() {
             <CalendarCheck2 size={20} />
             <div>
               <strong>
-                {format(parseISO(confirmation.startAt), "EEEE, dd 'de' MMMM", {
-                  locale: ptBR,
+                {zonedLabel(confirmation.startAt, confirmation.timezone, {
+                  weekday: 'long',
+                  day: '2-digit',
+                  month: 'long',
                 })}
               </strong>
               <span>
-                {format(parseISO(confirmation.startAt), 'HH:mm')}–
-                {format(parseISO(confirmation.endAt), 'HH:mm')} ·{' '}
-                {confirmation.timezone}
+                {zonedLabel(confirmation.startAt, confirmation.timezone, {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hourCycle: 'h23',
+                })}
+                –
+                {zonedLabel(confirmation.endAt, confirmation.timezone, {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hourCycle: 'h23',
+                })}{' '}
+                · {confirmation.timezone}
               </span>
             </div>
           </div>
@@ -296,9 +316,13 @@ function PublicBookingPage() {
                 <CalendarCheck2 size={20} />
                 <div>
                   <strong>
-                    {format(parseISO(selected.startAt), "EEEE, dd 'de' MMMM", {
-                      locale: ptBR,
-                    })}
+                    {format(
+                      parseISO(selected.localDate),
+                      "EEEE, dd 'de' MMMM",
+                      {
+                        locale: ptBR,
+                      },
+                    )}
                   </strong>
                   <span>
                     {selected.localTime} · {calendar?.page.durationMinutes} min
