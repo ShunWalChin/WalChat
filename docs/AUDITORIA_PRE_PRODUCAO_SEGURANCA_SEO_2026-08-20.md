@@ -192,3 +192,32 @@ Antes de uma release:
 - `docs/MANUAL_COMPLETO_ACESSOS_OPERACAO_CONFIGURACAO.md`
 - `scripts/audit-system.mjs`
 - `scripts/validate-routes.mjs`
+
+## Evidência da publicação — 20/08/2026
+
+A release `/opt/wal-chat/releases/20260820-security-seo-v1`, commit final
+`fa8395f`, foi publicada em
+`https://wal-chat.64.181.178.125.nip.io`. A stack permaneceu em
+`DEMO_MODE=true`; nenhuma credencial externa foi adicionada e nenhum disparo
+Meta, WhatsApp ou IA foi habilitado.
+
+| Verificação                | Resultado                                                                                                                                                                                                        |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backup pré-migração        | `20260820-before-security-seo-512b427.dump`, 650.640 bytes, 1.246 entradas legíveis                                                                                                                              |
+| SHA-256                    | `91d1d513f7e81410b2044447762e221c086c4ccf5a2648cadbc9ab3d9daf1746`                                                                                                                                               |
+| Migração isolada           | tabelas criadas; RLS ativo; zero GRANTs para `anon`/`authenticated`; publicação sem consentimento rejeitada                                                                                                      |
+| Restore integral de ensaio | o dump Supabase contém funções Realtime que exigem `log_min_messages`; o papel local não pode recriá-las. O dump foi validado com `pg_restore --list`; o ensaio desta migration aditiva usou banco isolado limpo |
+| Migração publicada         | `20260821010000 public_privacy_reviews` registrada no histórico                                                                                                                                                  |
+| Serviços                   | app, worker de webhooks, scheduler e Redis saudáveis                                                                                                                                                             |
+| Rotas                      | 20 rotas SSR `200`, 404 real, titles públicos únicos, robots, sitemap e health aprovados                                                                                                                         |
+| Backend                    | auditoria de 44 APIs sem achados; compliance sem JWT `401`; mutação LGPD cross-origin `403`                                                                                                                      |
+| LGPD                       | criação, protocolo, consulta e limpeza exata do pedido QA aprovadas; zero resíduo                                                                                                                                |
+| Qualidade                  | TypeScript, ESLint, Prettier, build e 23 arquivos/70 testes aprovados; `npm audit --omit=dev` com zero vulnerabilidades conhecidas                                                                               |
+| Navegador                  | hero/CTA, navegação interna, cases técnicos, avaliações verificadas, FAQ, localização condicional, 404 e metadados inspecionados; zero warnings/errors de console                                                |
+| Logs                       | zero ocorrências recentes de `unhandled`, `fatal`, `uncaught` ou `error:` nos três processos Node                                                                                                                |
+
+O controle de viewport do navegador interno não alterou as dimensões durante
+este ensaio; por isso a evidência nova não declara um teste visual 390×844. Os
+breakpoints, o CTA móvel e a ausência de overflow continuam cobertos pelo CSS e
+pela validação mobile da release anterior, mas devem ser repetidos em aparelhos
+reais na próxima bateria.

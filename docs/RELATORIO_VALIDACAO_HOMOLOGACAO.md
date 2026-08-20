@@ -259,3 +259,23 @@ mas não foram declaradas homologadas externamente: o ambiente ainda não possui
 `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`. A matriz com a conta piloto está em
 `CONFIGURACAO_GOOGLE_CALENDAR.md` e deve ser executada antes de anunciar a
 integração Google como ativa.
+
+## Segurança, conversão, SEO e LGPD — 20/08/2026
+
+A release `20260820-security-seo-v1`, commit final `fa8395f`, adicionou a
+landing pública orientada a conversão, recuperação 404, página de obrigado,
+FAQ, casos técnicos sem prova social inventada, consentimento de Analytics,
+SEO por rota, sitemap, robots e fluxo persistente de exclusão de dados.
+
+O backup anterior está em
+`/opt/wal-chat/backups/20260820-before-security-seo-512b427.dump` e tem SHA-256
+`91d1d513f7e81410b2044447762e221c086c4ccf5a2648cadbc9ab3d9daf1746`.
+A migration `20260821010000 public_privacy_reviews` passou em banco isolado e
+foi registrada no histórico da instância. App, worker, scheduler e Redis
+ficaram saudáveis; 20 rotas, 404, robots, sitemap, 44 APIs, 70 testes e o ciclo
+LGPD foram aprovados. O navegador não registrou warnings ou erros.
+
+O ambiente segue em `DEMO_MODE=true`. Meta, Instagram, WhatsApp, OpenAI/Gemini,
+Google Workspace, GA4, endereço público e avaliações reais continuam sem
+configuração externa. Sequências, reengajamento, publicação, auto-like e
+insights permanecem explicitamente marcados e bloqueados como protótipos.
