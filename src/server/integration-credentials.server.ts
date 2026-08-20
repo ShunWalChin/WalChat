@@ -28,6 +28,12 @@ export async function saveIntegrationCredential(input: {
   metadata?: Record<string, unknown>
 }) {
   const supabase = requireAdmin()
+  const cryptoContext = {
+    workspaceId: input.workspaceId,
+    provider: input.provider,
+    credentialType: input.credentialType,
+    scopeKey: input.scopeKey,
+  }
   const { error } = await supabase.from('integration_credentials').upsert(
     {
       workspace_id: input.workspaceId,
@@ -35,7 +41,7 @@ export async function saveIntegrationCredential(input: {
       provider: input.provider,
       credential_type: input.credentialType,
       scope_key: input.scopeKey,
-      encrypted_value: encryptCredential(input.value),
+      encrypted_value: encryptCredential(input.value, cryptoContext),
       expires_at: input.expiresAt ?? null,
       last_refreshed_at: new Date().toISOString(),
       metadata: input.metadata ?? {},
@@ -64,8 +70,24 @@ export async function getIntegrationCredential(input: {
     .maybeSingle()
   if (error) throw error
   if (!data) return null
+  const cryptoContext = {
+    workspaceId: input.workspaceId,
+    provider: input.provider,
+    credentialType: input.credentialType,
+    scopeKey: input.scopeKey,
+  }
+  const value = decryptCredential(data.encrypted_value, cryptoContext)
+  // Reencriptação preguiçosa elimina envelopes legados sem downtime.
+  if (data.encrypted_value.startsWith('v1.'))
+    await supabase
+      .from('integration_credentials')
+      .update({ encrypted_value: encryptCredential(value, cryptoContext) })
+      .eq('workspace_id', input.workspaceId)
+      .eq('provider', input.provider)
+      .eq('credential_type', input.credentialType)
+      .eq('scope_key', input.scopeKey)
   return {
-    value: decryptCredential(data.encrypted_value),
+    value,
     expiresAt: data.expires_at as string | null,
     metadata: (data.metadata ?? {}) as Record<string, unknown>,
     lastRefreshedAt: data.last_refreshed_at as string | null,
@@ -162,5 +184,11 @@ export async function writeIntegrationAudit(input: {
       resource_id: input.resourceId ?? null,
       details: input.details ?? {},
     })
-  if (error) console.error('integration_audit_write_failed', error.message)
+  if (error)
+    console.error(
+      JSON.stringify({
+        event: 'integration_audit_write_failed',
+        error: error.code,
+      }),
+    )
 }

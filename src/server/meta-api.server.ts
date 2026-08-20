@@ -145,6 +145,16 @@ export async function consumeMetaOAuthState(state: string) {
     .maybeSingle()
   if (error) throw error
   if (!data) throw new Error('State OAuth inválido, expirado ou já utilizado.')
+  const { data: membership, error: membershipError } = await supabase
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', data.workspace_id)
+    .eq('user_id', data.user_id)
+    .in('role', ['owner', 'admin'])
+    .maybeSingle()
+  if (membershipError) throw membershipError
+  if (!membership)
+    throw new Error('Usuário não possui mais permissão para conectar a Meta.')
   return data
 }
 

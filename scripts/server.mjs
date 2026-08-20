@@ -3,6 +3,7 @@
  * Converte HTTP do Node para Fetch API e serve assets versionados.
  */
 import http from 'node:http'
+import { randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
@@ -20,14 +21,15 @@ const clientRoot = path.resolve(scriptDirectory, '../dist/client')
 // O proxy informa host/protocolo externos; reconstruí-los mantém URLs e redirects corretos.
 const server = http.createServer(async (incoming, outgoing) => {
   try {
-    const forwardedProto = firstHeader(incoming.headers['x-forwarded-proto'])
-    const forwardedHost = firstHeader(incoming.headers['x-forwarded-host'])
-    const hostHeader = forwardedHost ?? incoming.headers.host
-    const origin = hostHeader
-      ? `${forwardedProto ?? 'http'}://${hostHeader}`
-      : fallbackOrigin
-    const url = new URL(incoming.url ?? '/', origin)
+    // APP_ORIGIN é a autoridade canônica; Host/X-Forwarded-Host do cliente não
+    // participam de redirects, cookies ou URLs absolutas.
+    const url = new URL(incoming.url ?? '/', fallbackOrigin)
     const method = incoming.method ?? 'GET'
+    const suppliedRequestId = firstHeader(incoming.headers['x-request-id'])
+    const requestId = /^[A-Za-z0-9._:-]{8,128}$/.test(suppliedRequestId ?? '')
+      ? suppliedRequestId
+      : randomUUID()
+    outgoing.setHeader('x-request-id', requestId)
     const hasBody = method !== 'GET' && method !== 'HEAD'
     const securityHeaders = buildSecurityHeaders({
       isHttps: url.protocol === 'https:',
@@ -43,9 +45,11 @@ const server = http.createServer(async (incoming, outgoing) => {
       return
     }
 
+    const headers = toWebHeaders(incoming.headers)
+    headers.set('x-request-id', requestId)
     const request = new Request(url, {
       method,
-      headers: toWebHeaders(incoming.headers),
+      headers,
       body: hasBody ? Readable.toWeb(incoming) : undefined,
       duplex: hasBody ? 'half' : undefined,
     })
@@ -79,6 +83,16 @@ const server = http.createServer(async (incoming, outgoing) => {
     }
     outgoing.end(JSON.stringify({ error: 'internal_server_error' }))
   }
+})
+
+server.requestTimeout = 60_000
+server.headersTimeout = 15_000
+server.keepAliveTimeout = 5_000
+server.maxHeadersCount = 100
+server.maxRequestsPerSocket = 1_000
+server.on('clientError', (_error, socket) => {
+  if (socket.writable)
+    socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n')
 })
 
 server.listen(port, host, () => {

@@ -6,6 +6,7 @@ import {
   assertTrustedOrigin,
   requireWorkspaceContext,
 } from '../../../server/api-auth.server'
+import { readJsonBody } from '../../../server/request-body.server'
 
 const agentFields = {
   name: z.string().trim().min(2).max(80),
@@ -80,7 +81,7 @@ export const Route = createFileRoute('/api/ai/agents')({
             'owner',
             'admin',
           ])
-          const body = createSchema.parse(await request.json())
+          const body = createSchema.parse(await readJsonBody(request))
           const { data, error } = await context.supabase
             .from('ai_agents')
             .insert({
@@ -110,7 +111,7 @@ export const Route = createFileRoute('/api/ai/agents')({
             'owner',
             'admin',
           ])
-          const body = updateSchema.parse(await request.json())
+          const body = updateSchema.parse(await readJsonBody(request))
           const changes: Record<string, unknown> = {}
           if (body.name !== undefined) changes.name = body.name
           if (body.persona !== undefined) changes.persona = body.persona
@@ -150,7 +151,7 @@ export const Route = createFileRoute('/api/ai/agents')({
             'owner',
             'admin',
           ])
-          const body = deleteSchema.parse(await request.json())
+          const body = deleteSchema.parse(await readJsonBody(request))
           const { error } = await context.supabase
             .from('ai_agents')
             .delete()

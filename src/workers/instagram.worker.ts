@@ -106,7 +106,7 @@ worker.on('failed', (job, error) => {
     JSON.stringify({
       event: 'webhook_failed',
       jobId: job?.id,
-      error: error.message,
+      error: error.name,
     }),
   )
   if (job)

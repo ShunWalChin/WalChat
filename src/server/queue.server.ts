@@ -15,6 +15,19 @@ export const INSTAGRAM_WEBHOOK_JOB_OPTIONS = {
   removeOnFail: 5_000,
 }
 
+let queueResources:
+  { redisUrl: string; connection: IORedis; queue: Queue } | undefined
+
+/** Reutiliza conexões; abrir TCP/Redis por webhook degrada o endpoint sob carga. */
+function getWebhookQueue(redisUrl: string) {
+  if (queueResources?.redisUrl === redisUrl) return queueResources.queue
+  const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null })
+  connection.on('error', () => undefined)
+  const queue = new Queue('instagram-webhooks', { connection })
+  queueResources = { redisUrl, connection, queue }
+  return queue
+}
+
 /**
  * Usa SHA-256 do corpo como chave compartilhada entre Postgres e BullMQ.
  * O fallback retorna o backend usado para que observabilidade e smoke possam validar o caminho.
@@ -27,6 +40,8 @@ export async function enqueueInstagramWebhook(
   const metaEventKey = createHash('sha256').update(rawBody).digest('hex')
   const supabase = getSupabaseAdmin()
   const instagramUserId = extractInstagramUserId(payload)
+  let duplicateStatus: string | null = null
+  let providerRedeliveryJobId: string | null = null
 
   if (supabase) {
     const { data: account, error: accountError } = instagramUserId
@@ -38,46 +53,64 @@ export async function enqueueInstagramWebhook(
           .maybeSingle()
       : { data: null, error: null }
     if (accountError) throw accountError
-    const { error } = await supabase.from('webhook_events').upsert(
-      {
-        meta_event_key: metaEventKey,
-        workspace_id: account?.workspace_id ?? null,
-        instagram_user_id: instagramUserId,
-        event_type: extractEventType(payload),
-        payload,
-        signature_valid: true,
-        status: 'queued',
-      },
-      { onConflict: 'meta_event_key', ignoreDuplicates: true },
-    )
-    if (error)
+    const { error } = await supabase.from('webhook_events').insert({
+      meta_event_key: metaEventKey,
+      workspace_id: account?.workspace_id ?? null,
+      instagram_user_id: instagramUserId,
+      event_type: extractEventType(payload),
+      payload,
+      signature_valid: true,
+      status: 'queued',
+    })
+    if (error?.code === '23505') {
+      const { data: duplicate, error: duplicateError } = await supabase
+        .from('webhook_events')
+        .select('status')
+        .eq('meta_event_key', metaEventKey)
+        .single()
+      if (duplicateError) throw duplicateError
+      duplicateStatus = duplicate.status
+    } else if (error)
       throw new Error(`Não foi possível persistir o webhook: ${error.message}`)
   }
 
-  if (env.REDIS_URL) {
-    const connection = new IORedis(env.REDIS_URL, {
-      maxRetriesPerRequest: null,
-    })
-    connection.on('error', () => undefined)
-    const queue = new Queue('instagram-webhooks', { connection })
-    try {
-      const job = await queue.add(
-        'process-instagram-event',
-        { payload, metaEventKey },
-        {
-          jobId: metaEventKey,
-          ...INSTAGRAM_WEBHOOK_JOB_OPTIONS,
-        },
-      )
-      return { id: job.id ?? metaEventKey, backend: 'bullmq' as const }
-    } finally {
-      await Promise.allSettled([queue.close(), connection.quit()])
-      connection.disconnect()
-    }
+  if (duplicateStatus === 'processed' || duplicateStatus === 'ignored')
+    return { id: metaEventKey, backend: 'duplicate' as const }
+
+  // Após esgotar o backoff interno, uma redelivery real da Meta pode abrir uma
+  // nova rodada. O update condicional garante que só uma requisição a reivindique.
+  if (supabase && duplicateStatus === 'failed') {
+    const { data: reclaimed, error: reclaimError } = await supabase
+      .from('webhook_events')
+      .update({
+        status: 'queued',
+        last_error: 'provider_redelivery',
+        last_attempt_at: new Date().toISOString(),
+      })
+      .eq('meta_event_key', metaEventKey)
+      .eq('status', 'failed')
+      .select('id')
+      .maybeSingle()
+    if (reclaimError) throw reclaimError
+    if (reclaimed)
+      providerRedeliveryJobId = `redelivery-${Date.now()}-${metaEventKey}`
   }
 
-  // O outbox ainda não possui reconciliador. Em live, devolver erro força a Meta
-  // a tentar novamente e evita confirmar um evento que ficaria parado no banco.
+  if (env.REDIS_URL) {
+    const queue = getWebhookQueue(env.REDIS_URL)
+    const job = await queue.add(
+      'process-instagram-event',
+      { payload, metaEventKey },
+      {
+        jobId: providerRedeliveryJobId ?? metaEventKey,
+        ...INSTAGRAM_WEBHOOK_JOB_OPTIONS,
+      },
+    )
+    return { id: job.id ?? metaEventKey, backend: 'bullmq' as const }
+  }
+
+  // Em live, Redis é obrigatório mesmo com outbox: o 503 força retry da Meta e
+  // evita que latência do reconciliador seja tratada como entrega concluída.
   if (env.DEMO_MODE === 'false')
     throw new Error('redis_required_for_live_webhook')
 
@@ -97,35 +130,28 @@ export async function replayInstagramWebhook(input: {
   if (!env.REDIS_URL) throw new Error('Redis indisponível para replay.')
   const supabase = getSupabaseAdmin()
   if (!supabase) throw new Error('Supabase indisponível para replay.')
-  const connection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null })
-  connection.on('error', () => undefined)
-  const queue = new Queue('instagram-webhooks', { connection })
-  try {
-    const replayJobId = `replay-${Date.now()}-${input.metaEventKey.slice(0, 16)}`
-    const job = await queue.add(
-      'process-instagram-event',
-      { payload: input.payload, metaEventKey: input.metaEventKey },
-      { jobId: replayJobId, ...INSTAGRAM_WEBHOOK_JOB_OPTIONS },
-    )
-    const { error } = await supabase
-      .from('webhook_events')
-      .update({
-        status: 'queued',
-        attempts: 0,
-        last_error: null,
-        processing_started_at: null,
-        processed_at: null,
-        duration_ms: null,
-        replayed_at: new Date().toISOString(),
-        replayed_by: input.replayedBy,
-      })
-      .eq('meta_event_key', input.metaEventKey)
-    if (error) throw error
-    return { jobId: job.id ?? replayJobId }
-  } finally {
-    await Promise.allSettled([queue.close(), connection.quit()])
-    connection.disconnect()
-  }
+  const queue = getWebhookQueue(env.REDIS_URL)
+  const replayJobId = `replay-${Date.now()}-${input.metaEventKey.slice(0, 16)}`
+  const job = await queue.add(
+    'process-instagram-event',
+    { payload: input.payload, metaEventKey: input.metaEventKey },
+    { jobId: replayJobId, ...INSTAGRAM_WEBHOOK_JOB_OPTIONS },
+  )
+  const { error } = await supabase
+    .from('webhook_events')
+    .update({
+      status: 'queued',
+      attempts: 0,
+      last_error: null,
+      processing_started_at: null,
+      processed_at: null,
+      duration_ms: null,
+      replayed_at: new Date().toISOString(),
+      replayed_by: input.replayedBy,
+    })
+    .eq('meta_event_key', input.metaEventKey)
+  if (error) throw error
+  return { jobId: job.id ?? replayJobId }
 }
 
 /** Extrai a conta destinatária sem confiar que o payload externo tenha o formato esperado. */

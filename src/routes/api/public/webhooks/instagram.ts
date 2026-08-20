@@ -1,8 +1,37 @@
 /** Endpoint público exigido pela Meta: challenge GET e recepção POST assinada. */
 import { createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
+import { apiErrorResponse } from '../../../../server/api-auth.server'
 import { getServerEnv } from '../../../../server/env.server'
 import { enqueueInstagramWebhook } from '../../../../server/queue.server'
+import {
+  INSTAGRAM_WEBHOOK_BODY_LIMIT,
+  readLimitedText,
+} from '../../../../server/request-body.server'
 import { verifyMetaSignature } from '../../../../server/webhook-signature.server'
+
+const webhookPayloadSchema = z
+  .object({
+    object: z.string().max(40),
+    entry: z
+      .array(
+        z
+          .object({
+            id: z.union([z.string(), z.number()]).optional(),
+            messaging: z
+              .array(z.record(z.string(), z.unknown()))
+              .max(200)
+              .optional(),
+            changes: z
+              .array(z.record(z.string(), z.unknown()))
+              .max(200)
+              .optional(),
+          })
+          .loose(),
+      )
+      .max(100),
+  })
+  .loose()
 
 export const Route = createFileRoute('/api/public/webhooks/instagram')({
   server: {
@@ -35,37 +64,35 @@ export const Route = createFileRoute('/api/public/webhooks/instagram')({
       },
       // O corpo precisa permanecer bruto até a validação HMAC; fazer JSON antes quebraria a assinatura.
       POST: async ({ request }) => {
-        const rawBody = await request.text()
-        const env = getServerEnv()
-        if (!env.META_APP_SECRET)
-          return Response.json(
-            { error: 'Webhook não configurado.' },
-            { status: 503 },
-          )
-        const valid = verifyMetaSignature(
-          rawBody,
-          request.headers.get('x-hub-signature-256'),
-          env.META_APP_SECRET,
-        )
-        if (!valid)
-          return Response.json(
-            { error: 'Assinatura inválida.' },
-            { status: 401 },
-          )
-
-        let payload: Record<string, unknown>
         try {
-          payload = JSON.parse(rawBody) as Record<string, unknown>
-        } catch {
-          return Response.json({ error: 'JSON inválido.' }, { status: 400 })
-        }
-        if (payload.object !== 'instagram')
-          return Response.json(
-            { received: true, ignored: true },
-            { status: 200 },
+          const rawBody = await readLimitedText(
+            request,
+            INSTAGRAM_WEBHOOK_BODY_LIMIT,
+            'application/json',
           )
+          const env = getServerEnv()
+          if (!env.META_APP_SECRET)
+            return Response.json(
+              { error: 'Webhook não configurado.' },
+              { status: 503 },
+            )
+          const valid = verifyMetaSignature(
+            rawBody,
+            request.headers.get('x-hub-signature-256'),
+            env.META_APP_SECRET,
+          )
+          if (!valid)
+            return Response.json(
+              { error: 'Assinatura inválida.' },
+              { status: 401 },
+            )
 
-        try {
+          const payload = webhookPayloadSchema.parse(JSON.parse(rawBody))
+          if (payload.object !== 'instagram')
+            return Response.json(
+              { received: true, ignored: true },
+              { status: 200 },
+            )
           const queued = await enqueueInstagramWebhook(payload, rawBody)
           return Response.json(
             { received: true, queued: queued.id, backend: queued.backend },
@@ -78,6 +105,16 @@ export const Route = createFileRoute('/api/public/webhooks/instagram')({
               error: error instanceof Error ? error.name : 'unknown_error',
             }),
           )
+          if (error instanceof SyntaxError || error instanceof z.ZodError)
+            return Response.json(
+              { error: 'Payload de webhook inválido.' },
+              { status: 400 },
+            )
+          const boundedError = apiErrorResponse(
+            error,
+            'Falha temporária ao enfileirar.',
+          )
+          if (boundedError.status < 500) return boundedError
           return Response.json(
             { error: 'Falha temporária ao enfileirar.' },
             { status: 503, headers: { 'Retry-After': '10' } },

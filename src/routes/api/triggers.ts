@@ -6,6 +6,7 @@ import {
   assertTrustedOrigin,
   requireWorkspaceContext,
 } from '../../server/api-auth.server'
+import { readJsonBody } from '../../server/request-body.server'
 
 const fields = {
   name: z.string().trim().min(2).max(100),
@@ -95,7 +96,7 @@ export const Route = createFileRoute('/api/triggers')({
             'owner',
             'admin',
           ])
-          const body = createSchema.parse(await request.json())
+          const body = createSchema.parse(await readJsonBody(request))
           if (body.postId) {
             const { data: post, error: postError } = await context.supabase
               .from('posts_cache')
@@ -138,7 +139,7 @@ export const Route = createFileRoute('/api/triggers')({
             'owner',
             'admin',
           ])
-          const body = updateSchema.parse(await request.json())
+          const body = updateSchema.parse(await readJsonBody(request))
           if (body.postId) {
             const { data: post, error: postError } = await context.supabase
               .from('posts_cache')
@@ -189,7 +190,7 @@ export const Route = createFileRoute('/api/triggers')({
             'owner',
             'admin',
           ])
-          const body = deleteSchema.parse(await request.json())
+          const body = deleteSchema.parse(await readJsonBody(request))
           const { error } = await context.supabase
             .from('triggers')
             .delete()

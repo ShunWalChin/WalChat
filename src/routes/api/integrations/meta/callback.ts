@@ -6,11 +6,13 @@ import {
   getMetaOwnProfile,
   consumeMetaOAuthState,
   exchangeMetaAuthorizationCode,
+  getMetaWebhookSubscriptions,
   META_REQUIRED_SCOPES,
   META_WEBHOOK_FIELDS,
   subscribeMetaWebhooks,
 } from '../../../../server/meta-api.server'
 import {
+  deleteIntegrationCredential,
   saveIntegrationCredential,
   writeIntegrationAudit,
 } from '../../../../server/integration-credentials.server'
@@ -36,6 +38,10 @@ function equalState(left: string | null, right: string) {
 }
 
 function callbackResponse(status: 'connected' | 'denied' | 'error') {
+  const secure = getServerEnv().APP_ORIGIN.startsWith('https://')
+  const cookieName = secure
+    ? '__Host-wal_meta_oauth_state'
+    : 'wal_meta_oauth_state'
   const target = new URL('/configuracoes', getServerEnv().APP_ORIGIN)
   target.searchParams.set('meta', status)
   return new Response(null, {
@@ -43,8 +49,16 @@ function callbackResponse(status: 'connected' | 'denied' | 'error') {
     headers: {
       Location: target.toString(),
       'Cache-Control': 'no-store',
-      'Set-Cookie':
-        'wal_meta_oauth_state=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0',
+      'Set-Cookie': [
+        `${cookieName}=`,
+        'HttpOnly',
+        secure ? 'Secure' : '',
+        'SameSite=Lax',
+        'Path=/',
+        'Max-Age=0',
+      ]
+        .filter(Boolean)
+        .join('; '),
     },
   })
 }
@@ -58,11 +72,16 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
         const code = url.searchParams.get('code')
         const state = url.searchParams.get('state')
         if (!code || !state) return callbackResponse('error')
-        if (!equalState(readCookie(request, 'wal_meta_oauth_state'), state))
+        const secure = getServerEnv().APP_ORIGIN.startsWith('https://')
+        const cookieName = secure
+          ? '__Host-wal_meta_oauth_state'
+          : 'wal_meta_oauth_state'
+        if (!equalState(readCookie(request, cookieName), state))
           return callbackResponse('error')
 
         let oauth: Awaited<ReturnType<typeof consumeMetaOAuthState>> | null =
           null
+        let accountId: string | null = null
         try {
           oauth = await consumeMetaOAuthState(state)
           const token = await exchangeMetaAuthorizationCode(code)
@@ -70,11 +89,6 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
           const instagramUserId = String(
             profile.user_id ?? profile.id ?? token.userId,
           )
-          await subscribeMetaWebhooks({
-            instagramUserId,
-            accessToken: token.accessToken,
-          })
-
           const supabase = getSupabaseAdmin()
           if (!supabase)
             throw new Error('Supabase administrativo indisponível.')
@@ -100,15 +114,14 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
                 profile_picture_url: profile.profile_picture_url ?? null,
                 account_type: profile.account_type ?? null,
                 connected_by: oauth.user_id,
-                status: 'connected',
+                status: 'disconnected',
                 scopes: token.scopes,
-                subscribed_fields: [...META_WEBHOOK_FIELDS],
+                subscribed_fields: [],
                 token_expires_at: expiresAt,
                 token_refresh_after: refreshAfter,
                 last_token_refresh_at: now.toISOString(),
-                permissions_validated_at:
-                  token.scopes.length > 0 ? now.toISOString() : null,
-                webhook_subscribed_at: now.toISOString(),
+                permissions_validated_at: null,
+                webhook_subscribed_at: null,
                 last_sync_at: now.toISOString(),
                 connection_error:
                   missingScopes.length > 0
@@ -120,6 +133,7 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
             .select('id')
             .single()
           if (error) throw error
+          accountId = account.id
           await saveIntegrationCredential({
             workspaceId: oauth.workspace_id,
             provider: 'meta',
@@ -130,6 +144,49 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
             expiresAt,
             metadata: { tokenType: token.tokenType, scopes: token.scopes },
           })
+          await subscribeMetaWebhooks({
+            instagramUserId,
+            accessToken: token.accessToken,
+          })
+          const subscriptions = await getMetaWebhookSubscriptions({
+            instagramUserId,
+            accessToken: token.accessToken,
+          })
+          const subscribedFields = Array.from(
+            new Set(
+              (subscriptions.data ?? []).flatMap(
+                (subscription) => subscription.subscribed_fields ?? [],
+              ),
+            ),
+          )
+          const missingWebhookFields = META_WEBHOOK_FIELDS.filter(
+            (field) => !subscribedFields.includes(field),
+          )
+          const connectionIssues = [
+            ...(missingScopes.length > 0
+              ? [`Permissões não confirmadas: ${missingScopes.join(', ')}`]
+              : []),
+            ...(missingWebhookFields.length > 0
+              ? [`Webhooks não confirmados: ${missingWebhookFields.join(', ')}`]
+              : []),
+          ]
+          const { error: activateError } = await supabase
+            .from('instagram_accounts')
+            .update({
+              status: 'connected',
+              subscribed_fields: subscribedFields,
+              permissions_validated_at:
+                missingScopes.length === 0 ? now.toISOString() : null,
+              webhook_subscribed_at:
+                missingWebhookFields.length === 0 ? now.toISOString() : null,
+              connection_error:
+                connectionIssues.length > 0
+                  ? connectionIssues.join(' | ')
+                  : null,
+            })
+            .eq('id', account.id)
+            .eq('workspace_id', oauth.workspace_id)
+          if (activateError) throw activateError
           await writeIntegrationAudit({
             workspaceId: oauth.workspace_id,
             actorUserId: oauth.user_id,
@@ -137,12 +194,37 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
             action: 'oauth_connected',
             status: 'success',
             resourceId: account.id,
-            details: { username: profile.username, missingScopes },
+            details: {
+              username: profile.username,
+              missingScopes,
+              missingWebhookFields,
+            },
           })
           return callbackResponse('connected')
         } catch (error) {
-          console.error('meta_oauth_callback_failed', error)
-          if (oauth)
+          console.error(
+            JSON.stringify({
+              event: 'meta_oauth_callback_failed',
+              error: error instanceof Error ? error.name : 'unknown_error',
+            }),
+          )
+          if (oauth) {
+            if (accountId) {
+              await deleteIntegrationCredential({
+                workspaceId: oauth.workspace_id,
+                provider: 'meta',
+                credentialType: 'access_token',
+                scopeKey: accountId,
+              }).catch(() => undefined)
+              await getSupabaseAdmin()
+                ?.from('instagram_accounts')
+                .update({
+                  status: 'disconnected',
+                  connection_error: 'oauth_connection_failed',
+                })
+                .eq('id', accountId)
+                .eq('workspace_id', oauth.workspace_id)
+            }
             await writeIntegrationAudit({
               workspaceId: oauth.workspace_id,
               actorUserId: oauth.user_id,
@@ -150,6 +232,7 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
               action: 'oauth_connected',
               status: 'failure',
             })
+          }
           return callbackResponse('error')
         }
       },

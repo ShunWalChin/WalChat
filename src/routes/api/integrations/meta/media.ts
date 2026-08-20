@@ -8,6 +8,7 @@ import {
 } from '../../../../server/api-auth.server'
 import { getMetaAccountAccess } from '../../../../server/integration-credentials.server'
 import { getMetaMedia } from '../../../../server/meta-api.server'
+import { readJsonBody } from '../../../../server/request-body.server'
 
 const syncSchema = z.object({ accountId: z.string().uuid() })
 
@@ -38,7 +39,7 @@ export const Route = createFileRoute('/api/integrations/meta/media')({
             'owner',
             'admin',
           ])
-          const body = syncSchema.parse(await request.json())
+          const body = syncSchema.parse(await readJsonBody(request))
           const access = await getMetaAccountAccess({
             workspaceId: context.workspaceId,
             instagramAccountId: body.accountId,

@@ -8,6 +8,7 @@ import {
 } from '../../../server/api-auth.server'
 import { getWorkspaceGoLiveStatus } from '../../../server/go-live.server'
 import { writeIntegrationAudit } from '../../../server/integration-credentials.server'
+import { readJsonBody } from '../../../server/request-body.server'
 
 const updateSchema = z
   .object({
@@ -45,7 +46,7 @@ export const Route = createFileRoute('/api/operations/go-live')({
             'owner',
             'admin',
           ])
-          const body = updateSchema.parse(await request.json())
+          const body = updateSchema.parse(await readJsonBody(request))
           const before = await getWorkspaceGoLiveStatus(context.workspaceId)
           if (
             body.externalSendsEnabled === true &&
@@ -97,7 +98,7 @@ export const Route = createFileRoute('/api/operations/go-live')({
               : null,
             activated_by: resultingExternalSends ? context.user.id : null,
           }
-          const { error } = await context.supabase
+          const { error } = await context.admin
             .from('workspace_runtime_settings')
             .upsert(changes, { onConflict: 'workspace_id' })
           if (error) throw error

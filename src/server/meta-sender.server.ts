@@ -8,6 +8,7 @@ import { getMetaAccountAccess } from './integration-credentials.server'
 import {
   OutboundDeliveryError,
   claimOutboundDelivery,
+  markOutboundDeliveryFailed,
   markOutboundDeliverySent,
   markOutboundDeliveryUnknown,
 } from './outbound-delivery.server'
@@ -31,6 +32,18 @@ type MetaSendErrorPayload = {
   error?: { code?: number; error_subcode?: number }
 }
 
+export class MetaProviderResponseError extends Error {
+  readonly terminal = true
+
+  constructor(
+    message: string,
+    readonly errorCode: string,
+  ) {
+    super(message)
+    this.name = 'MetaProviderResponseError'
+  }
+}
+
 /** Mantém PII e payloads da Graph API fora de exceções, banco e logs. */
 export async function parseMetaSendResponse(
   response: Response,
@@ -42,8 +55,9 @@ export async function parseMetaSendResponse(
   if (!response.ok || payload.error) {
     const code = payload.error?.code
     const subcode = payload.error?.error_subcode
-    throw new Error(
+    throw new MetaProviderResponseError(
       `Meta ${operation} recusado (HTTP ${response.status}${code ? `, código ${code}` : ''}${subcode ? `, subcódigo ${subcode}` : ''}).`,
+      `meta_http_${response.status}${code ? `_code_${code}` : ''}${subcode ? `_subcode_${subcode}` : ''}`,
     )
   }
   return payload
@@ -151,6 +165,13 @@ export async function sendInstagramMessage(input: MetaSendInput) {
       decision,
     }
   } catch (error) {
+    if (error instanceof MetaProviderResponseError) {
+      await markOutboundDeliveryFailed(
+        delivery.deliveryId,
+        error.errorCode,
+      ).catch(() => undefined)
+      throw new OutboundDeliveryError('delivery_failed', error.message, 502)
+    }
     await markOutboundDeliveryUnknown(
       delivery.deliveryId,
       error instanceof Error ? error.name : 'unknown_error',
@@ -259,6 +280,13 @@ export async function sendInstagramPrivateReply(
       decision,
     }
   } catch (error) {
+    if (error instanceof MetaProviderResponseError) {
+      await markOutboundDeliveryFailed(
+        delivery.deliveryId,
+        error.errorCode,
+      ).catch(() => undefined)
+      throw new OutboundDeliveryError('delivery_failed', error.message, 502)
+    }
     await markOutboundDeliveryUnknown(
       delivery.deliveryId,
       error instanceof Error ? error.name : 'unknown_error',

@@ -8,6 +8,7 @@ import {
 } from '../../../server/api-auth.server'
 import { writeIntegrationAudit } from '../../../server/integration-credentials.server'
 import { replayInstagramWebhook } from '../../../server/queue.server'
+import { readJsonBody } from '../../../server/request-body.server'
 
 const querySchema = z.object({
   status: z
@@ -28,7 +29,7 @@ export const Route = createFileRoute('/api/operations/webhooks')({
             status: url.searchParams.get('status') ?? undefined,
             limit: url.searchParams.get('limit') ?? undefined,
           })
-          let eventsQuery = context.supabase
+          let eventsQuery = context.admin
             .from('webhook_events')
             .select(
               'id,meta_event_key,instagram_user_id,event_type,status,attempts,last_error,received_at,processing_started_at,processed_at,duration_ms,replayed_at',
@@ -47,7 +48,7 @@ export const Route = createFileRoute('/api/operations/webhooks')({
           const [{ data: events, error }, ...countResults] = await Promise.all([
             eventsQuery,
             ...statuses.map((status) =>
-              context.supabase
+              context.admin
                 .from('webhook_events')
                 .select('id', { count: 'exact', head: true })
                 .eq('workspace_id', context.workspaceId)
@@ -80,8 +81,8 @@ export const Route = createFileRoute('/api/operations/webhooks')({
             'owner',
             'admin',
           ])
-          const body = replaySchema.parse(await request.json())
-          const { data: event, error } = await context.supabase
+          const body = replaySchema.parse(await readJsonBody(request))
+          const { data: event, error } = await context.admin
             .from('webhook_events')
             .select('meta_event_key,payload,status')
             .eq('workspace_id', context.workspaceId)

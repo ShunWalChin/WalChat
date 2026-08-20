@@ -5,6 +5,7 @@ import { z } from 'zod'
 const serverEnvSchema = z.object({
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
+  SUPABASE_PUBLISHABLE_KEY: z.string().min(20).optional(),
   REDIS_URL: z.string().optional(),
   META_APP_ID: z.string().optional(),
   META_APP_SECRET: z.string().min(8).optional(),
@@ -31,6 +32,9 @@ export function getServerEnv() {
   return serverEnvSchema.parse({
     SUPABASE_URL: process.env.SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_PUBLISHABLE_KEY:
+      process.env.SUPABASE_PUBLISHABLE_KEY ??
+      process.env.VITE_SUPABASE_ANON_KEY,
     REDIS_URL: process.env.REDIS_URL,
     META_APP_ID: process.env.META_APP_ID,
     META_APP_SECRET: process.env.META_APP_SECRET,

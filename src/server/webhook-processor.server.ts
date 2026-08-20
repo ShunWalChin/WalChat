@@ -1,7 +1,9 @@
 /** Normaliza webhooks Meta, persiste a inbox e agenda automações elegíveis. */
 import '@tanstack/react-start/server-only'
 import { suggestInstagramReply } from './ai.server'
+import { isOptOutKeyword } from './compliance'
 import { getServerEnv } from './env.server'
+import { assertRateLimit } from './rate-limit.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
 
 type MetaChange = { field?: string; value?: Record<string, unknown> }
@@ -30,6 +32,13 @@ type MetaEntry = {
   messaging?: MetaMessaging[]
 }
 type MetaWebhook = { object?: string; entry?: MetaEntry[] }
+type InboundIngestionResult = {
+  contact_id: string
+  interaction_id: string
+  conversation_id: string | null
+  interaction_inserted: boolean
+  contact_ai_enabled: boolean
+}
 
 /** Processa formatos `messaging`, `changes` e o formato direto `field/value`. */
 export async function processInstagramWebhook(
@@ -185,126 +194,41 @@ async function ingestInbound(input: {
   timestamp?: number
 }) {
   const receivedAt = metaTimestamp(input.timestamp)
-  const { data: duplicate, error: duplicateError } = await input.supabase
-    .from('interactions_log')
-    .select('id')
-    .eq('workspace_id', input.workspaceId)
-    .eq('meta_event_id', input.metaId)
-    .maybeSingle()
-  if (duplicateError) throw duplicateError
-  if (duplicate) return
-
-  const { data: contact, error: contactError } = await input.supabase
-    .from('contacts')
-    .upsert(
-      {
-        workspace_id: input.workspaceId,
-        instagram_account_id: input.accountId,
-        instagram_user_id: input.senderId,
-        username: input.username,
-      },
-      { onConflict: 'workspace_id,instagram_user_id' },
-    )
-    .select('id,ai_enabled,inbox_category,last_interaction_at,last_inbound_at')
-    .single()
-  if (contactError) throw contactError
-
-  const laterTimestamp = (current: string | null, incoming: string) =>
-    !current || new Date(incoming).getTime() > new Date(current).getTime()
-      ? incoming
-      : current
-  const contactUpdate: Record<string, string> = {
-    last_interaction_at: laterTimestamp(
-      contact.last_interaction_at,
-      receivedAt,
-    ),
-  }
-  if (opensMessagingWindow(input.channel))
-    contactUpdate.last_inbound_at = laterTimestamp(
-      contact.last_inbound_at,
-      receivedAt,
-    )
-  const { error: contactUpdateError } = await input.supabase
-    .from('contacts')
-    .update(contactUpdate)
-    .eq('id', contact.id)
-    .eq('workspace_id', input.workspaceId)
-  if (contactUpdateError) throw contactUpdateError
-
-  const { data: interaction, error: interactionError } = await input.supabase
-    .from('interactions_log')
-    .insert({
-      workspace_id: input.workspaceId,
-      instagram_account_id: input.accountId,
-      contact_id: contact.id,
-      meta_event_id: input.metaId,
-      channel: input.channel,
-      direction: 'inbound',
-      message_text: input.text,
-      status: 'delivered',
-      meta_created_at: receivedAt,
-      raw_payload: input.raw,
+  const { data: ingestion, error: ingestionError } = await input.supabase
+    .rpc('ingest_instagram_inbound', {
+      target_workspace_id: input.workspaceId,
+      target_account_id: input.accountId,
+      sender_id: input.senderId,
+      sender_username: input.username ?? null,
+      event_id: input.metaId,
+      event_channel: input.channel,
+      event_text: input.text,
+      event_raw: input.raw,
+      received_at: receivedAt,
+      opens_window: opensMessagingWindow(input.channel),
     })
-    .select('id')
-    .maybeSingle()
-  // Dois workers podem observar a ausência ao mesmo tempo; a chave única decide.
-  if (interactionError?.code === '23505') return
-  if (interactionError) throw interactionError
-  if (!interaction) return
+    .single()
+  if (ingestionError) throw ingestionError
+  if (!ingestion) throw new Error('ingest_instagram_inbound_empty')
+  const ingested = ingestion as InboundIngestionResult
 
   // Reações são telemetria da mensagem existente, não uma nova conversa na inbox.
-  if (input.channel === 'reaction') return
-
-  const { data: conversation, error: conversationError } = await input.supabase
-    .from('conversations')
-    .upsert(
-      {
-        workspace_id: input.workspaceId,
-        instagram_account_id: input.accountId,
-        contact_id: contact.id,
-        category: contact.inbox_category,
-        last_message_preview: input.text.slice(0, 180),
-        last_message_at: receivedAt,
-      },
-      { onConflict: 'workspace_id,contact_id,instagram_account_id' },
-    )
-    .select('id,unread_count')
-    .single()
-  if (conversationError) throw conversationError
-  await input.supabase
-    .from('conversations')
-    .update({ unread_count: conversation.unread_count + 1 })
-    .eq('id', conversation.id)
-
-  const { error: interactionLinkError } = await input.supabase
-    .from('interactions_log')
-    .update({ conversation_id: conversation.id })
-    .eq('id', interaction.id)
-  if (interactionLinkError) throw interactionLinkError
-  const { error: messageError } = await input.supabase.from('messages').insert({
-    workspace_id: input.workspaceId,
-    conversation_id: conversation.id,
-    contact_id: contact.id,
-    interaction_id: interaction.id,
-    direction: 'inbound',
-    body: input.text,
-    status: 'delivered',
-  })
-  if (messageError) throw messageError
+  if (input.channel === 'reaction' || !ingested.conversation_id) return
 
   const scheduledByTrigger = await matchAndScheduleTrigger({
     ...input,
-    contactId: contact.id,
-    interactionId: interaction.id,
+    contactId: ingested.contact_id,
+    interactionId: ingested.interaction_id,
     receivedAt,
   })
-  if (!scheduledByTrigger && contact.ai_enabled)
+  if (!scheduledByTrigger && ingested.contact_ai_enabled)
     await maybeScheduleAutonomousAgent({
       supabase: input.supabase,
       workspaceId: input.workspaceId,
       accountId: input.accountId,
-      contactId: contact.id,
-      conversationId: conversation.id,
+      contactId: ingested.contact_id,
+      interactionId: ingested.interaction_id,
+      conversationId: ingested.conversation_id,
       senderId: input.senderId,
       channel: input.channel,
     })
@@ -333,7 +257,7 @@ async function matchAndScheduleTrigger(input: {
           ? 'dm'
           : null
   if (!source || !input.text) return false
-  if (input.text.trim().toLocaleLowerCase('pt-BR') === 'parar') {
+  if (isOptOutKeyword(input.text)) {
     await input.supabase
       .from('contacts')
       .update({ opted_out_at: new Date().toISOString(), ai_enabled: false })
@@ -380,43 +304,57 @@ async function matchAndScheduleTrigger(input: {
       instagramMediaByPost.get(trigger.post_id) !== incomingMediaId
     )
       continue
-    const { data: cooldown } = await input.supabase
-      .from('trigger_cooldowns')
-      .select('last_fired_at')
-      .eq('trigger_id', trigger.id)
-      .eq('contact_id', input.contactId)
-      .maybeSingle()
-    if (
-      cooldown &&
-      Date.now() - new Date(cooldown.last_fired_at).getTime() <
-        trigger.cooldown_hours * 3_600_000
-    )
-      continue
-
-    const { data: automationRun, error: runError } = await input.supabase
+    const { data: existingRun, error: existingRunError } = await input.supabase
       .from('automation_runs')
-      .upsert(
-        {
-          workspace_id: input.workspaceId,
-          trigger_id: trigger.id,
-          contact_id: input.contactId,
-          interaction_id: input.interactionId,
-          source,
-          status: 'matched',
-          metadata: {
-            instagramMediaId: incomingMediaId,
-            metaEventId: input.metaId,
-          },
-        },
-        {
-          onConflict: 'trigger_id,interaction_id',
-          ignoreDuplicates: true,
-        },
-      )
-      .select('id')
+      .select('id,status,scheduled_job_id')
+      .eq('trigger_id', trigger.id)
+      .eq('interaction_id', input.interactionId)
       .maybeSingle()
-    if (runError) throw runError
-    if (!automationRun) return true
+    if (existingRunError) throw existingRunError
+    // Um retry repara somente runs que pararam em `matched`; qualquer estado
+    // posterior já possui uma decisão persistida e não pode ser duplicado.
+    if (existingRun && existingRun.status !== 'matched') return true
+
+    if (!existingRun) {
+      const { data: cooldown, error: cooldownError } = await input.supabase
+        .from('trigger_cooldowns')
+        .select('last_fired_at')
+        .eq('trigger_id', trigger.id)
+        .eq('contact_id', input.contactId)
+        .maybeSingle()
+      if (cooldownError) throw cooldownError
+      if (
+        cooldown &&
+        Date.now() - new Date(cooldown.last_fired_at).getTime() <
+          trigger.cooldown_hours * 3_600_000
+      )
+        continue
+    }
+
+    let automationRun = existingRun
+    if (!automationRun) {
+      const { data, error: runError } = await input.supabase
+        .from('automation_runs')
+        .upsert(
+          {
+            workspace_id: input.workspaceId,
+            trigger_id: trigger.id,
+            contact_id: input.contactId,
+            interaction_id: input.interactionId,
+            source,
+            status: 'matched',
+            metadata: {
+              instagramMediaId: incomingMediaId,
+              metaEventId: input.metaId,
+            },
+          },
+          { onConflict: 'trigger_id,interaction_id' },
+        )
+        .select('id,status,scheduled_job_id')
+        .single()
+      if (runError) throw runError
+      automationRun = data
+    }
 
     if (source === 'comment' && getServerEnv().DEMO_MODE === 'false') {
       const { data: runtimeSettings, error: settingsError } =
@@ -465,28 +403,37 @@ async function matchAndScheduleTrigger(input: {
     if (trigger.sequence_id) {
       const { data: enrollment, error: enrollmentError } = await input.supabase
         .from('sequence_enrollments')
-        .insert({
-          workspace_id: input.workspaceId,
-          sequence_id: trigger.sequence_id,
-          contact_id: input.contactId,
-          next_run_at: new Date().toISOString(),
-        })
+        .upsert(
+          {
+            workspace_id: input.workspaceId,
+            sequence_id: trigger.sequence_id,
+            contact_id: input.contactId,
+            trigger_id: trigger.id,
+            source_interaction_id: input.interactionId,
+            next_run_at: new Date().toISOString(),
+          },
+          { onConflict: 'trigger_id,source_interaction_id' },
+        )
         .select('id')
         .single()
       if (enrollmentError) throw enrollmentError
       const { data: scheduledJob, error: scheduledJobError } =
         await input.supabase
           .from('scheduled_jobs')
-          .insert({
-            workspace_id: input.workspaceId,
-            kind: 'sequence_step',
-            payload: {
-              enrollmentId: enrollment.id,
-              position: 0,
-              ...commonPayload,
+          .upsert(
+            {
+              workspace_id: input.workspaceId,
+              kind: 'sequence_step',
+              dedupe_key: `automation:${automationRun.id}:step:0`,
+              payload: {
+                enrollmentId: enrollment.id,
+                position: 0,
+                ...commonPayload,
+              },
+              run_at: new Date().toISOString(),
             },
-            run_at: new Date().toISOString(),
-          })
+            { onConflict: 'workspace_id,dedupe_key' },
+          )
           .select('id')
           .single()
       if (scheduledJobError) throw scheduledJobError
@@ -495,16 +442,20 @@ async function matchAndScheduleTrigger(input: {
       const { data: scheduledJob, error: scheduledJobError } =
         await input.supabase
           .from('scheduled_jobs')
-          .insert({
-            workspace_id: input.workspaceId,
-            kind: 'sequence_step',
-            payload: {
-              contactId: input.contactId,
-              responseText: trigger.response_text,
-              ...commonPayload,
+          .upsert(
+            {
+              workspace_id: input.workspaceId,
+              kind: 'sequence_step',
+              dedupe_key: `automation:${automationRun.id}:response`,
+              payload: {
+                contactId: input.contactId,
+                responseText: trigger.response_text,
+                ...commonPayload,
+              },
+              run_at: new Date().toISOString(),
             },
-            run_at: new Date().toISOString(),
-          })
+            { onConflict: 'workspace_id,dedupe_key' },
+          )
           .select('id')
           .single()
       if (scheduledJobError) throw scheduledJobError
@@ -535,6 +486,7 @@ async function maybeScheduleAutonomousAgent(input: {
   workspaceId: string
   accountId: string
   contactId: string
+  interactionId: string
   conversationId: string
   senderId: string
   channel: string
@@ -560,6 +512,15 @@ async function maybeScheduleAutonomousAgent(input: {
   if (error) throw error
   if (!agent) return
 
+  const dedupeKey = `ai-agent:${agent.id}:interaction:${input.interactionId}`
+  const { data: existingJob, error: existingJobError } = await input.supabase
+    .from('scheduled_jobs')
+    .select('id')
+    .eq('workspace_id', input.workspaceId)
+    .eq('dedupe_key', dedupeKey)
+    .maybeSingle()
+  if (existingJobError) throw existingJobError
+  if (existingJob) return
   const { data: recent } = await input.supabase
     .from('interactions_log')
     .select('direction,message_text')
@@ -574,6 +535,12 @@ async function maybeScheduleAutonomousAgent(input: {
     content: String(item.message_text),
   }))
   try {
+    await assertRateLimit({
+      namespace: 'autonomous-ai',
+      identity: input.workspaceId,
+      limit: 45,
+      windowSeconds: 60,
+    })
     const result = await suggestInstagramReply({
       workspaceId: input.workspaceId,
       agentId: agent.id,
@@ -582,21 +549,30 @@ async function maybeScheduleAutonomousAgent(input: {
     })
     const { error: jobError } = await input.supabase
       .from('scheduled_jobs')
-      .insert({
-        workspace_id: input.workspaceId,
-        kind: 'sequence_step',
-        payload: {
-          contactId: input.contactId,
-          responseText: result.suggestion,
-          senderId: input.senderId,
-          aiGenerated: true,
-          agentId: agent.id,
+      .upsert(
+        {
+          workspace_id: input.workspaceId,
+          kind: 'sequence_step',
+          dedupe_key: dedupeKey,
+          payload: {
+            contactId: input.contactId,
+            responseText: result.suggestion,
+            senderId: input.senderId,
+            aiGenerated: true,
+            agentId: agent.id,
+          },
+          run_at: new Date().toISOString(),
         },
-        run_at: new Date().toISOString(),
-      })
+        { onConflict: 'workspace_id,dedupe_key', ignoreDuplicates: true },
+      )
     if (jobError) throw jobError
   } catch (agentError) {
-    console.error('autonomous_agent_failed', agentError)
+    console.error(
+      JSON.stringify({
+        event: 'autonomous_agent_failed',
+        error: agentError instanceof Error ? agentError.name : 'unknown_error',
+      }),
+    )
     if (agent.fallback_to_copilot)
       await input.supabase
         .from('conversations')

@@ -131,4 +131,34 @@ describe('evaluateCompliance', () => {
     expect(body.endsWith(OPT_OUT_FOOTER)).toBe(true)
     expect(body.match(/Responda PARAR/g)).toHaveLength(1)
   })
+
+  it('normaliza Unicode invisível e ignora termos vazios da blocklist', () => {
+    const blocked = evaluateCompliance({
+      now,
+      lastInboundAt: now,
+      isAutomated: true,
+      message: 'GANHE\u200B DINHEIRO agora',
+      blocklist: ['', 'ganhe dinheiro'],
+    })
+    const allowed = evaluateCompliance({
+      now,
+      lastInboundAt: now,
+      isAutomated: true,
+      message: 'Mensagem legítima',
+      blocklist: ['   '],
+    })
+    expect(blocked.reason).toBe('blocked_content')
+    expect(allowed.allowed).toBe(true)
+  })
+
+  it('bloqueia timestamps inbound muito no futuro', () => {
+    expect(
+      evaluateCompliance({
+        now,
+        lastInboundAt: '2026-07-21T13:00:00.000Z',
+        isAutomated: true,
+        message: 'Oi',
+      }).reason,
+    ).toBe('invalid_interaction_time')
+  })
 })

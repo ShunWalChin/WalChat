@@ -19,6 +19,13 @@
 | Abuso de endpoints sensíveis       | Rate limit por classe de rota no Nginx                    |
 | Dependência externa travada        | Timeout de 15 s Meta e 45 s IA; erro sanitizado           |
 | Processo privilegiado no container | Usuário não-root, caps removidas e filesystem read-only   |
+| Bypass de RLS na API               | Cliente JWT/RLS separado da service role operacional      |
+| Lost update/ingestão parcial       | RPC inbound transacional e reparável                      |
+| Job duplo entre schedulers         | Claim PostgreSQL com `FOR UPDATE SKIP LOCKED`             |
+| Ciphertext movido entre tenants    | AES-GCM v2 com AAD de workspace/provider/escopo           |
+| Prompt/contexto fabricado          | Histórico da Inbox carregado no backend sob RLS           |
+| Corpo HTTP abusivo                 | Limites streaming por classe de endpoint                  |
+| Exclusão apenas protocolar         | Signed request + eliminação transacional + status opaco   |
 
 ## 2. Ordem de decisão do compliance
 
@@ -65,6 +72,7 @@ Regras operacionais:
 3. Tokens e API keys de cada tenant cifrados em `integration_credentials`, sem GRANT para `anon/authenticated`.
 4. Revogação imediata após desligamento do cliente.
 5. Nunca expor secrets em screenshots, issues ou PRs.
+6. Em Supabase self-hosted, substituir qualquer segredo JWT de exemplo antes do primeiro usuário real; rotacionar Auth, REST, Storage, publishable/anon e service role em uma janela coordenada, invalidando sessões antigas.
 
 ## 4. Superfície HTTP
 
@@ -73,7 +81,7 @@ Regras operacionais:
 - Webhook e callback de exclusão são públicos porque a Meta precisa acessá-los.
 - Endpoints privados de integração, IA e envio exigem JWT e papel do workspace.
 - O Nginx versionado limita tráfego geral, webhook, início OAuth e envio/IA com budgets diferentes; o `429` inclui `Retry-After`.
-- O rate limit é por instância Nginx. Escala horizontal exige borda compartilhada ou gateway distribuído.
+- O Nginx limita por IP e o backend limita IA, envio e OAuth de forma distribuída no Redis por usuário/workspace.
 - Respostas de erro não retornam detalhes de stack.
 - Health check informa presença de configuração, não valores.
 
@@ -85,12 +93,13 @@ Regras operacionais:
 - [x] Tokens cifrados por tenant e sender sem fallback global em live.
 - [ ] OAuth testado com App ID/secret e conta Professional reais.
 - [ ] Rotação operacional ensaiada.
+- [ ] Segredo JWT self-hosted não é padrão/exemplo e a rotação coordenada foi validada.
 - [ ] `DEMO_MODE=false` somente no ambiente correto.
 - [ ] SMTP, confirmação e recuperação de senha ativos.
 - [x] Rate limiting versionado no proxy para endpoints gerais e sensíveis.
 - [ ] Rate limiting validado no domínio final e monitorado em produção.
 - [ ] Política de Privacidade, Termos e Exclusão publicados em HTTPS.
-- [ ] Processo real de exclusão e retenção de dados testado.
+- [x] Processo real de exclusão implementado; falta homologar com solicitação Meta controlada.
 - [ ] Alertas de fila falha, erro Meta e jobs atrasados.
 - [ ] Backups e restauração comprovados.
 - [ ] Contatos de suporte e incidente definidos.
@@ -107,9 +116,10 @@ Regras operacionais:
 ## 7. Limitações atuais relevantes
 
 - O OAuth multi-tenant está implementado, mas não pode ser validado externamente sem o app e a conta Professional reais.
-- O callback de exclusão gera protocolo, mas precisa de job de eliminação definitiva.
-- A configuração de rate limiting existe no repositório, mas ainda precisa de validação no proxy/domínio final.
+- O callback de exclusão elimina também payloads e referências indiretas correspondentes e desativa envios, mas ainda precisa de homologação com a Meta e validação jurídica de retenção.
+- Rate limiting distribuído está implementado; quotas precisam ser calibradas com tráfego real.
 - Entregas em estado `unknown` precisam de uma fila operacional com consulta no Meta Business antes de qualquer nova tentativa.
+- Campanhas, publicação, insights e auto-like não têm executor de produção; jobs desses tipos falham explicitamente.
 - O preview puro de compliance é público e não realiza efeitos; integrações, IA persistida e envio são autenticados.
 
 Esses limites ficam deliberadamente visíveis; não devem ser tratados como produção concluída.

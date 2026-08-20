@@ -8,6 +8,8 @@ import {
 } from '../../../server/api-auth.server'
 import { sendInstagramMessage } from '../../../server/meta-sender.server'
 import { OutboundDeliveryError } from '../../../server/outbound-delivery.server'
+import { readJsonBody } from '../../../server/request-body.server'
+import { assertRateLimit } from '../../../server/rate-limit.server'
 
 const schema = z.object({
   contactId: z.string().uuid(),
@@ -27,7 +29,13 @@ export const Route = createFileRoute('/api/messages/send')({
             'admin',
             'agent',
           ])
-          const body = schema.parse(await request.json())
+          await assertRateLimit({
+            namespace: 'manual-send',
+            identity: `${context.workspaceId}:${context.user.id}`,
+            limit: 30,
+            windowSeconds: 60,
+          })
+          const body = schema.parse(await readJsonBody(request))
           const [{ data: contact, error }, { data: blocklist }] =
             await Promise.all([
               context.supabase
@@ -66,7 +74,7 @@ export const Route = createFileRoute('/api/messages/send')({
           })
           const now = new Date().toISOString()
           const { data: conversation, error: conversationError } =
-            await context.supabase
+            await context.admin
               .from('conversations')
               .upsert(
                 {
@@ -98,18 +106,16 @@ export const Route = createFileRoute('/api/messages/send')({
             block_reason: result.sent ? null : result.decision.reason,
           }
           const interactionOperation = deliveryId
-            ? context.supabase
+            ? context.admin
                 .from('interactions_log')
                 .upsert(interactionPayload, {
                   onConflict: 'outbound_delivery_id',
                 })
-            : context.supabase
-                .from('interactions_log')
-                .insert(interactionPayload)
+            : context.admin.from('interactions_log').insert(interactionPayload)
           const { data: interaction, error: interactionError } =
             await interactionOperation.select('id').single()
           if (interactionError) throw interactionError
-          const { error: messageError } = await context.supabase
+          const { error: messageError } = await context.admin
             .from('messages')
             .upsert(
               {
@@ -127,7 +133,7 @@ export const Route = createFileRoute('/api/messages/send')({
             )
           if (messageError) throw messageError
           if (result.sent)
-            await context.supabase
+            await context.admin
               .from('contacts')
               .update({ last_outbound_at: now, last_interaction_at: now })
               .eq('id', contact.id)

@@ -26,7 +26,7 @@ export const Route = createFileRoute('/api/integrations/meta/status')({
             .order('created_at')
           if (error) throw error
           const { data: credentials, error: credentialsError } =
-            await context.supabase
+            await context.admin
               .from('integration_credentials')
               .select('scope_key,expires_at')
               .eq('workspace_id', context.workspaceId)

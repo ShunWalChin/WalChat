@@ -150,15 +150,19 @@ function Home() {
               ? 'Ainda não tem conta? Criar agora'
               : 'Já tem conta? Entrar'}
           </button>
-          <div className="or">
-            <span>ou</span>
-          </div>
-          <button
-            className="button button-outline button-full"
-            onClick={enterDemo}
-          >
-            <Sparkles size={17} /> Explorar o modo demo
-          </button>
+          {!configured && (
+            <>
+              <div className="or">
+                <span>ou</span>
+              </div>
+              <button
+                className="button button-outline button-full"
+                onClick={enterDemo}
+              >
+                <Sparkles size={17} /> Explorar o modo demo
+              </button>
+            </>
+          )}
           <div className="auth-note">
             <LockKeyhole size={14} /> Seus tokens da Meta ficam apenas no
             backend.

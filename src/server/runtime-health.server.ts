@@ -71,7 +71,9 @@ export async function checkRuntimeReadiness(input?: {
   const live = env.DEMO_MODE === 'false'
   const timeoutMs = input?.timeoutMs ?? 2_000
   const supabaseConfigured = Boolean(
-    env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY,
+    env.SUPABASE_URL &&
+    env.SUPABASE_SERVICE_ROLE_KEY &&
+    env.SUPABASE_PUBLISHABLE_KEY,
   )
   const redisConfigured = Boolean(env.REDIS_URL)
 

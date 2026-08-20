@@ -5,7 +5,8 @@ import type { ComplianceDecision } from './compliance'
 import { getSupabaseAdmin } from './supabase-admin.server'
 
 export type OutboundDeliverySource = 'manual' | 'scheduled'
-export type OutboundDeliveryStatus = 'claimed' | 'sent' | 'blocked' | 'unknown'
+export type OutboundDeliveryStatus =
+  'claimed' | 'sent' | 'blocked' | 'failed' | 'unknown'
 
 type ExistingDelivery = {
   id: string
@@ -28,6 +29,7 @@ export class OutboundDeliveryError extends Error {
       | 'idempotency_conflict'
       | 'delivery_in_progress'
       | 'delivery_unknown'
+      | 'delivery_failed'
       | 'external_sends_disabled',
     message: string,
     readonly httpStatus = 409,
@@ -96,6 +98,12 @@ export function resolveExistingDelivery(
     throw new OutboundDeliveryError(
       'delivery_unknown',
       'O resultado desse envio é ambíguo e exige confirmação manual.',
+    )
+  if (existing.status === 'failed')
+    throw new OutboundDeliveryError(
+      'delivery_failed',
+      'A Meta recusou este envio. Corrija a causa e use uma nova Idempotency-Key.',
+      502,
     )
 
   const decision: ComplianceDecision = {
@@ -214,6 +222,24 @@ export async function markOutboundDeliveryUnknown(
     .from('outbound_deliveries')
     .update({
       status: 'unknown',
+      last_error_code: errorCode.slice(0, 80),
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', deliveryId)
+    .eq('status', 'claimed')
+}
+
+/** Uma resposta HTTP da Meta é uma falha definida, não um resultado ambíguo. */
+export async function markOutboundDeliveryFailed(
+  deliveryId: string,
+  errorCode: string,
+) {
+  const supabase = getSupabaseAdmin()
+  if (!supabase) return
+  await supabase
+    .from('outbound_deliveries')
+    .update({
+      status: 'failed',
       last_error_code: errorCode.slice(0, 80),
       completed_at: new Date().toISOString(),
     })

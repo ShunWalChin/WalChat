@@ -2,6 +2,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { evaluateCompliance } from '../../../server/compliance'
+import { ApiError, apiErrorResponse } from '../../../server/api-auth.server'
+import { readJsonBody } from '../../../server/request-body.server'
 
 const bodySchema = z.object({
   lastInboundAt: z.string().datetime().nullable(),
@@ -20,17 +22,16 @@ export const Route = createFileRoute('/api/compliance/check')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const parsed = bodySchema.safeParse(
-          await request.json().catch(() => null),
-        )
-        if (!parsed.success)
-          return Response.json(
-            { error: 'Entrada inválida.', details: parsed.error.flatten() },
-            { status: 400 },
-          )
-        return Response.json(evaluateCompliance(parsed.data), {
-          headers: { 'Cache-Control': 'no-store' },
-        })
+        try {
+          const parsed = bodySchema.safeParse(await readJsonBody(request))
+          if (!parsed.success)
+            throw new ApiError(400, 'Entrada de compliance inválida.')
+          return Response.json(evaluateCompliance(parsed.data), {
+            headers: { 'Cache-Control': 'no-store' },
+          })
+        } catch (error) {
+          return apiErrorResponse(error, 'Falha ao avaliar compliance.')
+        }
       },
     },
   },

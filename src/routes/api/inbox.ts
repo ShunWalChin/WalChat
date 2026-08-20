@@ -7,6 +7,7 @@ import {
   assertTrustedOrigin,
   requireWorkspaceContext,
 } from '../../server/api-auth.server'
+import { readJsonBody } from '../../server/request-body.server'
 
 const querySchema = z.object({
   category: z.enum(['principal', 'geral', 'pedidos', 'ia_off']).optional(),
@@ -188,7 +189,7 @@ export const Route = createFileRoute('/api/inbox')({
             'admin',
             'agent',
           ])
-          const body = updateSchema.parse(await request.json())
+          const body = updateSchema.parse(await readJsonBody(request))
           const { data: conversation, error: lookupError } =
             await context.supabase
               .from('conversations')
@@ -232,7 +233,7 @@ export const Route = createFileRoute('/api/inbox')({
             conversationChanges.last_assigned_at = new Date().toISOString()
           }
           if (Object.keys(conversationChanges).length > 0) {
-            const { error } = await context.supabase
+            const { error } = await context.admin
               .from('conversations')
               .update(conversationChanges)
               .eq('workspace_id', context.workspaceId)
@@ -240,7 +241,7 @@ export const Route = createFileRoute('/api/inbox')({
             if (error) throw error
           }
           if (body.aiEnabled !== undefined) {
-            const { error } = await context.supabase
+            const { error } = await context.admin
               .from('contacts')
               .update({ ai_enabled: body.aiEnabled })
               .eq('workspace_id', context.workspaceId)
@@ -260,7 +261,7 @@ export const Route = createFileRoute('/api/inbox')({
             'admin',
             'agent',
           ])
-          const body = noteSchema.parse(await request.json())
+          const body = noteSchema.parse(await readJsonBody(request))
           const { data: conversation, error: conversationError } =
             await context.supabase
               .from('conversations')
@@ -298,7 +299,7 @@ export const Route = createFileRoute('/api/inbox')({
             'admin',
             'agent',
           ])
-          const body = deleteNoteSchema.parse(await request.json())
+          const body = deleteNoteSchema.parse(await readJsonBody(request))
           const { data: note, error: noteError } = await context.supabase
             .from('conversation_notes')
             .select('id,author_user_id')

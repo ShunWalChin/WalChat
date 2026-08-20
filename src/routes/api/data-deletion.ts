@@ -1,50 +1,97 @@
-/** Callback de signed request exigido pelo fluxo de Exclusão de Dados da Meta. */
+/** Callback e status de exclusão de dados exigidos pela Meta. */
+import { randomBytes } from 'node:crypto'
 import { createFileRoute } from '@tanstack/react-router'
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { z } from 'zod'
+import { apiErrorResponse } from '../../server/api-auth.server'
 import { getServerEnv } from '../../server/env.server'
+import { verifyMetaSignedRequest } from '../../server/meta-signed-request.server'
+import { readLimitedText } from '../../server/request-body.server'
+import { getSupabaseAdmin } from '../../server/supabase-admin.server'
 
-/** Converte o base64url usado pela Meta para um Buffer padrão. */
-function decodePart(value: string) {
-  return Buffer.from(value.replace(/-/g, '+').replace(/_/g, '/'), 'base64')
-}
+const confirmationSchema = z.string().regex(/^[A-Za-z0-9_-]{24,128}$/)
 
 export const Route = createFileRoute('/api/data-deletion')({
   server: {
     handlers: {
+      GET: async ({ request }) => {
+        try {
+          const confirmation = confirmationSchema.parse(
+            new URL(request.url).searchParams.get('confirmation'),
+          )
+          const supabase = getSupabaseAdmin()
+          if (!supabase)
+            return Response.json(
+              { error: 'Serviço indisponível.' },
+              { status: 503 },
+            )
+          const { data, error } = await supabase
+            .from('data_deletion_requests')
+            .select(
+              'status,affected_contacts,affected_accounts,requested_at,completed_at',
+            )
+            .eq('confirmation_code', confirmation)
+            .maybeSingle()
+          if (error) throw error
+          if (!data)
+            return Response.json(
+              { error: 'Solicitação não encontrada.' },
+              { status: 404 },
+            )
+          return Response.json(data, {
+            headers: { 'Cache-Control': 'no-store' },
+          })
+        } catch (error) {
+          return apiErrorResponse(error, 'Falha ao consultar a exclusão.')
+        }
+      },
       POST: async ({ request }) => {
-        const form = await request.formData()
-        const signedRequest = String(form.get('signed_request') ?? '')
-        const [encodedSignature, payloadPart] = signedRequest.split('.', 2)
-        const env = getServerEnv()
-        if (!encodedSignature || !payloadPart || !env.META_APP_SECRET)
-          return Response.json(
-            { error: 'Solicitação inválida.' },
-            { status: 400 },
+        try {
+          const env = getServerEnv()
+          if (!env.META_APP_SECRET)
+            return Response.json(
+              { error: 'Meta não configurada.' },
+              { status: 503 },
+            )
+          const rawBody = await readLimitedText(
+            request,
+            32 * 1024,
+            'application/x-www-form-urlencoded',
           )
-        // O payload só é decodificado depois da assinatura constant-time ser aprovada.
-        const expected = createHmac('sha256', env.META_APP_SECRET)
-          .update(payloadPart)
-          .digest()
-        const received = decodePart(encodedSignature)
-        if (
-          expected.length !== received.length ||
-          !timingSafeEqual(expected, received)
-        )
-          return Response.json(
-            { error: 'Assinatura inválida.' },
-            { status: 401 },
+          const signedRequest = new URLSearchParams(rawBody).get(
+            'signed_request',
           )
-        const payload = JSON.parse(
-          decodePart(payloadPart).toString('utf8'),
-        ) as { user_id?: string }
-        const code = createHmac('sha256', env.META_APP_SECRET)
-          .update(payload.user_id ?? 'unknown')
-          .digest('hex')
-          .slice(0, 20)
-        return Response.json({
-          url: `${env.APP_ORIGIN}/exclusao-de-dados?confirmation=${code}`,
-          confirmation_code: code,
-        })
+          const payload = signedRequest
+            ? verifyMetaSignedRequest(signedRequest, env.META_APP_SECRET)
+            : null
+          if (!payload)
+            return Response.json(
+              { error: 'signed_request inválido.' },
+              { status: 400 },
+            )
+          const supabase = getSupabaseAdmin()
+          if (!supabase)
+            return Response.json(
+              { error: 'Serviço indisponível.' },
+              { status: 503 },
+            )
+          const confirmationCode = randomBytes(24).toString('base64url')
+          const { error } = await supabase.rpc('process_meta_data_deletion', {
+            external_user_id: payload.user_id,
+            target_confirmation_code: confirmationCode,
+          })
+          if (error) throw error
+          const statusUrl = new URL('/api/data-deletion', env.APP_ORIGIN)
+          statusUrl.searchParams.set('confirmation', confirmationCode)
+          return Response.json({
+            url: statusUrl.toString(),
+            confirmation_code: confirmationCode,
+          })
+        } catch (error) {
+          return apiErrorResponse(
+            error,
+            'Falha ao processar a exclusão de dados.',
+          )
+        }
       },
     },
   },

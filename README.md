@@ -14,6 +14,7 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | Filas e workers           | Redis + BullMQ                                                           |
 | Webhook Meta              | HMAC, idempotência, inbox e worker implementados                         |
 | Segurança de entrega      | Claim persistente; resposta ambígua não é reenviada automaticamente      |
+| Hardening do backend      | JWT + RLS, ingestão transacional, SKIP LOCKED e limites distribuídos      |
 | Reconciliação da fila     | Postgres/BullMQ por `jobId` canônico                                     |
 | OAuth Instagram           | Login, token cifrado por tenant, assinatura e validação implementados    |
 | OpenAI / Gemini           | Responses API + Gemini opcional, configuráveis por workspace             |
@@ -59,6 +60,8 @@ flowchart LR
 ```
 
 O backend recebe o corpo bruto do webhook, valida `X-Hub-Signature-256`, persiste uma chave idempotente e enfileira o processamento. O worker normaliza contatos e interações; o scheduler executa sequências e chama o motor de compliance imediatamente antes de qualquer envio. DMs recebem um claim persistente antes da chamada externa; timeout ou resposta ambígua vira estado `unknown` e não dispara retry automático.
+
+A revisão de segurança mais recente está documentada em [Auditoria do backend core — 20/08/2026](docs/AUDITORIA_BACKEND_CORE_2026-08-20.md).
 
 Leia [Arquitetura](docs/ARQUITETURA.md) para os limites dos componentes, fluxos de falha e decisões técnicas.
 
@@ -136,7 +139,7 @@ npx supabase status -o env
 cp .env.example .env.local
 ```
 
-Copie a `PUBLISHABLE_KEY` e a `SECRET_KEY` exibidas pelo Supabase para `VITE_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` em `.env.local`. Depois execute:
+Copie a `PUBLISHABLE_KEY` para `VITE_SUPABASE_ANON_KEY` e `SUPABASE_PUBLISHABLE_KEY`; copie a `SECRET_KEY` para `SUPABASE_SERVICE_ROLE_KEY` em `.env.local`. Depois execute:
 
 ```bash
 npm run db:reset
@@ -170,6 +173,7 @@ Essa credencial existe apenas para desenvolvimento. Nunca reutilize a senha loca
 | `VITE_SUPABASE_ANON_KEY`       | Pública   | Chave publishable do Supabase         |
 | `SUPABASE_URL`                 | Backend   | URL interna do Supabase               |
 | `SUPABASE_SERVICE_ROLE_KEY`    | Secreta   | Acesso administrativo dos workers     |
+| `SUPABASE_PUBLISHABLE_KEY`     | Backend   | Cliente server-side sujeito a RLS      |
 | `REDIS_URL`                    | Backend   | Conexão BullMQ                        |
 | `META_APP_ID`                  | Secreta   | Identificador do aplicativo Meta      |
 | `META_APP_SECRET`              | Secreta   | HMAC do webhook e signed requests     |

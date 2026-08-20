@@ -10,7 +10,12 @@ import {
   writeIntegrationAudit,
 } from '../server/integration-credentials.server'
 import { refreshMetaAccessToken } from '../server/meta-api.server'
-import { isTerminalOutboundDeliveryError } from '../server/outbound-delivery.server'
+import {
+  UnsupportedScheduledJobError,
+  isTerminalScheduledJobError,
+  operationalErrorCode,
+  privateReplyFailureStatus,
+} from '../server/scheduled-job-policy'
 import { writeWorkerHeartbeat } from '../server/worker-heartbeat'
 
 /** Falha cedo: um scheduler sem service role não pode operar com segurança. */
@@ -25,6 +30,39 @@ function requireSupabase() {
 
 const supabase = requireSupabase()
 let lastTokenRefreshSweep = 0
+let lastRecoverySweep = 0
+
+/**
+ * Recupera locks abandonados após crash. Claims externos antigos viram
+ * `unknown` antes do job voltar à fila, impedindo um segundo disparo cego.
+ */
+async function recoverStaleWork() {
+  if (Date.now() - lastRecoverySweep < 5 * 60_000) return
+  lastRecoverySweep = Date.now()
+  const cutoff = new Date(Date.now() - 10 * 60_000).toISOString()
+  const now = new Date().toISOString()
+  const { error: deliveryError } = await supabase
+    .from('outbound_deliveries')
+    .update({
+      status: 'unknown',
+      last_error_code: 'stale_claim_recovered',
+      completed_at: now,
+    })
+    .eq('status', 'claimed')
+    .lt('claimed_at', cutoff)
+  if (deliveryError) throw deliveryError
+  const { error: jobError } = await supabase
+    .from('scheduled_jobs')
+    .update({
+      status: 'pending',
+      locked_at: null,
+      run_at: now,
+      last_error: 'stale_lock_recovered',
+    })
+    .eq('status', 'processing')
+    .lt('locked_at', cutoff)
+  if (jobError) throw jobError
+}
 
 /** Renova tokens long-lived antes do vencimento e isola falhas por conta. */
 async function refreshDueMetaTokens() {
@@ -79,7 +117,7 @@ async function refreshDueMetaTokens() {
         resourceId: account.id,
       })
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : String(caught)
+      const message = operationalErrorCode(caught)
       const expired =
         account.token_expires_at &&
         new Date(account.token_expires_at).getTime() <= Date.now()
@@ -106,46 +144,29 @@ async function refreshDueMetaTokens() {
  * Falhas transitórias recebem backoff exponencial; a quinta tentativa é terminal.
  */
 async function processDueJobs() {
-  const now = new Date().toISOString()
-  const { data: jobs, error } = await supabase
-    .from('scheduled_jobs')
-    .select('*')
-    .eq('status', 'pending')
-    .lte('run_at', now)
-    .order('run_at')
-    .limit(50)
+  const { data: jobs, error } = await supabase.rpc('claim_due_scheduled_jobs', {
+    batch_size: 50,
+  })
   if (error) throw error
   for (const job of jobs) {
-    const lock = await supabase
-      .from('scheduled_jobs')
-      .update({
-        status: 'processing',
-        locked_at: now,
-        attempts: job.attempts + 1,
-      })
-      .eq('id', job.id)
-      .eq('status', 'pending')
-      .select('id')
-      .maybeSingle()
-    if (!lock.data) continue
     try {
       if (job.kind === 'sequence_step') await processSequenceJob(job)
+      else throw new UnsupportedScheduledJobError(job.kind)
       const { error: completedError } = await supabase
         .from('scheduled_jobs')
         .update({ status: 'completed' })
         .eq('id', job.id)
       if (completedError) throw completedError
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : String(caught)
-      const terminal =
-        job.attempts + 1 >= 5 || isTerminalOutboundDeliveryError(caught)
+      const message = operationalErrorCode(caught)
+      const terminal = job.attempts >= 5 || isTerminalScheduledJobError(caught)
       await supabase
         .from('scheduled_jobs')
         .update({
           status: terminal ? 'failed' : 'pending',
           last_error: message,
           run_at: new Date(
-            Date.now() + 2 ** job.attempts * 30_000,
+            Date.now() + 2 ** Math.max(0, job.attempts - 1) * 30_000,
           ).toISOString(),
           locked_at: null,
         })
@@ -156,7 +177,7 @@ async function processDueJobs() {
           .from('automation_runs')
           .update({
             status: terminal ? 'failed' : 'scheduled',
-            reason: terminal ? message.slice(0, 240) : 'retry_scheduled',
+            reason: terminal ? message : 'retry_scheduled',
           })
           .eq('id', automationRunId)
           .eq('workspace_id', job.workspace_id)
@@ -297,14 +318,12 @@ async function processSequenceJob(job: {
           .eq('job_id', job.id)
         if (replyStatusError) throw replyStatusError
       } catch (replyError) {
+        const failureStatus = privateReplyFailureStatus(replyError)
         await supabase
           .from('comment_private_replies')
           .update({
-            status: 'failed',
-            last_error:
-              replyError instanceof Error
-                ? replyError.message
-                : String(replyError),
+            status: failureStatus,
+            last_error: operationalErrorCode(replyError),
           })
           .eq('instagram_comment_id', commentId)
           .eq('job_id', job.id)
@@ -430,22 +449,26 @@ async function processSequenceJob(job: {
         .from('sequence_enrollments')
         .update({ current_position: nextPosition, next_run_at: runAt })
         .eq('id', enrollmentId)
-      await supabase.from('scheduled_jobs').insert({
-        workspace_id: job.workspace_id,
-        kind: 'sequence_step',
-        // Preserve the originating comment until the first message block. This
-        // lets typing/delay blocks precede a single, idempotent Private Reply.
-        payload: {
-          enrollmentId,
-          position: nextPosition,
-          senderId,
-          instagramCommentId: commentId,
-          commentCreatedAt,
-          triggerId,
-          automationRunId,
+      await supabase.from('scheduled_jobs').upsert(
+        {
+          workspace_id: job.workspace_id,
+          kind: 'sequence_step',
+          dedupe_key: `enrollment:${enrollmentId}:step:${nextPosition}`,
+          // Preserve the originating comment until the first message block. This
+          // lets typing/delay blocks precede a single, idempotent Private Reply.
+          payload: {
+            enrollmentId,
+            position: nextPosition,
+            senderId,
+            instagramCommentId: commentId,
+            commentCreatedAt,
+            triggerId,
+            automationRunId,
+          },
+          run_at: runAt,
         },
-        run_at: runAt,
-      })
+        { onConflict: 'workspace_id,dedupe_key', ignoreDuplicates: true },
+      )
     } else {
       await supabase
         .from('sequence_enrollments')
@@ -462,6 +485,7 @@ async function processSequenceJob(job: {
 /** Isola erros de um ciclo para que o processo continue no tick seguinte. */
 async function tick() {
   try {
+    await recoverStaleWork()
     await refreshDueMetaTokens()
     await processDueJobs()
     await writeWorkerHeartbeat('scheduler', 'healthy')

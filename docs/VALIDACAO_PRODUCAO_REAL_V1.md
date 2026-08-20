@@ -71,6 +71,7 @@ VITE_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_PUBLISHABLE_KEY
 REDIS_URL
 META_APP_ID
 META_APP_SECRET
@@ -109,21 +110,23 @@ Se qualquer resultado exigido falhar, o status permanece `no-go`.
 ### Fase 0 — deploy inerte
 
 1. Criar a infraestrutura de produção e os secrets exclusivos.
-2. Publicar a versão aprovada com `DEMO_MODE=true`.
-3. Confirmar que nenhuma credencial da homologação foi reutilizada.
-4. Validar liveness, readiness, worker, scheduler e headers.
-5. Manter o tráfego externo de mensageria desabilitado.
+2. Se o Supabase for self-hosted, rotacionar qualquer segredo JWT de exemplo de forma coordenada em Auth, REST, Storage e consumidores; emitir novas chaves e invalidar sessões antigas.
+3. Publicar a versão aprovada com `DEMO_MODE=true`.
+4. Confirmar que nenhuma credencial da homologação foi reutilizada.
+5. Validar liveness, readiness, worker, scheduler e headers.
+6. Manter o tráfego externo de mensageria desabilitado.
 
 Checkpoint: aprovação do responsável técnico para preparar banco e integrações.
 
 ### Fase 1 — dados
 
 1. Capturar backup e registrar o identificador.
-2. Aplicar migrations em ordem, incluindo `20260730223000_outbound_delivery_idempotency.sql`.
+2. Aplicar migrations em ordem, incluindo `20260730223000_outbound_delivery_idempotency.sql`, `20260820120000_operational_go_live.sql`, `20260820180000_backend_core_hardening.sql`, `20260820183000_backend_core_hotfix.sql` e `20260820184500_data_deletion_cleanup.sql`.
 3. Executar lint do banco.
 4. Criar dois usuários de teste em workspaces diferentes.
 5. Confirmar que JWT de um workspace não lê nem altera linhas do outro.
-6. Ensaiar o procedimento de restore em ambiente isolado.
+6. Confirmar que admin não escreve diretamente em `workspace_members` e viewer não escreve em tabelas operacionais.
+7. Ensaiar o procedimento de restore em ambiente isolado.
 
 Checkpoint: aprovação do responsável por dados. Uma migration não pode ser revertida apagando dados manualmente.
 

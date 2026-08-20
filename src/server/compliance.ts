@@ -10,6 +10,7 @@ export const MAX_META_TEXT_CHARS = 1_000
 export const STANDARD_WINDOW_MS = 24 * 60 * 60 * 1000
 export const HUMAN_AGENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 export const DEFAULT_COOLDOWN_MS = 24 * 60 * 60 * 1000
+export const MAX_CLOCK_SKEW_MS = 5 * 60 * 1_000
 
 export type SendPolicy =
   'standard_24h' | 'human_agent_7d' | 'private_reply_7d' | 'blocked'
@@ -44,7 +45,22 @@ export type ComplianceDecision = {
     | 'comment_already_replied'
     | 'outside_private_reply_window'
     | 'blocked_content'
+    | 'invalid_interaction_time'
   secondsLeft24h: number
+}
+
+/** Uniformiza Unicode e remove caracteres invisíveis usados para burlar filtros. */
+export function normalizeComplianceText(value: string) {
+  return value
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase('pt-BR')
+}
+
+export function isOptOutKeyword(value: string) {
+  return normalizeComplianceText(value) === 'parar'
 }
 
 function asTime(value: Date | string | null | undefined) {
@@ -96,12 +112,15 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceDecision {
   })
 
   if (input.optedOutAt) return deny('opted_out')
+  if (lastInbound !== null && lastInbound > now + MAX_CLOCK_SKEW_MS)
+    return deny('invalid_interaction_time')
 
-  const normalized = messageBody.toLocaleLowerCase('pt-BR')
+  const normalized = normalizeComplianceText(messageBody)
   if (
-    (input.blocklist ?? []).some((term) =>
-      normalized.includes(term.toLocaleLowerCase('pt-BR')),
-    )
+    (input.blocklist ?? []).some((term) => {
+      const normalizedTerm = normalizeComplianceText(term)
+      return normalizedTerm.length > 0 && normalized.includes(normalizedTerm)
+    })
   )
     return deny('blocked_content')
 
@@ -113,6 +132,8 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceDecision {
   if (input.instagramCommentId) {
     const commentTime = asTime(input.commentCreatedAt) ?? lastInbound
     if (!commentTime) return deny('no_inbound_interaction')
+    if (commentTime > now + MAX_CLOCK_SKEW_MS)
+      return deny('invalid_interaction_time')
     if (now - commentTime > HUMAN_AGENT_WINDOW_MS)
       return deny('outside_private_reply_window')
     return {

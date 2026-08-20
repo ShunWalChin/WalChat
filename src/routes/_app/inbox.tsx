@@ -219,24 +219,14 @@ function InboxPage() {
     if (!selected || !agentId || !selected.open24h) return
     setBusy('suggest')
     try {
-      const history = messages
-        .filter((message) => message.body?.trim())
-        .slice(-5)
-        .map((message) => ({
-          role:
-            message.direction === 'inbound'
-              ? ('user' as const)
-              : ('assistant' as const),
-          content: message.body ?? '',
-        }))
-      if (history.length === 0)
+      if (!messages.some((message) => message.body?.trim()))
         throw new Error('A conversa ainda não tem texto.')
       const result = await apiFetch<{
         suggestion: string
         sources: AiSource[]
       }>('/api/ai/suggest', {
         method: 'POST',
-        body: JSON.stringify({ agentId, history }),
+        body: JSON.stringify({ agentId, conversationId: selected.id }),
       })
       setDraft(result.suggestion)
       setDraftFromAi(true)

@@ -12,6 +12,7 @@ import {
   saveIntegrationCredential,
   writeIntegrationAudit,
 } from '../../../server/integration-credentials.server'
+import { readJsonBody } from '../../../server/request-body.server'
 
 const settingsSchema = z
   .object({
@@ -52,7 +53,7 @@ export const Route = createFileRoute('/api/ai/settings')({
                 .select('*')
                 .eq('workspace_id', context.workspaceId)
                 .maybeSingle(),
-              context.supabase
+              context.admin
                 .from('integration_credentials')
                 .select('provider')
                 .eq('workspace_id', context.workspaceId)
@@ -118,7 +119,7 @@ export const Route = createFileRoute('/api/ai/settings')({
             'owner',
             'admin',
           ])
-          const body = settingsSchema.parse(await request.json())
+          const body = settingsSchema.parse(await readJsonBody(request))
           const { error } = await context.supabase
             .from('ai_provider_settings')
             .upsert({

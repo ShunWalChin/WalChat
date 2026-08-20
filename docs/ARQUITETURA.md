@@ -52,15 +52,15 @@ Fornece Auth, Postgres, REST, Realtime e Storage. O banco é a fonte de verdade 
 
 ### Redis e BullMQ
 
-O endpoint de webhook calcula SHA-256 do corpo bruto e usa o hash como `jobId`. Eventos repetidos são ignorados pelo índice único do banco e pelo identificador da fila. Jobs falhos usam até cinco tentativas com backoff exponencial.
+O endpoint de webhook calcula SHA-256 do corpo bruto e usa o hash como `jobId`. Eventos repetidos são ignorados pelo índice único do banco e pelo identificador da fila. Uma redelivery da Meta após falha terminal abre no máximo uma nova rodada reivindicada no Postgres. Jobs falhos usam até cinco tentativas com backoff exponencial.
 
 ### Worker Instagram
 
-Consome `instagram-webhooks`, identifica a conta destinatária, cria/atualiza o contato, registra a interação e avalia gatilhos. O worker não envia mensagens diretamente; ele cria `scheduled_jobs` para concentrar o envio no scheduler.
+Consome `instagram-webhooks`, identifica a conta destinatária e chama a RPC transacional `ingest_instagram_inbound`. A RPC cria ou repara contato, interação, conversa e mensagem, com incremento atômico de não lidas. O worker não envia mensagens diretamente; ele cria `scheduled_jobs` deduplicados para concentrar o envio no scheduler.
 
 ### Scheduler
 
-Executa a cada 60 segundos e processa até 50 jobs vencidos por ciclo. Um update condicional de `pending` para `processing` funciona como lock otimista. Falhas retornam o job para `pending` com backoff; após cinco tentativas, o estado vira `failed`.
+Executa a cada 60 segundos e reivindica até 50 jobs por ciclo numa transação com `FOR UPDATE SKIP LOCKED`. Locks abandonados são recuperados; claims de entrega antigos viram `unknown` antes de um job voltar à fila. Falhas transitórias usam backoff e a quinta tentativa é terminal. Tipos de job sem executor falham explicitamente.
 
 ### Motor de compliance
 
@@ -109,9 +109,11 @@ O webhook responde rapidamente após persistência/enfileiramento. Nenhuma chama
 1. Supabase Auth valida e-mail/senha.
 2. O trigger `handle_new_user` cria um workspace e associação `owner`.
 3. O cliente envia o JWT Supabase.
-4. Policies consultam `workspace_members` via `is_workspace_member` e `has_workspace_role`.
-5. Entidades com `workspace_id` ficam invisíveis a usuários de outros tenants.
-6. `integration_credentials` cifra tokens/API keys com AES-256-GCM e é acessível somente à service role.
+4. A API cria um cliente Supabase com publishable key + JWT; leituras e configurações passam por RLS.
+5. Policies consultam `workspace_members` via `is_workspace_member` e `has_workspace_role`.
+6. Entidades com `workspace_id` ficam invisíveis a usuários de outros tenants.
+7. A service role fica separada e só atua em mutações operacionais após RBAC explícito ou nos workers.
+8. `integration_credentials` cifra tokens/API keys com AES-256-GCM v2 e AAD de tenant/escopo; somente a service role acessa a tabela.
 
 ## 6. Limites de confiança
 
@@ -128,7 +130,7 @@ O webhook responde rapidamente após persistência/enfileiramento. Nenhuma chama
 
 - `/api/health` é liveness do processo; `/api/ready` sonda Supabase e Redis e controla a entrada de tráfego.
 - Os workers gravam heartbeats atômicos em `/tmp`; o Compose os considera unhealthy quando o heartbeat atrasa ou registra falha.
-- Redis indisponível: em live, o webhook retorna `503` para a Meta tentar novamente; o fallback outbox é aceito somente em demo até existir reconciliação automática.
+- Redis indisponível: em live, o webhook retorna `503` para a Meta tentar novamente; em demo o outbox Postgres continua disponível e o worker possui reconciliação automática.
 - Supabase indisponível: o endpoint retorna `503` para a Meta tentar novamente.
 - Meta indisponível: o scheduler registra erro e reagenda com backoff.
 - IA indisponível: live falha sem enviar; somente demo pode usar resposta local determinística.

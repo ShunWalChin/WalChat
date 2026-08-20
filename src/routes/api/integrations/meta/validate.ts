@@ -16,6 +16,8 @@ import {
   META_WEBHOOK_FIELDS,
   subscribeMetaWebhooks,
 } from '../../../../server/meta-api.server'
+import { readJsonBody } from '../../../../server/request-body.server'
+import { assertRateLimit } from '../../../../server/rate-limit.server'
 
 const schema = z.object({ accountId: z.string().uuid() })
 
@@ -29,7 +31,13 @@ export const Route = createFileRoute('/api/integrations/meta/validate')({
             'owner',
             'admin',
           ])
-          const body = schema.parse(await request.json())
+          await assertRateLimit({
+            namespace: 'meta-validate',
+            identity: `${context.workspaceId}:${context.user.id}`,
+            limit: 10,
+            windowSeconds: 600,
+          })
+          const body = schema.parse(await readJsonBody(request))
           const access = await getMetaAccountAccess({
             workspaceId: context.workspaceId,
             instagramAccountId: body.accountId,

@@ -3,8 +3,27 @@ import '@tanstack/react-start/server-only'
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import { getServerEnv } from './env.server'
 
-const VERSION = 'v1'
+const VERSION = 'v2'
 const IV_BYTES = 12
+
+export type CredentialEncryptionContext = {
+  workspaceId: string
+  provider: string
+  credentialType: string
+  scopeKey: string
+}
+
+function serializeContext(context: CredentialEncryptionContext) {
+  return Buffer.from(
+    JSON.stringify([
+      context.workspaceId,
+      context.provider,
+      context.credentialType,
+      context.scopeKey,
+    ]),
+    'utf8',
+  )
+}
 
 function getEncryptionKey() {
   const encoded = getServerEnv().CREDENTIALS_ENCRYPTION_KEY
@@ -34,11 +53,18 @@ export function hasValidCredentialEncryptionKey() {
   }
 }
 
-/** Retorna um envelope versionado `v1.iv.tag.ciphertext` usando AES-256-GCM. */
-export function encryptCredential(value: string) {
+/**
+ * Envelope v2 com AAD: mesmo um administrador do banco não pode mover um
+ * ciphertext entre tenants, providers ou contas e fazê-lo decifrar.
+ */
+export function encryptCredential(
+  value: string,
+  context: CredentialEncryptionContext,
+) {
   if (!value) throw new Error('Não é possível cifrar uma credencial vazia.')
   const iv = randomBytes(IV_BYTES)
   const cipher = createCipheriv('aes-256-gcm', getEncryptionKey(), iv)
+  cipher.setAAD(serializeContext(context))
   const encrypted = Buffer.concat([
     cipher.update(value, 'utf8'),
     cipher.final(),
@@ -51,10 +77,18 @@ export function encryptCredential(value: string) {
   ].join('.')
 }
 
-/** Decifra o envelope e recusa versões/formato adulterados. */
-export function decryptCredential(envelope: string) {
+/** Decifra v2 com contexto e mantém leitura de envelopes v1 durante migração. */
+export function decryptCredential(
+  envelope: string,
+  context: CredentialEncryptionContext,
+) {
   const [version, ivPart, tagPart, encryptedPart] = envelope.split('.')
-  if (version !== VERSION || !ivPart || !tagPart || !encryptedPart)
+  if (
+    !['v1', VERSION].includes(version) ||
+    !ivPart ||
+    !tagPart ||
+    !encryptedPart
+  )
     throw new Error('Envelope de credencial inválido.')
 
   const decipher = createDecipheriv(
@@ -62,6 +96,7 @@ export function decryptCredential(envelope: string) {
     getEncryptionKey(),
     Buffer.from(ivPart, 'base64url'),
   )
+  if (version === VERSION) decipher.setAAD(serializeContext(context))
   decipher.setAuthTag(Buffer.from(tagPart, 'base64url'))
   return Buffer.concat([
     decipher.update(Buffer.from(encryptedPart, 'base64url')),

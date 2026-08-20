@@ -9,6 +9,7 @@ const originalEnv = {
   DEMO_MODE: process.env.DEMO_MODE,
   SUPABASE_URL: process.env.SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY,
   REDIS_URL: process.env.REDIS_URL,
 }
 
@@ -73,6 +74,7 @@ describe('checkRuntimeReadiness', () => {
   it('permite demo sem dependências, mas exige ambas em live', async () => {
     delete process.env.SUPABASE_URL
     delete process.env.SUPABASE_SERVICE_ROLE_KEY
+    delete process.env.SUPABASE_PUBLISHABLE_KEY
     delete process.env.REDIS_URL
 
     process.env.DEMO_MODE = 'true'
@@ -92,6 +94,7 @@ describe('checkRuntimeReadiness', () => {
     process.env.DEMO_MODE = 'true'
     process.env.SUPABASE_URL = 'https://supabase.example'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'x'.repeat(24)
+    process.env.SUPABASE_PUBLISHABLE_KEY = 'y'.repeat(24)
     process.env.REDIS_URL = 'redis://redis:6379'
 
     const readiness = await checkRuntimeReadiness({

@@ -97,6 +97,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) throw error
       },
       enterDemo() {
+        if (configured)
+          throw new Error('Modo demo indisponível com autenticação real ativa.')
         localStorage.setItem(DEMO_KEY, '1')
         setUser({ id: 'demo', email: 'demo@walchat.local', name: 'Wal Demo' })
       },

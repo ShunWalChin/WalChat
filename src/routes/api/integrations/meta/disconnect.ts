@@ -12,6 +12,7 @@ import {
   writeIntegrationAudit,
 } from '../../../../server/integration-credentials.server'
 import { unsubscribeMetaWebhooks } from '../../../../server/meta-api.server'
+import { readJsonBody } from '../../../../server/request-body.server'
 
 const schema = z.object({ accountId: z.string().uuid() })
 
@@ -25,7 +26,7 @@ export const Route = createFileRoute('/api/integrations/meta/disconnect')({
             'owner',
             'admin',
           ])
-          const body = schema.parse(await request.json())
+          const body = schema.parse(await readJsonBody(request))
           const access = await getMetaAccountAccess({
             workspaceId: context.workspaceId,
             instagramAccountId: body.accountId,
@@ -36,14 +37,13 @@ export const Route = createFileRoute('/api/integrations/meta/disconnect')({
               accessToken: access.accessToken,
             })
           } catch (error) {
-            console.warn('meta_unsubscribe_failed', error)
+            console.warn(
+              JSON.stringify({
+                event: 'meta_unsubscribe_failed',
+                error: error instanceof Error ? error.name : 'unknown_error',
+              }),
+            )
           }
-          await deleteIntegrationCredential({
-            workspaceId: context.workspaceId,
-            provider: 'meta',
-            credentialType: 'access_token',
-            scopeKey: body.accountId,
-          })
           const { error } = await context.supabase
             .from('instagram_accounts')
             .update({
@@ -54,6 +54,12 @@ export const Route = createFileRoute('/api/integrations/meta/disconnect')({
             .eq('workspace_id', context.workspaceId)
             .eq('id', body.accountId)
           if (error) throw error
+          await deleteIntegrationCredential({
+            workspaceId: context.workspaceId,
+            provider: 'meta',
+            credentialType: 'access_token',
+            scopeKey: body.accountId,
+          })
           await writeIntegrationAudit({
             workspaceId: context.workspaceId,
             actorUserId: context.user.id,

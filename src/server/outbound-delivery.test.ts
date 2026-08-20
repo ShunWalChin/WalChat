@@ -81,5 +81,11 @@ describe('resolveExistingDelivery', () => {
         'fingerprint',
       ),
     ).toThrowError(/confirmação manual/i)
+    expect(() =>
+      resolveExistingDelivery(
+        { ...existing, status: 'failed', provider_message_id: null },
+        'fingerprint',
+      ),
+    ).toThrowError(/nova Idempotency-Key/i)
   })
 })

@@ -11,6 +11,7 @@ import {
 } from '../../../../server/meta-api.server'
 import { getServerEnv } from '../../../../server/env.server'
 import { hasValidCredentialEncryptionKey } from '../../../../server/credentials-crypto.server'
+import { assertRateLimit } from '../../../../server/rate-limit.server'
 
 export const Route = createFileRoute('/api/integrations/meta/start')({
   server: {
@@ -22,6 +23,12 @@ export const Route = createFileRoute('/api/integrations/meta/start')({
             'owner',
             'admin',
           ])
+          await assertRateLimit({
+            namespace: 'meta-oauth-start',
+            identity: `${context.workspaceId}:${context.user.id}`,
+            limit: 5,
+            windowSeconds: 600,
+          })
           if (!hasValidCredentialEncryptionKey())
             return Response.json(
               {
@@ -35,13 +42,16 @@ export const Route = createFileRoute('/api/integrations/meta/start')({
             userId: context.user.id,
           })
           const secure = getServerEnv().APP_ORIGIN.startsWith('https://')
+          const cookieName = secure
+            ? '__Host-wal_meta_oauth_state'
+            : 'wal_meta_oauth_state'
           return Response.json(
             { authorizationUrl: buildMetaAuthorizationUrl(state) },
             {
               headers: {
                 'Cache-Control': 'no-store',
                 'Set-Cookie': [
-                  `wal_meta_oauth_state=${state}`,
+                  `${cookieName}=${state}`,
                   'HttpOnly',
                   secure ? 'Secure' : '',
                   'SameSite=Lax',

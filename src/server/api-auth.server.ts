@@ -4,6 +4,7 @@ import { ZodError } from 'zod'
 import { getServerEnv } from './env.server'
 import {
   getSupabaseAdmin,
+  getSupabaseForRequest,
   requireUserFromBearer,
 } from './supabase-admin.server'
 
@@ -16,21 +17,34 @@ export async function requireWorkspaceContext(
   const user = await requireUserFromBearer(request)
   if (!user) throw new ApiError(401, 'Sessão inválida ou expirada.')
 
-  const supabase = getSupabaseAdmin()
-  if (!supabase) throw new ApiError(503, 'Backend Supabase indisponível.')
+  const admin = getSupabaseAdmin()
+  const supabase = getSupabaseForRequest(request)
+  if (!admin || !supabase)
+    throw new ApiError(503, 'Backend Supabase indisponível.')
 
   let membershipQuery = supabase
     .from('workspace_members')
     .select('workspace_id,role,workspaces!inner(id,name,slug)')
     .eq('user_id', user.id)
   const requestedWorkspace = request.headers.get('x-workspace-id')
+  if (
+    requestedWorkspace &&
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      requestedWorkspace,
+    )
+  )
+    throw new ApiError(400, 'X-Workspace-Id inválido.')
   if (requestedWorkspace)
     membershipQuery = membershipQuery.eq('workspace_id', requestedWorkspace)
 
-  const { data: membership, error } = await membershipQuery
-    .limit(1)
-    .maybeSingle()
+  const { data: memberships, error } = await membershipQuery.limit(2)
   if (error) throw error
+  if (!requestedWorkspace && memberships.length > 1)
+    throw new ApiError(
+      409,
+      'Selecione um workspace e envie o header X-Workspace-Id.',
+    )
+  const membership = memberships.at(0)
   if (!membership) throw new ApiError(403, 'Usuário não pertence ao workspace.')
   if (!allowedRoles.includes(membership.role as WorkspaceRole))
     throw new ApiError(403, 'Seu perfil não permite esta alteração.')
@@ -45,15 +59,25 @@ export async function requireWorkspaceContext(
       slug: string
     },
     supabase,
+    /** Service role somente para mutações internas já autorizadas por esta API. */
+    admin,
   }
 }
 
 /** Reforça CSRF nas mutações sem impedir smoke tests server-to-server sem Origin. */
 export function assertTrustedOrigin(request: Request) {
   const origin = request.headers.get('origin')
-  if (!origin) return
-  if (new URL(origin).origin !== new URL(getServerEnv().APP_ORIGIN).origin)
+  if (request.headers.get('sec-fetch-site') === 'cross-site')
     throw new ApiError(403, 'Origem da requisição não autorizada.')
+  if (!origin) return
+  let trusted = false
+  try {
+    trusted =
+      new URL(origin).origin === new URL(getServerEnv().APP_ORIGIN).origin
+  } catch {
+    trusted = false
+  }
+  if (!trusted) throw new ApiError(403, 'Origem da requisição não autorizada.')
 }
 
 export class ApiError extends Error {

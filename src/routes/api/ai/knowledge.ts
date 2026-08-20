@@ -7,6 +7,7 @@ import {
   assertTrustedOrigin,
   requireWorkspaceContext,
 } from '../../../server/api-auth.server'
+import { readJsonBody } from '../../../server/request-body.server'
 
 const createSchema = z.object({
   agentId: z.string().uuid().nullable(),
@@ -66,7 +67,7 @@ export const Route = createFileRoute('/api/ai/knowledge')({
             'owner',
             'admin',
           ])
-          const body = createSchema.parse(await request.json())
+          const body = createSchema.parse(await readJsonBody(request))
           await assertAgentInWorkspace(
             context.supabase,
             context.workspaceId,
@@ -98,7 +99,7 @@ export const Route = createFileRoute('/api/ai/knowledge')({
             'owner',
             'admin',
           ])
-          const body = updateSchema.parse(await request.json())
+          const body = updateSchema.parse(await readJsonBody(request))
           await assertAgentInWorkspace(
             context.supabase,
             context.workspaceId,
@@ -133,7 +134,7 @@ export const Route = createFileRoute('/api/ai/knowledge')({
             'owner',
             'admin',
           ])
-          const body = deleteSchema.parse(await request.json())
+          const body = deleteSchema.parse(await readJsonBody(request))
           const { error } = await context.supabase
             .from('knowledge_documents')
             .delete()
