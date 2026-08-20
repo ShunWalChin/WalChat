@@ -202,3 +202,32 @@ intencional. Ainda faltam o `META_APP_ID`, o Configuration ID do Embedded
 Signup, um telefone/WABA conectado e Advanced Access aprovado pela Meta. A
 conta Instagram já cadastrada não foi usada para disparos durante esta
 validação. Nenhum token, PIN ou secret foi registrado no relatório.
+
+## CRM de Contatos & Tags — 20/08/2026
+
+A release final `20260820-contacts-crm-v2`, commit `26ddc46`, foi implantada na
+stack isolada `wal-chat`. A migration aditiva `20260820220000` foi executada
+primeiro em uma cópia temporária do banco e, após o ensaio transacional, em
+homologação. O primeiro smoke da v1 identificou uma projeção inexistente na
+consulta de conversas do perfil 360º; a falha foi corrigida, versionada e
+revalidada na v2 antes da aprovação.
+
+| Verificação                              | Resultado                                                                                                |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Backup PostgreSQL pré-migração           | Aprovado; `/opt/wal-chat/backups/20260820-contacts-crm-pre/wal-chat-pre-contacts-crm.dump`               |
+| Migration isolada                        | Aprovada com criação e listagem de contato manual dentro de transação revertida                          |
+| Migration em homologação                 | `20260820220000 contacts_tags_crm` registrada e estruturas verificadas                                   |
+| Testes unitários                         | 21 arquivos e 64 testes aprovados                                                                        |
+| TypeScript, ESLint, Prettier e build SSR | Aprovados                                                                                                |
+| Auditoria npm                            | Zero vulnerabilidades conhecidas                                                                         |
+| Serviços                                 | App, worker de webhooks, scheduler e Redis saudáveis                                                     |
+| Smoke autenticado                        | Lista, paginação, catálogo de tags, perfil 360º, notas e auditoria aprovados                             |
+| Navegador autenticado                    | Cadastro manual, criação/aplicação de tag, score, campo personalizado, nota fixada e histórico aprovados |
+| Isolamento de QA                         | Usuário temporário removido; zero workspaces remanescentes do ensaio                                     |
+| Layout desktop                           | 1280×720 sem overflow horizontal; drawer e modais operacionais                                           |
+| Kill switches                            | Todos os efeitos externos permaneceram desligados                                                        |
+
+O endereço de homologação continua
+`https://wal-chat.64.181.178.125.nip.io`. O CRM está liberado para testes
+internos com contas e contatos reais, mas o ambiente permanece em
+`DEMO_MODE=true`; esta entrega não habilitou disparos Meta nem IA autônoma.
