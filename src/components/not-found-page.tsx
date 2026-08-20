@@ -6,10 +6,14 @@ import {
   LayoutDashboard,
   SearchX,
 } from 'lucide-react'
+import { useEffect } from 'react'
 import { useAuth } from '../contexts/auth-context'
 
 export function NotFoundPage() {
   const { user } = useAuth()
+  useEffect(() => {
+    document.title = 'Página não encontrada | Wal Chat'
+  }, [])
   return (
     <main className="not-found-page">
       <Link to="/" className="brand">
