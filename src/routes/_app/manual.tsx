@@ -792,11 +792,13 @@ function ManualPage() {
                       </ModuleRow>
                       <ModuleRow
                         name="Dashboard e contatos multicanal"
-                        status="Piloto"
-                        tone="blue"
+                        status="Funcional"
+                        tone="green"
                       >
-                        CRM, mensagens e canais são reais; alcance depende da
-                        sincronização de Insights do Instagram.
+                        CRM com perfil 360º, filtros, contatos manuais, tags,
+                        score, responsável, consentimento, notas, auditoria,
+                        ações em lote e CSV. O alcance do Dashboard ainda
+                        depende da sincronização de Insights do Instagram.
                       </ModuleRow>
                       <ModuleRow
                         name="Campanhas e reengajamento"

@@ -317,6 +317,8 @@ async function scheduleWhatsAppTrigger(input: {
           workspace_id: input.workspaceId,
           contact_id: input.contactId,
           tag_id: trigger.auto_tag_id,
+          source: 'trigger',
+          metadata: { triggerId: trigger.id, platform: 'whatsapp' },
         },
         { onConflict: 'contact_id,tag_id' },
       )

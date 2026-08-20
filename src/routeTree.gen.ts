@@ -29,6 +29,7 @@ import { Route as AppOperacoesRouteImport } from './routes/_app/operacoes'
 import { Route as AppPublicarRouteImport } from './routes/_app/publicar'
 import { Route as AppReengajamentoRouteImport } from './routes/_app/reengajamento'
 import { Route as AppSequenciasRouteImport } from './routes/_app/sequencias'
+import { Route as ApiContactTagsRouteImport } from './routes/api/contact-tags'
 import { Route as ApiContactsRouteImport } from './routes/api/contacts'
 import { Route as ApiDashboardRouteImport } from './routes/api/dashboard'
 import { Route as ApiDataDeletionRouteImport } from './routes/api/data-deletion'
@@ -41,9 +42,12 @@ import { Route as ApiAiKnowledgeRouteImport } from './routes/api/ai/knowledge'
 import { Route as ApiAiSettingsRouteImport } from './routes/api/ai/settings'
 import { Route as ApiAiSuggestRouteImport } from './routes/api/ai/suggest'
 import { Route as ApiComplianceCheckRouteImport } from './routes/api/compliance/check'
+import { Route as ApiContactsContactIdRouteImport } from './routes/api/contacts/$contactId'
+import { Route as ApiContactsBulkRouteImport } from './routes/api/contacts/bulk'
 import { Route as ApiMessagesSendRouteImport } from './routes/api/messages/send'
 import { Route as ApiOperationsGoLiveRouteImport } from './routes/api/operations/go-live'
 import { Route as ApiOperationsWebhooksRouteImport } from './routes/api/operations/webhooks'
+import { Route as ApiContactsContactIdNotesRouteImport } from './routes/api/contacts/$contactId/notes'
 import { Route as ApiIntegrationsMetaCallbackRouteImport } from './routes/api/integrations/meta/callback'
 import { Route as ApiIntegrationsMetaDisconnectRouteImport } from './routes/api/integrations/meta/disconnect'
 import { Route as ApiIntegrationsMetaMediaRouteImport } from './routes/api/integrations/meta/media'
@@ -158,6 +162,11 @@ const AppSequenciasRoute = AppSequenciasRouteImport.update({
   path: '/sequencias',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiContactTagsRoute = ApiContactTagsRouteImport.update({
+  id: '/api/contact-tags',
+  path: '/api/contact-tags',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiContactsRoute = ApiContactsRouteImport.update({
   id: '/api/contacts',
   path: '/api/contacts',
@@ -218,6 +227,16 @@ const ApiComplianceCheckRoute = ApiComplianceCheckRouteImport.update({
   path: '/api/compliance/check',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiContactsContactIdRoute = ApiContactsContactIdRouteImport.update({
+  id: '/$contactId',
+  path: '/$contactId',
+  getParentRoute: () => ApiContactsRoute,
+} as any)
+const ApiContactsBulkRoute = ApiContactsBulkRouteImport.update({
+  id: '/bulk',
+  path: '/bulk',
+  getParentRoute: () => ApiContactsRoute,
+} as any)
 const ApiMessagesSendRoute = ApiMessagesSendRouteImport.update({
   id: '/api/messages/send',
   path: '/api/messages/send',
@@ -233,6 +252,12 @@ const ApiOperationsWebhooksRoute = ApiOperationsWebhooksRouteImport.update({
   path: '/api/operations/webhooks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiContactsContactIdNotesRoute =
+  ApiContactsContactIdNotesRouteImport.update({
+    id: '/notes',
+    path: '/notes',
+    getParentRoute: () => ApiContactsContactIdRoute,
+  } as any)
 const ApiIntegrationsMetaCallbackRoute =
   ApiIntegrationsMetaCallbackRouteImport.update({
     id: '/api/integrations/meta/callback',
@@ -338,7 +363,8 @@ export interface FileRoutesByFullPath {
   '/publicar': typeof AppPublicarRoute
   '/reengajamento': typeof AppReengajamentoRoute
   '/sequencias': typeof AppSequenciasRoute
-  '/api/contacts': typeof ApiContactsRoute
+  '/api/contact-tags': typeof ApiContactTagsRoute
+  '/api/contacts': typeof ApiContactsRouteWithChildren
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/health': typeof ApiHealthRoute
@@ -350,9 +376,12 @@ export interface FileRoutesByFullPath {
   '/api/ai/settings': typeof ApiAiSettingsRoute
   '/api/ai/suggest': typeof ApiAiSuggestRoute
   '/api/compliance/check': typeof ApiComplianceCheckRoute
+  '/api/contacts/$contactId': typeof ApiContactsContactIdRouteWithChildren
+  '/api/contacts/bulk': typeof ApiContactsBulkRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
+  '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
   '/api/integrations/meta/callback': typeof ApiIntegrationsMetaCallbackRoute
   '/api/integrations/meta/disconnect': typeof ApiIntegrationsMetaDisconnectRoute
   '/api/integrations/meta/media': typeof ApiIntegrationsMetaMediaRoute
@@ -388,7 +417,8 @@ export interface FileRoutesByTo {
   '/publicar': typeof AppPublicarRoute
   '/reengajamento': typeof AppReengajamentoRoute
   '/sequencias': typeof AppSequenciasRoute
-  '/api/contacts': typeof ApiContactsRoute
+  '/api/contact-tags': typeof ApiContactTagsRoute
+  '/api/contacts': typeof ApiContactsRouteWithChildren
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/health': typeof ApiHealthRoute
@@ -400,9 +430,12 @@ export interface FileRoutesByTo {
   '/api/ai/settings': typeof ApiAiSettingsRoute
   '/api/ai/suggest': typeof ApiAiSuggestRoute
   '/api/compliance/check': typeof ApiComplianceCheckRoute
+  '/api/contacts/$contactId': typeof ApiContactsContactIdRouteWithChildren
+  '/api/contacts/bulk': typeof ApiContactsBulkRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
+  '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
   '/api/integrations/meta/callback': typeof ApiIntegrationsMetaCallbackRoute
   '/api/integrations/meta/disconnect': typeof ApiIntegrationsMetaDisconnectRoute
   '/api/integrations/meta/media': typeof ApiIntegrationsMetaMediaRoute
@@ -440,7 +473,8 @@ export interface FileRoutesById {
   '/_app/publicar': typeof AppPublicarRoute
   '/_app/reengajamento': typeof AppReengajamentoRoute
   '/_app/sequencias': typeof AppSequenciasRoute
-  '/api/contacts': typeof ApiContactsRoute
+  '/api/contact-tags': typeof ApiContactTagsRoute
+  '/api/contacts': typeof ApiContactsRouteWithChildren
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/health': typeof ApiHealthRoute
@@ -452,9 +486,12 @@ export interface FileRoutesById {
   '/api/ai/settings': typeof ApiAiSettingsRoute
   '/api/ai/suggest': typeof ApiAiSuggestRoute
   '/api/compliance/check': typeof ApiComplianceCheckRoute
+  '/api/contacts/$contactId': typeof ApiContactsContactIdRouteWithChildren
+  '/api/contacts/bulk': typeof ApiContactsBulkRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
+  '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
   '/api/integrations/meta/callback': typeof ApiIntegrationsMetaCallbackRoute
   '/api/integrations/meta/disconnect': typeof ApiIntegrationsMetaDisconnectRoute
   '/api/integrations/meta/media': typeof ApiIntegrationsMetaMediaRoute
@@ -492,6 +529,7 @@ export interface FileRouteTypes {
     | '/publicar'
     | '/reengajamento'
     | '/sequencias'
+    | '/api/contact-tags'
     | '/api/contacts'
     | '/api/dashboard'
     | '/api/data-deletion'
@@ -504,9 +542,12 @@ export interface FileRouteTypes {
     | '/api/ai/settings'
     | '/api/ai/suggest'
     | '/api/compliance/check'
+    | '/api/contacts/$contactId'
+    | '/api/contacts/bulk'
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
+    | '/api/contacts/$contactId/notes'
     | '/api/integrations/meta/callback'
     | '/api/integrations/meta/disconnect'
     | '/api/integrations/meta/media'
@@ -542,6 +583,7 @@ export interface FileRouteTypes {
     | '/publicar'
     | '/reengajamento'
     | '/sequencias'
+    | '/api/contact-tags'
     | '/api/contacts'
     | '/api/dashboard'
     | '/api/data-deletion'
@@ -554,9 +596,12 @@ export interface FileRouteTypes {
     | '/api/ai/settings'
     | '/api/ai/suggest'
     | '/api/compliance/check'
+    | '/api/contacts/$contactId'
+    | '/api/contacts/bulk'
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
+    | '/api/contacts/$contactId/notes'
     | '/api/integrations/meta/callback'
     | '/api/integrations/meta/disconnect'
     | '/api/integrations/meta/media'
@@ -593,6 +638,7 @@ export interface FileRouteTypes {
     | '/_app/publicar'
     | '/_app/reengajamento'
     | '/_app/sequencias'
+    | '/api/contact-tags'
     | '/api/contacts'
     | '/api/dashboard'
     | '/api/data-deletion'
@@ -605,9 +651,12 @@ export interface FileRouteTypes {
     | '/api/ai/settings'
     | '/api/ai/suggest'
     | '/api/compliance/check'
+    | '/api/contacts/$contactId'
+    | '/api/contacts/bulk'
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
+    | '/api/contacts/$contactId/notes'
     | '/api/integrations/meta/callback'
     | '/api/integrations/meta/disconnect'
     | '/api/integrations/meta/media'
@@ -630,7 +679,8 @@ export interface RootRouteChildren {
   ExclusaoDeDadosRoute: typeof ExclusaoDeDadosRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
-  ApiContactsRoute: typeof ApiContactsRoute
+  ApiContactTagsRoute: typeof ApiContactTagsRoute
+  ApiContactsRoute: typeof ApiContactsRouteWithChildren
   ApiDashboardRoute: typeof ApiDashboardRoute
   ApiDataDeletionRoute: typeof ApiDataDeletionRoute
   ApiHealthRoute: typeof ApiHealthRoute
@@ -803,6 +853,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSequenciasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/contact-tags': {
+      id: '/api/contact-tags'
+      path: '/api/contact-tags'
+      fullPath: '/api/contact-tags'
+      preLoaderRoute: typeof ApiContactTagsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/contacts': {
       id: '/api/contacts'
       path: '/api/contacts'
@@ -887,6 +944,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiComplianceCheckRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/contacts/$contactId': {
+      id: '/api/contacts/$contactId'
+      path: '/$contactId'
+      fullPath: '/api/contacts/$contactId'
+      preLoaderRoute: typeof ApiContactsContactIdRouteImport
+      parentRoute: typeof ApiContactsRoute
+    }
+    '/api/contacts/bulk': {
+      id: '/api/contacts/bulk'
+      path: '/bulk'
+      fullPath: '/api/contacts/bulk'
+      preLoaderRoute: typeof ApiContactsBulkRouteImport
+      parentRoute: typeof ApiContactsRoute
+    }
     '/api/messages/send': {
       id: '/api/messages/send'
       path: '/api/messages/send'
@@ -907,6 +978,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/operations/webhooks'
       preLoaderRoute: typeof ApiOperationsWebhooksRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/contacts/$contactId/notes': {
+      id: '/api/contacts/$contactId/notes'
+      path: '/notes'
+      fullPath: '/api/contacts/$contactId/notes'
+      preLoaderRoute: typeof ApiContactsContactIdNotesRouteImport
+      parentRoute: typeof ApiContactsContactIdRoute
     }
     '/api/integrations/meta/callback': {
       id: '/api/integrations/meta/callback'
@@ -1047,13 +1125,39 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface ApiContactsContactIdRouteChildren {
+  ApiContactsContactIdNotesRoute: typeof ApiContactsContactIdNotesRoute
+}
+
+const ApiContactsContactIdRouteChildren: ApiContactsContactIdRouteChildren = {
+  ApiContactsContactIdNotesRoute: ApiContactsContactIdNotesRoute,
+}
+
+const ApiContactsContactIdRouteWithChildren =
+  ApiContactsContactIdRoute._addFileChildren(ApiContactsContactIdRouteChildren)
+
+interface ApiContactsRouteChildren {
+  ApiContactsContactIdRoute: typeof ApiContactsContactIdRouteWithChildren
+  ApiContactsBulkRoute: typeof ApiContactsBulkRoute
+}
+
+const ApiContactsRouteChildren: ApiContactsRouteChildren = {
+  ApiContactsContactIdRoute: ApiContactsContactIdRouteWithChildren,
+  ApiContactsBulkRoute: ApiContactsBulkRoute,
+}
+
+const ApiContactsRouteWithChildren = ApiContactsRoute._addFileChildren(
+  ApiContactsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   ExclusaoDeDadosRoute: ExclusaoDeDadosRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
-  ApiContactsRoute: ApiContactsRoute,
+  ApiContactTagsRoute: ApiContactTagsRoute,
+  ApiContactsRoute: ApiContactsRouteWithChildren,
   ApiDashboardRoute: ApiDashboardRoute,
   ApiDataDeletionRoute: ApiDataDeletionRoute,
   ApiHealthRoute: ApiHealthRoute,

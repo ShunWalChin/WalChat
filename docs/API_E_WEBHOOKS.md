@@ -198,6 +198,24 @@ A chave deve ter de 16 a 128 caracteres e usar somente letras, números, `.`, `_
 
 A resposta de sucesso inclui `replayed`, que informa se o resultado foi lido do claim persistido.
 
+## CRM de Contatos & Tags
+
+- `GET /api/contacts`: lista paginada com busca, canal, elegibilidade, estágio,
+  tag, responsável, arquivo e ordenação; retorna resumo e permissões do papel.
+- `POST /api/contacts`: cria contato manual sem identidade Meta e sem
+  elegibilidade para disparos; exige `owner/admin/agent`.
+- `GET/PATCH /api/contacts/:id`: perfil 360º, campos personalizados e
+  atualização dos dados CRM sem sobrescrever a identidade sincronizada da Meta.
+- `PATCH /api/contacts/bulk`: tags, estágio, responsável, IA, opt-out, novo
+  opt-in comprovado e arquivamento para até 100 contatos por operação.
+- `POST/PATCH/DELETE /api/contacts/:id/notes`: notas internas com autoria,
+  fixação e exclusão auditada.
+- `GET/POST/PATCH/DELETE /api/contact-tags`: catálogo, contagem, edição e
+  arquivamento reversível; criação e edição exigem `owner/admin`.
+
+Todas as mutações validam origem, workspace, papel e IDs antes de usar a
+service role. O opt-in restaurado exige confirmação e origem registradas.
+
 ## Inbox e gatilhos
 
 - `GET /api/inbox`: lista até 100 conversas da categoria, contato sanitizado, janela calculada, até 200 mensagens e agentes ativos.

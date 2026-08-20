@@ -388,6 +388,8 @@ async function matchAndScheduleTrigger(input: {
           workspace_id: input.workspaceId,
           contact_id: input.contactId,
           tag_id: trigger.auto_tag_id,
+          source: 'trigger',
+          metadata: { triggerId: trigger.id, platform: 'instagram' },
         },
         { onConflict: 'contact_id,tag_id' },
       )

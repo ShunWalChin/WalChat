@@ -248,7 +248,10 @@ Esse teste valida Auth, RLS, webhook GET, assinatura HMAC, rejeição de assinat
 
 - **Dashboard:** cards, gráfico, movimentos e atalhos.
 - **Inbox:** abas, conversa, janela Meta e sugestão de IA.
-- **Contatos:** busca, tags e exportação CSV.
+- **Contatos:** busca e filtros combinados, paginação, perfil 360º, edição,
+  estágio, score, responsável, consentimento, campos personalizados, notas
+  fixáveis, histórico auditável, tags, ações em lote, arquivamento reversível,
+  contato manual e exportação CSV completa.
 - **Gatilhos:** ativar/desativar e testar palavra-chave.
 - **Sequências:** blocos, delay e ordenação.
 - **Agentes:** persona, modo copilot/autônomo e playground.

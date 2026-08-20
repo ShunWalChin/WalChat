@@ -258,7 +258,21 @@ function Dashboard() {
           </div>
           <ArrowRight size={18} />
         </Link>
-        <Link to="/contatos" className="quick-card">
+        <Link
+          to="/contatos"
+          search={{
+            q: '',
+            page: 1,
+            platform: 'all',
+            eligibility: 'all',
+            stage: 'all',
+            tag: 'all',
+            assigned: 'all',
+            archived: 'active',
+            sort: 'recent',
+          }}
+          className="quick-card"
+        >
           <span className="quick-icon green">
             <Users size={21} />
           </span>

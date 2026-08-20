@@ -48,6 +48,7 @@ const [
   agents,
   inbox,
   contacts,
+  contactTags,
   dashboard,
   triggers,
   goLive,
@@ -59,6 +60,7 @@ const [
   requestJson('/api/ai/agents'),
   requestJson('/api/inbox'),
   requestJson('/api/contacts'),
+  requestJson('/api/contact-tags'),
   requestJson('/api/dashboard'),
   requestJson('/api/triggers'),
   requestJson('/api/operations/go-live'),
@@ -76,6 +78,17 @@ assert(ai.settings?.provider, 'Configuração de IA ausente.')
 assert(Array.isArray(agents.agents), 'Lista de agentes inválida.')
 assert(Array.isArray(inbox.conversations), 'Inbox inválida.')
 assert(Array.isArray(contacts.contacts), 'CRM multicanal inválido.')
+assert(contacts.pagination?.page === 1, 'Paginação do CRM inválida.')
+assert(Array.isArray(contacts.members), 'Responsáveis do CRM inválidos.')
+assert(Array.isArray(contactTags.tags), 'Catálogo de tags inválido.')
+if (contacts.contacts[0]) {
+  const contactDetail = await requestJson(
+    `/api/contacts/${encodeURIComponent(contacts.contacts[0].id)}`,
+  )
+  assert(contactDetail.contact?.id, 'Perfil 360º do contato inválido.')
+  assert(Array.isArray(contactDetail.notes), 'Notas do contato inválidas.')
+  assert(Array.isArray(contactDetail.audit), 'Auditoria do contato inválida.')
+}
 assert(Array.isArray(dashboard.chart), 'Dashboard multicanal inválido.')
 assert(Array.isArray(triggers.triggers), 'Lista de gatilhos inválida.')
 assert(Array.isArray(goLive.checks), 'Diagnóstico de Go-Live inválido.')
@@ -172,6 +185,8 @@ console.log(
       aiSuggestion: suggestion,
       inbox: 'ok',
       contacts: 'ok',
+      contactTags: 'ok',
+      contactProfile: contacts.contacts[0] ? 'ok' : 'sem-contatos',
       dashboard: 'ok',
       triggers: 'ok',
       goLive: 'ok',

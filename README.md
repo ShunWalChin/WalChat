@@ -28,7 +28,9 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 
 - Dashboard real de DMs, comentários, canais e novos contatos; alcance usa `insights_daily`.
 - Inbox unificada com Principal, Geral, Pedidos e IA off.
-- Contatos, tags, elegibilidade de mensageria e exportação CSV.
+- CRM de Contatos & Tags com perfil 360º, contatos manuais, filtros, score,
+  estágio, responsável, campos personalizados, notas fixáveis, auditoria, ações
+  em lote, elegibilidade e CSV.
 - Gatilhos por comentário, DM, resposta de story ou mensagem do WhatsApp.
 - Embedded Signup do WhatsApp, registro do telefone, sincronização de templates e mídia autenticada.
 - Sequências com texto, mídia, typing e delays.

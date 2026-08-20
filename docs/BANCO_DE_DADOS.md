@@ -57,16 +57,18 @@ erDiagram
 
 ### CRM e Inbox
 
-| Tabela                | Responsabilidade                                                |
-| --------------------- | --------------------------------------------------------------- |
-| `contacts`            | Identidade Instagram/WhatsApp, opt-out, IA e últimas interações |
-| `tags`                | Taxonomia manual ou automática do workspace                     |
-| `contact_tags`        | Relação N:N entre contatos e tags                               |
-| `conversations`       | Caixa, status da janela e atribuição                            |
-| `messages`            | Mensagens visíveis na conversa                                  |
-| `interactions_log`    | Auditoria normalizada de entrada, saída e bloqueios             |
-| `outbound_deliveries` | Claim persistente e resultado de cada DM externa                |
-| `conversation_notes`  | Notas internas da equipe, sem envio ao Instagram                |
+| Tabela                | Responsabilidade                                                                   |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| `contacts`            | Identidade Meta e perfil CRM: estágio, score, responsável, consentimento e arquivo |
+| `tags`                | Taxonomia manual/automática, descrição e arquivamento reversível                   |
+| `contact_tags`        | Relação N:N com origem manual, gatilho, sequência, importação ou sistema           |
+| `contact_notes`       | Notas internas por contato, com autoria e pin                                      |
+| `contact_audit_log`   | Trilha imutável das ações manuais do CRM                                           |
+| `conversations`       | Caixa, status da janela e atribuição                                               |
+| `messages`            | Mensagens visíveis na conversa                                                     |
+| `interactions_log`    | Auditoria normalizada de entrada, saída e bloqueios                                |
+| `outbound_deliveries` | Claim persistente e resultado de cada DM externa                                   |
+| `conversation_notes`  | Notas internas da equipe, sem envio ao Instagram                                   |
 
 ### Conteúdo e Insights
 
@@ -112,6 +114,13 @@ Agrega contas alcançadas, DMs recebidas/enviadas, comentários e novos contatos
 
 Calcula, por contato, a elegibilidade na janela padrão de 24 horas, `HUMAN_AGENT` do Instagram e template obrigatório do WhatsApp. É uma pré-visualização; o envio ainda chama o motor de compliance com os dados atuais.
 
+### `list_workspace_contacts_crm(...)`
+
+Função `security invoker` paginada usada pela tela de Contatos. Pesquisa nome,
+identidade, email e telefone; combina filtros de canal, elegibilidade, estágio,
+tag, responsável e arquivo; agrega tags e devolve o total filtrado sem furar o
+RLS do workspace.
+
 ## 5. Funções e triggers
 
 | Objeto                           | Função                                                 |
@@ -144,7 +153,10 @@ As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e par�
 
 ## 7. Índices e garantias de unicidade
 
-- contatos: um `instagram_user_id` ou `(whatsapp_account_id, whatsapp_user_id)` por workspace;
+- contatos Meta: um `instagram_user_id` ou
+  `(whatsapp_account_id, whatsapp_user_id)` por workspace;
+- contatos manuais: email ou telefone único dentro do workspace; nunca possuem
+  conta Meta nem elegibilidade de envio;
 - interações: um `meta_event_id` por workspace quando presente;
 - mensagens: uma linha por `interaction_id` e um ID de provedor por workspace/canal;
 - entregas externas: uma chave idempotente por workspace e um único vínculo no `interactions_log`;
