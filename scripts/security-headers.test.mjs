@@ -1,21 +1,40 @@
 import { describe, expect, it } from 'vitest'
 import { buildSecurityHeaders } from './security-headers.mjs'
 
-describe('buildSecurityHeaders', () => {
-  it('restringe a página e libera somente o Supabase configurado no connect-src', () => {
+describe('cabeçalhos HTTP de produção', () => {
+  it('fecha recursos perigosos e habilita HSTS em HTTPS', () => {
     const headers = buildSecurityHeaders({
       isHttps: true,
-      supabaseUrl: 'https://api.walchat.example/rest/v1?ignored=true',
+      supabaseUrl: 'https://project.supabase.co',
     })
 
+    expect(headers['content-security-policy']).toContain("object-src 'none'")
     expect(headers['content-security-policy']).toContain(
-      "connect-src 'self' https://api.walchat.example wss://api.walchat.example",
+      "connect-src 'self' https://project.supabase.co wss://project.supabase.co",
     )
     expect(headers['content-security-policy']).toContain(
       "frame-ancestors 'none'",
     )
-    expect(headers['strict-transport-security']).toBe('max-age=31536000')
+    expect(headers['strict-transport-security']).toContain('includeSubDomains')
     expect(headers['x-content-type-options']).toBe('nosniff')
+    expect(headers['cross-origin-resource-policy']).toBe('same-origin')
+  })
+
+  it('só libera domínios de Analytics e Maps quando configurados', () => {
+    const closed = buildSecurityHeaders({ isHttps: true })
+    const enabled = buildSecurityHeaders({
+      isHttps: true,
+      analyticsEnabled: true,
+      mapsEnabled: true,
+    })
+
+    expect(closed['content-security-policy']).not.toContain('googletagmanager')
+    expect(enabled['content-security-policy']).toContain(
+      'https://www.googletagmanager.com',
+    )
+    expect(enabled['content-security-policy']).toContain(
+      'https://www.google.com',
+    )
   })
 
   it('ignora URL inválida e não ativa HSTS em HTTP local', () => {

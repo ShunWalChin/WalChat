@@ -34,6 +34,8 @@ const server = http.createServer(async (incoming, outgoing) => {
     const securityHeaders = buildSecurityHeaders({
       isHttps: url.protocol === 'https:',
       supabaseUrl: process.env.VITE_SUPABASE_URL,
+      analyticsEnabled: Boolean(process.env.VITE_GA_MEASUREMENT_ID),
+      mapsEnabled: Boolean(process.env.VITE_PUBLIC_GOOGLE_MAPS_EMBED_URL),
     })
     for (const [name, value] of Object.entries(securityHeaders))
       outgoing.setHeader(name, value)
@@ -61,6 +63,11 @@ const server = http.createServer(async (incoming, outgoing) => {
     for (const [name, value] of response.headers) {
       if (name.toLowerCase() !== 'set-cookie') outgoing.setHeader(name, value)
     }
+    if (
+      !outgoing.hasHeader('cache-control') &&
+      response.headers.get('content-type')?.includes('text/html')
+    )
+      outgoing.setHeader('cache-control', 'no-store')
     const cookies = response.headers.getSetCookie?.() ?? []
     if (cookies.length) outgoing.setHeader('set-cookie', cookies)
 
@@ -193,6 +200,7 @@ function contentTypeFor(filePath) {
       '.png': 'image/png',
       '.svg': 'image/svg+xml',
       '.txt': 'text/plain; charset=utf-8',
+      '.xml': 'application/xml; charset=utf-8',
       '.webmanifest': 'application/manifest+json',
       '.webp': 'image/webp',
       '.woff': 'font/woff',

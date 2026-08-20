@@ -16,6 +16,7 @@ import {
   workspaceMemberOptions,
   writeContactAudit,
 } from '../../server/contacts-crm.server'
+import { readJsonBody } from '../../server/request-body.server'
 
 const querySchema = z.object({
   search: z.string().trim().max(100).default(''),
@@ -266,7 +267,7 @@ export const Route = createFileRoute('/api/contacts')({
             'admin',
             'agent',
           ])
-          const input = createSchema.parse(await request.json())
+          const input = createSchema.parse(await readJsonBody(request))
           const email =
             nullableText(input.email)?.toLocaleLowerCase('pt-BR') ?? null
           const phone = normalizePhone(input.phone)

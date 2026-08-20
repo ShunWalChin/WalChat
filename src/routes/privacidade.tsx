@@ -1,8 +1,19 @@
 /** Política de Privacidade pública, necessária para App Review e LGPD. */
 import { createFileRoute } from '@tanstack/react-router'
 import { LegalPage } from '../components/legal-page'
+import { seoHead } from '../lib/seo'
+import { siteConfig } from '../lib/site-config'
 
-export const Route = createFileRoute('/privacidade')({ component: PrivacyPage })
+export const Route = createFileRoute('/privacidade')({
+  head: () =>
+    seoHead({
+      title: 'Política de Privacidade',
+      description:
+        'Como o Wal Chat trata dados pessoais, integrações, IA, cookies e direitos previstos na LGPD.',
+      path: '/privacidade',
+    }),
+  component: PrivacyPage,
+})
 
 function PrivacyPage() {
   return (
@@ -29,9 +40,10 @@ function PrivacyPage() {
       </p>
       <h2>4. Compartilhamento</h2>
       <p>
-        Dados podem ser processados por Supabase, Meta e Google Gemini somente
-        na medida necessária à prestação do serviço. Tokens da Meta permanecem
-        restritos ao backend.
+        Dados podem ser processados por Supabase, Meta, Google e OpenAI somente
+        na medida necessária à prestação do serviço e conforme a configuração
+        escolhida pelo controlador. Tokens de integração permanecem restritos ao
+        backend e são armazenados com criptografia quando persistidos.
       </p>
       <h2>5. Retenção e segurança</h2>
       <p>
@@ -43,7 +55,27 @@ function PrivacyPage() {
       <h2>6. Seus direitos</h2>
       <p>
         Você pode solicitar acesso, correção, portabilidade ou exclusão. Use a
-        página de Exclusão de Dados ou escreva para privacidade@walchat.com.br.
+        página de Exclusão de Dados ou escreva para {siteConfig.supportEmail}.
+      </p>
+      <h2>7. Cookies e Google Analytics</h2>
+      <p>
+        Cookies estritamente necessários mantêm autenticação e segurança. O
+        Google Analytics só é carregado após consentimento explícito; se você
+        recusar, nenhuma tag de medição é carregada. Não habilitamos publicidade
+        personalizada nesse fluxo.
+      </p>
+      <h2>8. Decisões automatizadas e IA</h2>
+      <p>
+        Agentes podem sugerir ou, quando expressamente habilitados, preparar
+        respostas automáticas. O Wal Chat aplica regras de elegibilidade e
+        permite desligar a IA por contato. Solicitações sobre revisão humana
+        podem ser enviadas ao canal de privacidade.
+      </p>
+      <h2>9. Contato do encarregado</h2>
+      <p>
+        Dúvidas, incidentes e pedidos LGPD: {siteConfig.supportEmail}. A equipe
+        confirma o recebimento e orienta a verificação de identidade antes de
+        divulgar, portar ou excluir dados.
       </p>
     </LegalPage>
   )

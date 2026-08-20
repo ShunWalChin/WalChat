@@ -1,8 +1,18 @@
 /** Termos de Uso públicos com responsabilidades sobre Meta e automação. */
 import { createFileRoute } from '@tanstack/react-router'
 import { LegalPage } from '../components/legal-page'
+import { seoHead } from '../lib/seo'
 
-export const Route = createFileRoute('/termos')({ component: TermsPage })
+export const Route = createFileRoute('/termos')({
+  head: () =>
+    seoHead({
+      title: 'Termos de Uso',
+      description:
+        'Regras de uso responsável do Wal Chat, integrações Meta, IA, automações e encerramento de conta.',
+      path: '/termos',
+    }),
+  component: TermsPage,
+})
 
 function TermsPage() {
   return (

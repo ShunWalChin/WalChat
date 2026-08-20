@@ -16,8 +16,7 @@ import {
   Tooltip,
   XAxis,
 } from 'recharts'
-import { chartData, heatmap } from '../../lib/demo-data'
-import { PageIntro } from '../../components/ui'
+import { PageIntro, PrototypeNotice } from '../../components/ui'
 
 export const Route = createFileRoute('/_app/insights')({
   component: InsightsPage,
@@ -30,34 +29,38 @@ function InsightsPage() {
         title="O que bombou — e por quê."
         description="Crescimento, melhores horários e leitura da IA em português claro."
         actions={
-          <button className="button button-outline">
+          <button className="button button-outline" disabled>
             <Download size={16} /> Exportar relatório
           </button>
         }
       />
+      <PrototypeNotice title="Insights aguardam sincronização oficial">
+        Alcance, seguidores, heatmap, posts e análise só serão exibidos após a
+        ingestão autorizada das métricas da conta Meta conectada.
+      </PrototypeNotice>
       <div className="insight-stats">
         <article>
           <span>SEGUIDORES</span>
-          <strong>18.552</strong>
+          <strong>—</strong>
           <em>
             <ArrowUpRight size={14} />
-            +332 esta semana
+            Aguardando dados
           </em>
         </article>
         <article>
           <span>TAXA DE RESPOSTA</span>
-          <strong>91,4%</strong>
+          <strong>—</strong>
           <em>
             <ArrowUpRight size={14} />
-            +4,2 p.p.
+            Aguardando dados
           </em>
         </article>
         <article>
           <span>CONVERSÃO DE DM</span>
-          <strong>38,7%</strong>
+          <strong>—</strong>
           <em>
             <ArrowUpRight size={14} />
-            +6,1 p.p.
+            Aguardando dados
           </em>
         </article>
       </div>
@@ -72,10 +75,7 @@ function InsightsPage() {
           </div>
           <div className="chart-wrap">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                margin={{ top: 10, left: -25, right: 5 }}
-              >
+              <BarChart data={[]} margin={{ top: 10, left: -25, right: 5 }}>
                 <CartesianGrid
                   stroke="#dedbd2"
                   strokeDasharray="3 6"
@@ -105,12 +105,10 @@ function InsightsPage() {
             <Brain size={22} />
           </span>
           <span className="eyebrow">ANÁLISE DO GEMINI</span>
-          <h3>Por que o post bombou?</h3>
+          <h3>Análise ainda não calculada</h3>
           <p>
-            O Reel abriu com uma dor específica nos primeiros 2 segundos e
-            entregou prova visual antes da explicação. O CTA “comenta QUERO”
-            teve baixa fricção e transformou alcance em{' '}
-            <strong>148 conversas</strong>.
+            Conecte uma conta, sincronize métricas e escolha o período. A
+            análise será gerada apenas a partir dos dados reais autorizados.
           </p>
           <div>
             <span>
@@ -135,7 +133,7 @@ function InsightsPage() {
               <span className="eyebrow">MELHOR HORÁRIO</span>
               <h3>Quando sua galera aparece</h3>
             </div>
-            <strong>Sex · 20h</strong>
+            <strong>Sem dados</strong>
           </div>
           <div className="heatmap">
             <div className="heat-labels vertical">
@@ -146,14 +144,15 @@ function InsightsPage() {
               <span>23h</span>
             </div>
             <div className="heat-cells">
-              {heatmap.flatMap((row, rowIndex) =>
-                row.map((value, colIndex) => (
-                  <i
-                    key={`${rowIndex}-${colIndex}`}
-                    style={{ opacity: Math.max(0.16, value / 100) }}
-                    title={`${value}% de atividade`}
-                  />
-                )),
+              {Array.from({ length: 5 }, () => Array(7).fill(0)).flatMap(
+                (row, rowIndex) =>
+                  row.map((value, colIndex) => (
+                    <i
+                      key={`${rowIndex}-${colIndex}`}
+                      style={{ opacity: Math.max(0.16, value / 100) }}
+                      title={`${value}% de atividade`}
+                    />
+                  )),
               )}
             </div>
             <div className="heat-labels horizontal">
@@ -170,11 +169,7 @@ function InsightsPage() {
               <h3>O pódio da semana</h3>
             </div>
           </div>
-          {[
-            ['01', '3 erros de creator', '18,2 mil', '148 DMs'],
-            ['02', 'Bastidores no Centro', '13,7 mil', '91 DMs'],
-            ['03', 'Setup de R$ 300', '12,1 mil', '72 DMs'],
-          ].map((post) => (
+          {[['—', 'Nenhum post sincronizado', '—', '—']].map((post) => (
             <div className="top-post" key={post[0]}>
               <em>{post[0]}</em>
               <span>

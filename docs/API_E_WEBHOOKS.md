@@ -7,6 +7,7 @@ Todos os exemplos usam `https://wal-chat.64.181.178.125.nip.io`. Em desenvolvime
 - JSON usa `Content-Type: application/json`.
 - Respostas operacionais desabilitam cache com `Cache-Control: no-store`.
 - Entradas internas são validadas com Zod.
+- JSON é lido por stream com Content-Type e limite de bytes; corpos excessivos retornam `413`.
 - O webhook Meta valida a assinatura antes de interpretar o JSON.
 - Erros esperados retornam mensagens curtas e não expõem stack traces ou secrets.
 
@@ -246,7 +247,9 @@ service role. O opt-in restaurado exige confirmação e origem registradas.
 
 ## `POST /api/compliance/check`
 
-Expõe o motor puro de compliance para pré-visualização. O scheduler chama a mesma função no envio real.
+Expõe o motor puro de compliance para pré-visualização autenticada. Exige JWT,
+membership do workspace, origem confiável e rate limit; o scheduler chama a
+mesma função no envio real.
 
 Request mínimo:
 
@@ -292,7 +295,26 @@ Implementa o callback de exclusão exigido pela Meta. Recebe `signed_request` co
 }
 ```
 
-O MVP gera o protocolo validado. A exclusão assíncrona das tabelas e arquivos deve ser conectada ao runbook operacional antes do Live Mode.
+O backend chama `process_meta_data_deletion`, remove os dados Meta e referências
+indiretas em transação e devolve um protocolo consultável sem persistir o ID
+externo em claro.
+
+## `GET/POST /api/privacy/deletion-requests`
+
+Fluxo público LGPD separado do callback assinado da Meta.
+
+- `POST` aceita email, usuário Instagram e observação; valida origem, honeypot,
+  corpo de 16 KiB e cinco tentativas por hora/IP;
+- persiste o pedido em tabela revogada para `anon/authenticated`;
+- devolve `confirmationCode`, estado `pending_verification` e prazo de contato;
+- não exclui dados só com o email informado: a equipe deve verificar identidade;
+- `GET ?confirmation=<código>` devolve somente estado e timestamps.
+
+## `GET /api/public/reviews`
+
+Retorna no máximo seis avaliações. Uma linha só aparece se `is_verified=true`,
+`consented_at` e `published_at` estiverem preenchidos. O banco impede publicar
+sem verificação e consentimento; nenhuma avaliação é criada pelo seed.
 
 ## Idempotência dos eventos
 
@@ -317,7 +339,13 @@ Private Reply mantém sua trava independente por ID de comentário, porque a Met
 
 ## Autenticação dos endpoints
 
-O webhook e a exclusão são públicos por definição do protocolo, mas autenticados por assinatura. Integrações, configurações/agentes de IA e envio manual exigem JWT Supabase e membership explícito. O preview de compliance é uma função pública sem persistência nem efeitos externos. O Nginx versionado aplica limites separados ao tráfego geral, webhook, OAuth e endpoints de envio/IA; a sintaxe e o comportamento `429` ainda devem ser validados na infraestrutura de destino.
+O webhook e a exclusão Meta são públicos por definição do protocolo, mas
+autenticados por assinatura. O pedido LGPD público usa origem, honeypot, limite
+de corpo e rate limit, seguido de verificação humana. Integrações,
+configurações/agentes de IA, compliance preview e envio manual exigem JWT
+Supabase e membership explícito. O Nginx versionado aplica limites separados ao
+tráfego geral, webhook, OAuth e endpoints de envio/IA; a sintaxe e o
+comportamento `429` seguem obrigatórios na infraestrutura de destino.
 
 ## Endpoints operacionais V1
 

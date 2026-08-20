@@ -7,6 +7,7 @@ import {
   assertTrustedOrigin,
   requireWorkspaceContext,
 } from '../../server/api-auth.server'
+import { readJsonBody } from '../../server/request-body.server'
 import { nullableText } from '../../server/contacts-crm.server'
 
 const tagName = z
@@ -104,7 +105,7 @@ export const Route = createFileRoute('/api/contact-tags')({
             'owner',
             'admin',
           ])
-          const input = createSchema.parse(await request.json())
+          const input = createSchema.parse(await readJsonBody(request))
           await assertUniqueName({ context, name: input.name })
           const { data, error } = await context.admin
             .from('tags')
@@ -130,7 +131,7 @@ export const Route = createFileRoute('/api/contact-tags')({
             'owner',
             'admin',
           ])
-          const input = updateSchema.parse(await request.json())
+          const input = updateSchema.parse(await readJsonBody(request))
           await assertUniqueName({
             context,
             name: input.name,
@@ -166,7 +167,7 @@ export const Route = createFileRoute('/api/contact-tags')({
             'owner',
             'admin',
           ])
-          const input = archiveSchema.parse(await request.json())
+          const input = archiveSchema.parse(await readJsonBody(request))
           const { data, error } = await context.admin
             .from('tags')
             .update({ archived_at: new Date().toISOString() })

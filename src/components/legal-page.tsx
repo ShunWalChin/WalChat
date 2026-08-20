@@ -1,11 +1,12 @@
 /** Estrutura visual comum às páginas obrigatórias para o Live Mode da Meta. */
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
+import { siteConfig } from '../lib/site-config'
 
 export function LegalPage({
   eyebrow,
   title,
-  updated = '21 de julho de 2026',
+  updated = '20 de agosto de 2026',
   children,
 }: {
   eyebrow: string
@@ -34,7 +35,16 @@ export function LegalPage({
         <p className="updated">Última atualização: {updated}</p>
         <article>{children}</article>
       </main>
-      <footer>Wal Chat · São Paulo, Brasil</footer>
+      <footer>
+        <span>Wal Chat · São Paulo, Brasil</span>
+        <nav aria-label="Links legais">
+          <Link to="/privacidade">Privacidade</Link>
+          <Link to="/termos">Termos</Link>
+          <Link to="/exclusao-de-dados">Exclusão</Link>
+          <a href="/sitemap.xml">Mapa do site</a>
+        </nav>
+        <span>{siteConfig.supportEmail}</span>
+      </footer>
     </div>
   )
 }

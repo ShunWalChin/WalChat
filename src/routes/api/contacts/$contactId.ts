@@ -15,6 +15,7 @@ import {
   nullableText,
   writeContactAudit,
 } from '../../../server/contacts-crm.server'
+import { readJsonBody } from '../../../server/request-body.server'
 
 const updateSchema = z
   .object({
@@ -219,7 +220,7 @@ export const Route = createFileRoute('/api/contacts/$contactId')({
             'agent',
           ])
           const contactId = z.uuid().parse(params.contactId)
-          const input = updateSchema.parse(await request.json())
+          const input = updateSchema.parse(await readJsonBody(request))
           if (input.assignedTo) {
             const { count, error } = await context.admin
               .from('workspace_members')

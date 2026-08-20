@@ -1,3 +1,22 @@
-# https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /operacoes
+Disallow: /inbox
+Disallow: /contatos
+Disallow: /gatilhos
+Disallow: /comment-to-dm
+Disallow: /sequencias
+Disallow: /agentes
+Disallow: /reengajamento
+Disallow: /calendario
+Disallow: /publicar
+Disallow: /auto-like
+Disallow: /insights
+Disallow: /configuracoes
+Disallow: /manual
+Disallow: /obrigado
+Disallow: /agendar/
+
+Sitemap: https://wal-chat.64.181.178.125.nip.io/sitemap.xml

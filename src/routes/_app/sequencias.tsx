@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { sequences } from '../../lib/demo-data'
-import { PageIntro, Switch } from '../../components/ui'
+import { PageIntro, PrototypeNotice, Switch } from '../../components/ui'
 
 export const Route = createFileRoute('/_app/sequencias')({
   component: SequencesPage,
@@ -53,16 +53,25 @@ function SequencesPage() {
         title="Conversa que continua."
         description="Monte jornadas de DM com texto, mídia e tempo de espera — sempre respeitando a janela Meta."
         actions={
-          <button className="button button-dark">
+          <button className="button button-dark" disabled>
             <Plus size={16} /> Nova sequência
           </button>
         }
       />
+      <PrototypeNotice title="Editor completo ainda não persiste este desenho">
+        O scheduler possui políticas para passos existentes, mas criar, editar,
+        versionar, testar e publicar uma sequência por esta tela ainda é parte
+        da próxima etapa de backend.
+      </PrototypeNotice>
       <div className="sequence-layout">
         <aside className="card sequence-sidebar">
           <div className="section-title">
             <span>SUAS SEQUÊNCIAS</span>
-            <button className="icon-button">
+            <button
+              className="icon-button"
+              disabled
+              aria-label="Nova sequência"
+            >
               <Plus size={16} />
             </button>
           </div>
@@ -78,7 +87,11 @@ function SequencesPage() {
                   {sequence.steps} passos · {sequence.contacts} contatos
                 </small>
               </span>
-              <Switch checked={sequence.active} label={sequence.name} />
+              <Switch
+                checked={sequence.active}
+                label={sequence.name}
+                disabled
+              />
             </button>
           ))}
         </aside>
@@ -91,7 +104,9 @@ function SequencesPage() {
             </div>
             <div>
               <span className="saved-state">Salvo agora</span>
-              <button className="button button-outline">Testar fluxo</button>
+              <button className="button button-outline" disabled>
+                Testar fluxo
+              </button>
             </div>
           </header>
           <div className="canvas">

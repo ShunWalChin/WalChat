@@ -20,6 +20,8 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | WhatsApp Cloud API        | Embedded Signup, WABA, telefone, templates e receipts implementados         |
 | OpenAI / Gemini           | Responses API + Gemini opcional, configuráveis por workspace                |
 | Google Workspace          | OAuth PKCE, Calendar, Meet, Tasks, Free/Busy e links públicos implementados |
+| Site público e SEO        | 404, CTA, FAQ, provas técnicas, sitemap, robots, OG e JSON-LD               |
+| LGPD e Analytics          | Pedido de exclusão persistido e GA4 bloqueado até consentimento             |
 | Modo atual da homologação | `DEMO_MODE=true`                                                            |
 | Live Mode Meta            | Depende de app, tokens, permissões e revisão da Meta                        |
 
@@ -34,19 +36,25 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
   em lote, elegibilidade e CSV.
 - Gatilhos por comentário, DM, resposta de story ou mensagem do WhatsApp.
 - Embedded Signup do WhatsApp, registro do telefone, sincronização de templates e mídia autenticada.
-- Sequências com texto, mídia, typing e delays.
+- Sequências: scheduler e política de passos existem; o editor completo ainda é parcial.
 - Agentes de IA em modo copiloto ou autônomo.
-- Reengajamento com filtro de elegibilidade e limite de taxa.
+- Reengajamento: preview bloqueado; campanha persistida e disparo em massa ainda não estão liberados.
 - Calendário operacional com mês/semana/agenda, CRUD, Google Calendar/Tasks,
   Meet, Free/Busy, links públicos e atividade dos demais módulos.
-- Criação de Feed, Reels, Story e Carrossel.
-- Auto-like por regra, sentimento ou palavra-chave.
-- Insights, heatmap, top posts e análise em PT-BR.
+- Estúdio de Feed, Reels, Story e Carrossel em modo de prévia; publicação externa permanece desabilitada.
+- Auto-like em modo de prévia; o sistema não apresenta mais o recurso como ativo.
+- Insights aguardam ingestão oficial; nenhuma métrica demonstrativa é exibida como real.
 - Política de Privacidade, Termos e Exclusão de Dados.
 - Central de Go-Live com diagnóstico, kill switches e observabilidade de webhooks.
 - Comment-to-DM por publicação real e Inbox com atribuição, prioridade e notas.
 - Copiloto com recuperação de conhecimento e indicação das fontes usadas.
 - Manual HTML pesquisável de acessos, configuração, operação e Go-Live.
+- Landing pública com CTA acima da dobra e fixo no mobile, links internos,
+  casos de uso tecnicamente validados, avaliações verificadas, FAQ, promessa de
+  resposta, localização configurável, 404 e página de obrigado.
+- SEO técnico com metadados únicos nas páginas públicas, canonical, Open Graph,
+  sitemap, robots e schema Organization/SoftwareApplication. LocalBusiness só é
+  emitido depois que um endereço verdadeiro é configurado.
 
 ## Arquitetura
 
@@ -72,6 +80,9 @@ flowchart LR
 O backend recebe o corpo bruto do webhook, valida `X-Hub-Signature-256`, persiste uma chave idempotente e enfileira o processamento. O worker normaliza contatos e interações; o scheduler executa sequências e chama o motor de compliance imediatamente antes de qualquer envio. DMs recebem um claim persistente antes da chamada externa; timeout ou resposta ambígua vira estado `unknown` e não dispara retry automático.
 
 A revisão de segurança mais recente está documentada em [Auditoria do backend core — 20/08/2026](docs/AUDITORIA_BACKEND_CORE_2026-08-20.md).
+
+A auditoria transversal desta release está em
+[Auditoria de pré-produção, segurança, funções e SEO — 20/08/2026](docs/AUDITORIA_PRE_PRODUCAO_SEGURANCA_SEO_2026-08-20.md).
 
 Leia [Arquitetura](docs/ARQUITETURA.md) para os limites dos componentes, fluxos de falha e decisões técnicas.
 
@@ -181,6 +192,14 @@ Essa credencial existe apenas para desenvolvimento. Nunca reutilize a senha loca
 | ----------------------------------------- | --------- | ----------------------------------------- |
 | `VITE_SUPABASE_URL`                       | Pública   | URL usada pelo cliente web                |
 | `VITE_SUPABASE_ANON_KEY`                  | Pública   | Chave publishable do Supabase             |
+| `VITE_PUBLIC_SITE_URL`                    | Pública   | Origem canonical usada em SEO             |
+| `VITE_PUBLIC_SUPPORT_EMAIL`               | Pública   | Contato legal e operacional               |
+| `VITE_PUBLIC_RESPONSE_SLA`                | Pública   | Promessa pública de tempo de resposta     |
+| `VITE_GA_MEASUREMENT_ID`                  | Pública   | ID GA4; tag depende de consentimento      |
+| `VITE_PUBLIC_BUSINESS_ADDRESS`            | Pública   | Endereço real para mapa e LocalBusiness   |
+| `VITE_PUBLIC_BUSINESS_HOURS`              | Pública   | Horários reais no schema                  |
+| `VITE_PUBLIC_GOOGLE_MAPS_URL`             | Pública   | Link de rota no Google Maps               |
+| `VITE_PUBLIC_GOOGLE_MAPS_EMBED_URL`       | Pública   | Mapa incorporado                          |
 | `SUPABASE_URL`                            | Backend   | URL interna do Supabase                   |
 | `SUPABASE_SERVICE_ROLE_KEY`               | Secreta   | Acesso administrativo dos workers         |
 | `SUPABASE_PUBLISHABLE_KEY`                | Backend   | Cliente server-side sujeito a RLS         |
@@ -205,28 +224,31 @@ Essa credencial existe apenas para desenvolvimento. Nunca reutilize a senha loca
 | `APP_ORIGIN`                              | Backend   | Origem pública da aplicação               |
 | `DEMO_MODE`                               | Backend   | Impede efeitos externos quando `true`     |
 
-Somente `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` podem chegar ao bundle do navegador. Nunca adicione o prefixo `VITE_` a tokens Meta, chaves administrativas ou credenciais de IA.
+Variáveis `VITE_PUBLIC_*`, a chave publishable do Supabase e o ID público GA4
+podem chegar ao navegador. Nunca adicione o prefixo `VITE_` a tokens Meta,
+chaves administrativas ou credenciais de IA.
 
 ## Comandos
 
-| Comando                   | Função                                    |
-| ------------------------- | ----------------------------------------- |
-| `npm run dev`             | Inicia apenas a aplicação                 |
-| `npm run dev:all`         | Inicia aplicação e dois workers           |
-| `npm run local:up`        | Inicia Supabase e Redis locais            |
-| `npm run local:status`    | Mostra o estado local                     |
-| `npm run local:down`      | Para os serviços locais                   |
-| `npm run db:reset`        | Reaplica migrations e seed                |
-| `npm run db:lint`         | Valida o schema PostgreSQL                |
-| `npm test`                | Executa testes unitários                  |
-| `npm run lint`            | Executa ESLint                            |
-| `npx tsc --noEmit`        | Verifica tipos                            |
-| `npm run build`           | Gera os bundles cliente e SSR             |
-| `npm run validate:routes` | Confirma as 18 rotas principais           |
-| `npm run smoke`           | Valida Auth, RLS, webhook, fila e workers |
-| `npm audit --omit=dev`    | Audita apenas dependências de produção    |
-| `npm run prod:up`         | Constrói e sobe a stack de produção       |
-| `npm run prod:logs`       | Acompanha logs da stack                   |
+| Comando                   | Função                                     |
+| ------------------------- | ------------------------------------------ |
+| `npm run dev`             | Inicia apenas a aplicação                  |
+| `npm run dev:all`         | Inicia aplicação e dois workers            |
+| `npm run local:up`        | Inicia Supabase e Redis locais             |
+| `npm run local:status`    | Mostra o estado local                      |
+| `npm run local:down`      | Para os serviços locais                    |
+| `npm run db:reset`        | Reaplica migrations e seed                 |
+| `npm run db:lint`         | Valida o schema PostgreSQL                 |
+| `npm test`                | Executa testes unitários                   |
+| `npm run lint`            | Executa ESLint                             |
+| `npx tsc --noEmit`        | Verifica tipos                             |
+| `npm run build`           | Gera os bundles cliente e SSR              |
+| `npm run validate:routes` | Confirma rotas, 404, SEO, robots e sitemap |
+| `npm run audit:system`    | Audita auth, origem, body limits e SEO     |
+| `npm run smoke`           | Valida Auth, RLS, webhook, fila e workers  |
+| `npm audit --omit=dev`    | Audita apenas dependências de produção     |
+| `npm run prod:up`         | Constrói e sobe a stack de produção        |
+| `npm run prod:logs`       | Acompanha logs da stack                    |
 
 ## API e webhook
 
@@ -264,6 +286,8 @@ Somente `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` podem chegar ao bundle do
 | `POST`      | `/api/messages/send`                         | Envio humano com compliance                   |
 | `POST`      | `/api/compliance/check`                      | Decisão pura de elegibilidade                 |
 | `POST`      | `/api/data-deletion`                         | Signed request de exclusão da Meta            |
+| `GET/POST`  | `/api/privacy/deletion-requests`             | Protocolo LGPD público e consulta de status   |
+| `GET`       | `/api/public/reviews`                        | Avaliações verificadas e consentidas          |
 
 Contratos, respostas e códigos HTTP: [API e webhooks](docs/API_E_WEBHOOKS.md).
 
@@ -287,6 +311,7 @@ npm test
 npm run lint
 npx tsc --noEmit
 npm run build
+npm run audit:system
 npm run db:lint
 npm audit --omit=dev
 ```
@@ -322,25 +347,26 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 
 ## Documentação
 
-| Documento                                                                           | Conteúdo                                      |
-| ----------------------------------------------------------------------------------- | --------------------------------------------- |
-| [Arquitetura](docs/ARQUITETURA.md)                                                  | Componentes, fluxos, isolamento e decisões    |
-| [API e webhooks](docs/API_E_WEBHOOKS.md)                                            | Contratos HTTP e eventos Meta                 |
-| [Banco de dados](docs/BANCO_DE_DADOS.md)                                            | Tabelas, RLS, GRANTs, views e jobs            |
-| [Segurança e compliance](docs/SEGURANCA_E_COMPLIANCE.md)                            | Regras Meta, secrets e controles              |
-| [Configuração Meta e OpenAI](docs/CONFIGURACAO_META_E_OPENAI.md)                    | Onboarding e testes com contas reais          |
-| [Google Calendar, Meet e Tasks](docs/CONFIGURACAO_GOOGLE_CALENDAR.md)               | OAuth, agenda pública, sync e homologação     |
-| [Validação do Calendário](docs/VALIDACAO_CALENDARIO_OPERACIONAL_2026-08-20.md)      | Evidências locais e checklist da conta piloto |
-| [Instagram + WhatsApp Business](docs/INTEGRACOES_META_INSTAGRAM_WHATSAPP.md)        | Setup completo, callbacks, testes e operação  |
-| [Mapa do código](docs/MAPA_DO_CODIGO.md)                                            | Responsabilidade de cada arquivo              |
-| [Guia de desenvolvimento](docs/GUIA_DE_DESENVOLVIMENTO.md)                          | Convenções, testes e extensão do produto      |
-| [Plano de produção](docs/PLANO_DE_PRODUCAO.md)                                      | Gates, riscos e sequência segura de go-live   |
-| [Validação de produção real V1](docs/VALIDACAO_PRODUCAO_REAL_V1.md)                 | Escopo, evidências e aprovação do piloto      |
-| [Atualização operacional V1](docs/ATUALIZACAO_OPERACIONAL_V1.md)                    | Go-Live, gateway, Inbox, Comment-to-DM e RAG  |
-| [Auditoria técnica 30/07](docs/AUDITORIA_TECNICA_2026-07-30.md)                     | Achados priorizados e parecer de promoção     |
-| [Manual operacional](docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md)               | Implantação e contas reais                    |
-| [Manual completo de acessos](docs/MANUAL_COMPLETO_ACESSOS_OPERACAO_CONFIGURACAO.md) | URLs, usuários, módulos e configuração        |
-| [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)                 | Evidências da validação publicada             |
+| Documento                                                                               | Conteúdo                                         |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| [Arquitetura](docs/ARQUITETURA.md)                                                      | Componentes, fluxos, isolamento e decisões       |
+| [API e webhooks](docs/API_E_WEBHOOKS.md)                                                | Contratos HTTP e eventos Meta                    |
+| [Banco de dados](docs/BANCO_DE_DADOS.md)                                                | Tabelas, RLS, GRANTs, views e jobs               |
+| [Segurança e compliance](docs/SEGURANCA_E_COMPLIANCE.md)                                | Regras Meta, secrets e controles                 |
+| [Configuração Meta e OpenAI](docs/CONFIGURACAO_META_E_OPENAI.md)                        | Onboarding e testes com contas reais             |
+| [Google Calendar, Meet e Tasks](docs/CONFIGURACAO_GOOGLE_CALENDAR.md)                   | OAuth, agenda pública, sync e homologação        |
+| [Validação do Calendário](docs/VALIDACAO_CALENDARIO_OPERACIONAL_2026-08-20.md)          | Evidências locais e checklist da conta piloto    |
+| [Instagram + WhatsApp Business](docs/INTEGRACOES_META_INSTAGRAM_WHATSAPP.md)            | Setup completo, callbacks, testes e operação     |
+| [Mapa do código](docs/MAPA_DO_CODIGO.md)                                                | Responsabilidade de cada arquivo                 |
+| [Guia de desenvolvimento](docs/GUIA_DE_DESENVOLVIMENTO.md)                              | Convenções, testes e extensão do produto         |
+| [Plano de produção](docs/PLANO_DE_PRODUCAO.md)                                          | Gates, riscos e sequência segura de go-live      |
+| [Validação de produção real V1](docs/VALIDACAO_PRODUCAO_REAL_V1.md)                     | Escopo, evidências e aprovação do piloto         |
+| [Atualização operacional V1](docs/ATUALIZACAO_OPERACIONAL_V1.md)                        | Go-Live, gateway, Inbox, Comment-to-DM e RAG     |
+| [Auditoria técnica 30/07](docs/AUDITORIA_TECNICA_2026-07-30.md)                         | Achados priorizados e parecer de promoção        |
+| [Auditoria pré-produção e SEO](docs/AUDITORIA_PRE_PRODUCAO_SEGURANCA_SEO_2026-08-20.md) | Funções, segurança, SEO, evidências e pendências |
+| [Manual operacional](docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md)                   | Implantação e contas reais                       |
+| [Manual completo de acessos](docs/MANUAL_COMPLETO_ACESSOS_OPERACAO_CONFIGURACAO.md)     | URLs, usuários, módulos e configuração           |
+| [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)                     | Evidências da validação publicada                |
 
 ## Limites conhecidos do MVP
 

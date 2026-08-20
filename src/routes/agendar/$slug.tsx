@@ -12,6 +12,7 @@ import {
   Video,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { seoHead } from '../../lib/seo'
 
 type Slot = {
   startAt: string
@@ -33,6 +34,14 @@ type PublicCalendar = {
 }
 
 export const Route = createFileRoute('/agendar/$slug')({
+  head: ({ params }) =>
+    seoHead({
+      title: 'Agendar uma conversa',
+      description:
+        'Escolha um horário disponível e confirme sua reunião com segurança pelo Wal Chat.',
+      path: `/agendar/${encodeURIComponent(params.slug)}`,
+      noindex: true,
+    }),
   component: PublicBookingPage,
 })
 

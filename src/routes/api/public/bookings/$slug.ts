@@ -21,6 +21,7 @@ import {
 } from '../../../../server/google-calendar.server'
 import { assertRateLimit } from '../../../../server/rate-limit.server'
 import { readJsonBody } from '../../../../server/request-body.server'
+import { requestIdentity } from '../../../../server/request-identity.server'
 import { getSupabaseAdmin } from '../../../../server/supabase-admin.server'
 
 const querySchema = z.object({
@@ -154,19 +155,17 @@ function localDate(iso: string, timezone: string) {
   }).format(new Date(iso))
 }
 
-function clientIdentity(request: Request) {
-  return (
-    request.headers.get('cf-connecting-ip') ??
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    'unknown'
-  )
-}
-
 export const Route = createFileRoute('/api/public/bookings/$slug')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
         try {
+          await assertRateLimit({
+            namespace: 'public-booking-availability',
+            identity: requestIdentity(request),
+            limit: 60,
+            windowSeconds: 600,
+          })
           const page = await loadPage(params.slug)
           const url = new URL(request.url)
           const today = localDate(new Date().toISOString(), page.timezone)
@@ -209,7 +208,7 @@ export const Route = createFileRoute('/api/public/bookings/$slug')({
           assertTrustedOrigin(request)
           await assertRateLimit({
             namespace: 'public-booking',
-            identity: clientIdentity(request),
+            identity: requestIdentity(request),
             limit: 12,
             windowSeconds: 600,
           })

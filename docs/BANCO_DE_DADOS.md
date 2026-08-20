@@ -120,6 +120,14 @@ erDiagram
 | `blocklist_entries`          | Palavras e padrões proibidos por workspace          |
 | `workspace_runtime_settings` | Kill switches de envio, Comment-to-DM e IA autônoma |
 
+### Privacidade e confiança pública
+
+| Tabela                      | Responsabilidade                                                      |
+| --------------------------- | --------------------------------------------------------------------- |
+| `data_deletion_requests`    | Comprovante sem PII para signed requests processados pela Meta        |
+| `privacy_deletion_requests` | Pedido LGPD do formulário, identidade a verificar e protocolo opaco   |
+| `customer_reviews`          | Avaliação publicada somente com verificação e consentimento explícito |
+
 ## 4. Views
 
 ### `dashboard_last_7_days`
@@ -168,6 +176,9 @@ As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e par�
   ser alteradas por `owner/admin`; eventos, tarefas e bookings por
   `owner/admin/agent`.
 - `outbound_deliveries` também é service-role only: contém corpo da mensagem, destinatário, decisão de compliance e estado de entrega.
+- `privacy_deletion_requests` e `customer_reviews` não têm policy nem GRANT para
+  `anon/authenticated`; a API pública devolve somente protocolo/status ou
+  avaliações já verificadas, consentidas e publicadas.
 - `authenticated` recebe DML no schema público, sempre limitado pelo RLS.
 - `service_role` recebe acesso total aos schemas público e privado.
 - `authenticated` não recebe uso do schema `private`.
@@ -204,6 +215,11 @@ A migration `20260730223000_outbound_delivery_idempotency.sql` adiciona o claim 
 - `unknown`: houve timeout ou falha depois do claim e o resultado externo é ambíguo; exige reconciliação humana.
 
 A migration `20260820120000_operational_go_live.sql` adiciona controles de runtime por workspace, notas de Inbox, execuções de automação, telemetria de webhook e recuperação textual da base de conhecimento. Ela é aditiva e inicia todos os switches de efeito externo desligados.
+
+A migration `20260821010000_public_privacy_reviews.sql` adiciona pedidos LGPD
+persistidos e o catálogo de avaliações reais. As duas tabelas são
+`service_role`-only; publicar uma avaliação sem consentimento e verificação
+viola uma constraint do banco.
 
 Fluxo seguro:
 

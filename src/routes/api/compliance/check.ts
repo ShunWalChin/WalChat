@@ -2,7 +2,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { evaluateCompliance } from '../../../server/compliance'
-import { ApiError, apiErrorResponse } from '../../../server/api-auth.server'
+import {
+  ApiError,
+  apiErrorResponse,
+  assertTrustedOrigin,
+  requireWorkspaceContext,
+} from '../../../server/api-auth.server'
+import { assertRateLimit } from '../../../server/rate-limit.server'
 import { readJsonBody } from '../../../server/request-body.server'
 
 const bodySchema = z.object({
@@ -23,6 +29,14 @@ export const Route = createFileRoute('/api/compliance/check')({
     handlers: {
       POST: async ({ request }) => {
         try {
+          assertTrustedOrigin(request)
+          const context = await requireWorkspaceContext(request)
+          await assertRateLimit({
+            namespace: 'compliance-preview',
+            identity: `${context.workspaceId}:${context.user.id}`,
+            limit: 120,
+            windowSeconds: 60,
+          })
           const parsed = bodySchema.safeParse(await readJsonBody(request))
           if (!parsed.success)
             throw new ApiError(400, 'Entrada de compliance inválida.')

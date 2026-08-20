@@ -35,7 +35,7 @@ const groups = [
     items: [
       { to: '/dashboard', label: 'Visão geral', icon: LayoutDashboard },
       { to: '/operacoes', label: 'Operação & Go-Live', icon: Gauge },
-      { to: '/inbox', label: 'Inbox', icon: Inbox, badge: '3' },
+      { to: '/inbox', label: 'Inbox', icon: Inbox },
       { to: '/contatos', label: 'Contatos & tags', icon: ContactRound },
     ],
   },
@@ -116,6 +116,10 @@ export function AppShell() {
       .catch(() => setInstagramUsername(null))
   }, [user])
 
+  useEffect(() => {
+    document.title = `${heading.title} | Wal Chat`
+  }, [heading.title])
+
   if (loading) {
     return (
       <div className="loading-screen">
@@ -147,7 +151,7 @@ export function AppShell() {
           </button>
         </div>
 
-        <button className="account-picker">
+        <Link to="/configuracoes" className="account-picker">
           <span className="avatar avatar-orange">WC</span>
           <span>
             <strong>
@@ -158,7 +162,7 @@ export function AppShell() {
             </small>
           </span>
           <ChevronDown size={16} />
-        </button>
+        </Link>
 
         <nav className="nav-groups" aria-label="Navegação principal">
           {groups.map((group) => (
@@ -176,7 +180,6 @@ export function AppShell() {
                   >
                     <Icon size={18} strokeWidth={2.2} />
                     <span>{item.label}</span>
-                    {'badge' in item && <em>{item.badge}</em>}
                   </Link>
                 )
               })}
@@ -188,13 +191,17 @@ export function AppShell() {
           <div className="usage-card">
             <div>
               <Radio size={15} />
-              <span>Janela Meta</span>
-              <strong>96%</strong>
+              <span>Conexão Meta</span>
+              <strong>{instagramUsername ? 'ATIVA' : 'PENDENTE'}</strong>
             </div>
             <div className="usage-track">
-              <span />
+              <span style={{ width: instagramUsername ? '100%' : '12%' }} />
             </div>
-            <small>344 de 360 DMs elegíveis</small>
+            <small>
+              {instagramUsername
+                ? `@${instagramUsername} conectada`
+                : 'Conecte uma conta em Configurações'}
+            </small>
           </div>
           <Link
             to="/manual"
@@ -211,7 +218,14 @@ export function AppShell() {
             <Settings size={18} /> Configurações
           </Link>
           <button className="profile-row" onClick={() => void signOut()}>
-            <span className="avatar avatar-dark">MD</span>
+            <span className="avatar avatar-dark">
+              {user.name
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((part) => part[0])
+                .join('')
+                .toUpperCase() || 'WC'}
+            </span>
             <span>
               <strong>{user.name}</strong>
               <small>{user.email}</small>

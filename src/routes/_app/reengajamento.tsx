@@ -11,7 +11,11 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useState } from 'react'
-import { ComplianceBanner, PageIntro } from '../../components/ui'
+import {
+  ComplianceBanner,
+  PageIntro,
+  PrototypeNotice,
+} from '../../components/ui'
 
 export const Route = createFileRoute('/_app/reengajamento')({
   component: ReengagementPage,
@@ -22,13 +26,17 @@ function ReengagementPage() {
   const [message, setMessage] = useState(
     'Salve! Passando pra avisar que a aula nova já está no ar. Quer o link?\n\nResponda PARAR',
   )
-  const [checked, setChecked] = useState(false)
   return (
     <div className="stack-lg">
       <PageIntro
         title="Chama quem ainda tá por perto."
         description="Campanhas filtradas pela elegibilidade da Meta, com ritmo seguro de 30–45 mensagens por minuto."
       />
+      <PrototypeNotice title="Campanhas em massa permanecem bloqueadas">
+        O preview é visual. Segmentação persistida, aprovação, fila, templates e
+        cancelamento ainda precisam da fase própria de implementação antes de
+        qualquer envio real.
+      </PrototypeNotice>
       <ComplianceBanner compact />
       <div className="campaign-builder">
         <section className="card campaign-form">
@@ -39,7 +47,7 @@ function ReengagementPage() {
               <p>Os filtros nunca ignoram a janela de envio.</p>
             </div>
           </div>
-          <button className="filter-builder">
+          <button className="filter-builder" disabled>
             <Filter size={17} />
             <span>
               <strong>Tag é “Lead quente”</strong>
@@ -51,21 +59,21 @@ function ReengagementPage() {
             <div className="eligible">
               <CheckCircle2 size={20} />
               <span>
-                <strong>235</strong>
+                <strong>0</strong>
                 <small>elegíveis em 24h</small>
               </span>
             </div>
             <div className="human">
               <Clock3 size={20} />
               <span>
-                <strong>48</strong>
+                <strong>0</strong>
                 <small>HUMAN_AGENT 7d</small>
               </span>
             </div>
             <div className="blocked">
               <XCircle size={20} />
               <span>
-                <strong>109</strong>
+                <strong>0</strong>
                 <small>bloqueados</small>
               </span>
             </div>
@@ -102,20 +110,12 @@ function ReengagementPage() {
               max="45"
               value={rate}
               onChange={(event) => setRate(Number(event.target.value))}
+              disabled
             />
           </label>
-          <button
-            className="button button-dark button-full"
-            onClick={() => setChecked(true)}
-          >
+          <button className="button button-dark button-full" disabled>
             <ShieldCheck size={17} /> Checar elegibilidade e revisar
           </button>
-          {checked && (
-            <div className="success-message">
-              <CheckCircle2 size={17} /> Preview gerado: 235 destinatários podem
-              receber agora.
-            </div>
-          )}
         </section>
         <aside className="card campaign-preview">
           <span className="eyebrow">PREVIEW DO ENVIO</span>
@@ -130,8 +130,7 @@ function ReengagementPage() {
           </div>
           <div className="preview-meta">
             <p>
-              <Users size={15} />
-              235 destinatários
+              <Users size={15} />0 destinatários selecionados
             </p>
             <p>
               <Megaphone size={15} />

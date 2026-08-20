@@ -7,6 +7,7 @@ import {
   assertTrustedOrigin,
   requireWorkspaceContext,
 } from '../../../../server/api-auth.server'
+import { readJsonBody } from '../../../../server/request-body.server'
 import {
   requireWorkspaceContacts,
   writeContactAudit,
@@ -40,7 +41,7 @@ export const Route = createFileRoute('/api/contacts/$contactId/notes')({
             'agent',
           ])
           const contactId = z.uuid().parse(params.contactId)
-          const input = createSchema.parse(await request.json())
+          const input = createSchema.parse(await readJsonBody(request))
           await requireWorkspaceContacts({
             admin: context.admin,
             workspaceId: context.workspaceId,
@@ -80,7 +81,7 @@ export const Route = createFileRoute('/api/contacts/$contactId/notes')({
             'agent',
           ])
           const contactId = z.uuid().parse(params.contactId)
-          const input = updateSchema.parse(await request.json())
+          const input = updateSchema.parse(await readJsonBody(request))
           const updates: Record<string, unknown> = {}
           if (input.body !== undefined) updates.body = input.body
           if (input.isPinned !== undefined) updates.is_pinned = input.isPinned
@@ -120,7 +121,7 @@ export const Route = createFileRoute('/api/contacts/$contactId/notes')({
             'agent',
           ])
           const contactId = z.uuid().parse(params.contactId)
-          const input = deleteSchema.parse(await request.json())
+          const input = deleteSchema.parse(await readJsonBody(request))
           const { data, error } = await context.supabase
             .from('contact_notes')
             .delete()

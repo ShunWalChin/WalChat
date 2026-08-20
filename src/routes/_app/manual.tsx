@@ -813,6 +813,16 @@ function ManualPage() {
                     </thead>
                     <tbody>
                       <ModuleRow
+                        name="Site público, SEO e LGPD"
+                        status="Funcional"
+                        tone="green"
+                      >
+                        Landing, 404, obrigado, sitemap, robots, metadados,
+                        consentimento do Analytics e solicitação de exclusão
+                        persistida. Avaliações e LocalBusiness só aparecem com
+                        fonte, consentimento e endereço reais.
+                      </ModuleRow>
+                      <ModuleRow
                         name="Autenticação e multi-tenant"
                         status="Funcional"
                         tone="green"
@@ -888,6 +898,10 @@ function ManualPage() {
                         tone="red"
                       >
                         Interface visual; execução Meta ainda não é produção.
+                      </ModuleRow>
+                      <ModuleRow name="Insights" status="Protótipo" tone="red">
+                        A tela não exibe mais métricas fictícias. A próxima fase
+                        deve implementar ingestão oficial, histórico e análise.
                       </ModuleRow>
                     </tbody>
                   </table>

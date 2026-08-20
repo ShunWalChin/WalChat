@@ -12,6 +12,7 @@ import {
   requireWorkspaceContacts,
   writeContactAudit,
 } from '../../../server/contacts-crm.server'
+import { readJsonBody } from '../../../server/request-body.server'
 
 const ids = z.array(z.uuid()).min(1).max(100)
 const actionSchema = z.discriminatedUnion('action', [
@@ -55,7 +56,7 @@ export const Route = createFileRoute('/api/contacts/bulk')({
             'admin',
             'agent',
           ])
-          const input = actionSchema.parse(await request.json())
+          const input = actionSchema.parse(await readJsonBody(request))
           const contactIds = Array.from(new Set(input.contactIds))
           const contacts = await requireWorkspaceContacts({
             admin: context.admin,

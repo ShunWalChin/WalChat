@@ -13,7 +13,7 @@ import {
   WandSparkles,
 } from 'lucide-react'
 import { useState } from 'react'
-import { PageIntro } from '../../components/ui'
+import { PageIntro, PrototypeNotice } from '../../components/ui'
 
 export const Route = createFileRoute('/_app/publicar')({
   component: PublishPage,
@@ -49,6 +49,10 @@ function PublishPage() {
         title="Do rascunho pro feed."
         description="Crie copy, roteiro e slides com IA. Revise no preview real antes de publicar."
       />
+      <PrototypeNotice title="Estúdio em modo de prévia">
+        A copy demonstrativa fica apenas neste navegador. Upload, containers de
+        mídia, agendamento e publicação pela Graph API continuam desabilitados.
+      </PrototypeNotice>
       <div className="publish-layout">
         <section className="card publish-form">
           <div className="type-picker">
@@ -78,11 +82,11 @@ function PublishPage() {
               <Sparkles size={16} />
               Gerar copy
             </button>
-            <button>
+            <button disabled>
               <WandSparkles size={16} />
               Criar roteiro
             </button>
-            <button>
+            <button disabled>
               <LayoutGrid size={16} />
               Gerar slides
             </button>
@@ -123,10 +127,10 @@ function PublishPage() {
             </div>
           )}
           <div className="publish-actions">
-            <button className="button button-outline">
+            <button className="button button-outline" disabled>
               <CalendarClock size={16} /> Agendar
             </button>
-            <button className="button button-orange">
+            <button className="button button-orange" disabled>
               <Send size={16} /> Publicar agora
             </button>
           </div>
@@ -165,6 +169,7 @@ function PublishPage() {
             <button
               className="icon-button"
               onClick={() => setSlide(Math.max(1, slide - 1))}
+              aria-label="Slide anterior"
             >
               <ChevronLeft size={18} />
             </button>
@@ -172,6 +177,7 @@ function PublishPage() {
             <button
               className="icon-button"
               onClick={() => setSlide(Math.min(5, slide + 1))}
+              aria-label="Próximo slide"
             >
               <ChevronRight size={18} />
             </button>

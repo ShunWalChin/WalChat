@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as ExclusaoDeDadosRouteImport } from './routes/exclusao-de-dados'
+import { Route as ObrigadoRouteImport } from './routes/obrigado'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AppAgentesRouteImport } from './routes/_app/agentes'
@@ -51,6 +52,8 @@ import { Route as ApiContactsBulkRouteImport } from './routes/api/contacts/bulk'
 import { Route as ApiMessagesSendRouteImport } from './routes/api/messages/send'
 import { Route as ApiOperationsGoLiveRouteImport } from './routes/api/operations/go-live'
 import { Route as ApiOperationsWebhooksRouteImport } from './routes/api/operations/webhooks'
+import { Route as ApiPrivacyDeletionRequestsRouteImport } from './routes/api/privacy/deletion-requests'
+import { Route as ApiPublicReviewsRouteImport } from './routes/api/public/reviews'
 import { Route as ApiContactsContactIdNotesRouteImport } from './routes/api/contacts/$contactId/notes'
 import { Route as ApiIntegrationsGoogleCallbackRouteImport } from './routes/api/integrations/google/callback'
 import { Route as ApiIntegrationsGoogleDisconnectRouteImport } from './routes/api/integrations/google/disconnect'
@@ -85,6 +88,11 @@ const AppRoute = AppRouteImport.update({
 const ExclusaoDeDadosRoute = ExclusaoDeDadosRouteImport.update({
   id: '/exclusao-de-dados',
   path: '/exclusao-de-dados',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ObrigadoRoute = ObrigadoRouteImport.update({
+  id: '/obrigado',
+  path: '/obrigado',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
@@ -282,6 +290,17 @@ const ApiOperationsWebhooksRoute = ApiOperationsWebhooksRouteImport.update({
   path: '/api/operations/webhooks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPrivacyDeletionRequestsRoute =
+  ApiPrivacyDeletionRequestsRouteImport.update({
+    id: '/api/privacy/deletion-requests',
+    path: '/api/privacy/deletion-requests',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicReviewsRoute = ApiPublicReviewsRouteImport.update({
+  id: '/api/public/reviews',
+  path: '/api/public/reviews',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiContactsContactIdNotesRoute =
   ApiContactsContactIdNotesRouteImport.update({
     id: '/notes',
@@ -411,6 +430,7 @@ const ApiIntegrationsMetaWhatsappMediaMediaIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
+  '/obrigado': typeof ObrigadoRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/agentes': typeof AppAgentesRoute
@@ -450,6 +470,8 @@ export interface FileRoutesByFullPath {
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
+  '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
+  '/api/public/reviews': typeof ApiPublicReviewsRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
   '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
   '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
@@ -475,6 +497,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
+  '/obrigado': typeof ObrigadoRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/agentes': typeof AppAgentesRoute
@@ -514,6 +537,8 @@ export interface FileRoutesByTo {
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
+  '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
+  '/api/public/reviews': typeof ApiPublicReviewsRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
   '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
   '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
@@ -541,6 +566,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
+  '/obrigado': typeof ObrigadoRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/_app/agentes': typeof AppAgentesRoute
@@ -580,6 +606,8 @@ export interface FileRoutesById {
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
+  '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
+  '/api/public/reviews': typeof ApiPublicReviewsRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
   '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
   '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
@@ -607,6 +635,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/exclusao-de-dados'
+    | '/obrigado'
     | '/privacidade'
     | '/termos'
     | '/agentes'
@@ -646,6 +675,8 @@ export interface FileRouteTypes {
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
+    | '/api/privacy/deletion-requests'
+    | '/api/public/reviews'
     | '/api/contacts/$contactId/notes'
     | '/api/integrations/google/callback'
     | '/api/integrations/google/disconnect'
@@ -671,6 +702,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/exclusao-de-dados'
+    | '/obrigado'
     | '/privacidade'
     | '/termos'
     | '/agentes'
@@ -710,6 +742,8 @@ export interface FileRouteTypes {
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
+    | '/api/privacy/deletion-requests'
+    | '/api/public/reviews'
     | '/api/contacts/$contactId/notes'
     | '/api/integrations/google/callback'
     | '/api/integrations/google/disconnect'
@@ -736,6 +770,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/exclusao-de-dados'
+    | '/obrigado'
     | '/privacidade'
     | '/termos'
     | '/_app/agentes'
@@ -775,6 +810,8 @@ export interface FileRouteTypes {
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
+    | '/api/privacy/deletion-requests'
+    | '/api/public/reviews'
     | '/api/contacts/$contactId/notes'
     | '/api/integrations/google/callback'
     | '/api/integrations/google/disconnect'
@@ -802,6 +839,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   ExclusaoDeDadosRoute: typeof ExclusaoDeDadosRoute
+  ObrigadoRoute: typeof ObrigadoRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
   AgendarSlugRoute: typeof AgendarSlugRoute
@@ -822,6 +860,8 @@ export interface RootRouteChildren {
   ApiMessagesSendRoute: typeof ApiMessagesSendRoute
   ApiOperationsGoLiveRoute: typeof ApiOperationsGoLiveRoute
   ApiOperationsWebhooksRoute: typeof ApiOperationsWebhooksRoute
+  ApiPrivacyDeletionRequestsRoute: typeof ApiPrivacyDeletionRequestsRoute
+  ApiPublicReviewsRoute: typeof ApiPublicReviewsRoute
   ApiIntegrationsGoogleCallbackRoute: typeof ApiIntegrationsGoogleCallbackRoute
   ApiIntegrationsGoogleDisconnectRoute: typeof ApiIntegrationsGoogleDisconnectRoute
   ApiIntegrationsGoogleStartRoute: typeof ApiIntegrationsGoogleStartRoute
@@ -865,6 +905,13 @@ declare module '@tanstack/react-router' {
       path: '/exclusao-de-dados'
       fullPath: '/exclusao-de-dados'
       preLoaderRoute: typeof ExclusaoDeDadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/obrigado': {
+      id: '/obrigado'
+      path: '/obrigado'
+      fullPath: '/obrigado'
+      preLoaderRoute: typeof ObrigadoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacidade': {
@@ -1140,6 +1187,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOperationsWebhooksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/privacy/deletion-requests': {
+      id: '/api/privacy/deletion-requests'
+      path: '/api/privacy/deletion-requests'
+      fullPath: '/api/privacy/deletion-requests'
+      preLoaderRoute: typeof ApiPrivacyDeletionRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/reviews': {
+      id: '/api/public/reviews'
+      path: '/api/public/reviews'
+      fullPath: '/api/public/reviews'
+      preLoaderRoute: typeof ApiPublicReviewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/contacts/$contactId/notes': {
       id: '/api/contacts/$contactId/notes'
       path: '/notes'
@@ -1371,6 +1432,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   ExclusaoDeDadosRoute: ExclusaoDeDadosRoute,
+  ObrigadoRoute: ObrigadoRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
   AgendarSlugRoute: AgendarSlugRoute,
@@ -1391,6 +1453,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMessagesSendRoute: ApiMessagesSendRoute,
   ApiOperationsGoLiveRoute: ApiOperationsGoLiveRoute,
   ApiOperationsWebhooksRoute: ApiOperationsWebhooksRoute,
+  ApiPrivacyDeletionRequestsRoute: ApiPrivacyDeletionRequestsRoute,
+  ApiPublicReviewsRoute: ApiPublicReviewsRoute,
   ApiIntegrationsGoogleCallbackRoute: ApiIntegrationsGoogleCallbackRoute,
   ApiIntegrationsGoogleDisconnectRoute: ApiIntegrationsGoogleDisconnectRoute,
   ApiIntegrationsGoogleStartRoute: ApiIntegrationsGoogleStartRoute,
