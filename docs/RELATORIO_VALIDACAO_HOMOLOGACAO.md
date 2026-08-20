@@ -231,3 +231,30 @@ O endereço de homologação continua
 `https://wal-chat.64.181.178.125.nip.io`. O CRM está liberado para testes
 internos com contas e contatos reais, mas o ambiente permanece em
 `DEMO_MODE=true`; esta entrega não habilitou disparos Meta nem IA autônoma.
+
+## Calendário operacional e Google Workspace — 20/08/2026
+
+A release `20260820-operational-calendar-v1-1`, commit `25870fd`, substituiu a
+tela estática por uma agenda persistente integrada ao CRM, às automações e aos
+agentes. A migration `20260820230000` passou primeiro em banco isolado e depois
+foi aplicada em transação única na homologação.
+
+| Verificação                  | Resultado                                                           |
+| ---------------------------- | ------------------------------------------------------------------- |
+| Backup pré-migration         | Dump `20260820-before-calendar-269a50c.dump` com SHA-256 registrado |
+| Mês, semana e agenda         | Persistência e leitura unificada aprovadas                          |
+| Evento, tarefa e dia inteiro | CRUD local aprovado                                                 |
+| Reserva pública              | Contato, booking e evento atômicos aprovados                        |
+| Concorrência                 | Lock, idempotência e buffer de 15 minutos aprovados                 |
+| Scheduler                    | Sync Google periódico inicializa sem falha                          |
+| Google privado sem sessão    | `401`                                                               |
+| Build e qualidade            | 22 arquivos/67 testes, tipos, lint, SSR e audit aprovados           |
+| Smoke publicado              | Evento, tarefa, página, reserva, replay, buffer e leitura aprovados |
+| Limpeza de QA                | Usuário/workspace temporários removidos; zero registros residuais   |
+| Layout público               | 390×844 sem overflow; console sem erros                             |
+
+As chamadas Calendar, Tasks, Meet, Free/Busy e revogação estão implementadas,
+mas não foram declaradas homologadas externamente: o ambiente ainda não possui
+`GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`. A matriz com a conta piloto está em
+`CONFIGURACAO_GOOGLE_CALENDAR.md` e deve ser executada antes de anunciar a
+integração Google como ativa.

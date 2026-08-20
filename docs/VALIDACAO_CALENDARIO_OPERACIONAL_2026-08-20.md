@@ -2,7 +2,7 @@
 
 ## Resultado
 
-O core local está **aprovado para homologação**. A integração externa Google
+O core publicado está **aprovado para homologação**. A integração externa Google
 permanece **pendente de credenciais e conta piloto**; nenhum teste desta rodada
 inventou Client ID, Client Secret ou acesso a uma agenda real.
 
@@ -43,6 +43,29 @@ página, reserva, replay idempotente, buffer e leitura unificada.
 O banco temporário `wal_chat_calendar_migration_test` foi removido após as
 asserções. A migration não foi testada diretamente sobre dados de produção
 antes desse ensaio isolado.
+
+## Publicação e smoke integrado
+
+- URL: `https://wal-chat.64.181.178.125.nip.io`;
+- release: `/opt/wal-chat/releases/20260820-operational-calendar-v1-1`;
+- commit de código: `25870fd`;
+- migration: `20260820230000`, registrada no histórico do Supabase;
+- backup anterior: `/opt/wal-chat/backups/20260820-before-calendar-269a50c.dump`;
+- SHA-256 do backup:
+  `7cb0effa339e8cc33fe94af4a1cdb46c3bc447e9ab758de2cf071593dc2332e6`.
+
+App, worker de webhooks, scheduler e Redis ficaram saudáveis. O smoke dentro do
+container publicado aprovou evento, tarefa, página, reserva, replay idempotente,
+buffer simétrico, leitura unificada e status Google. O usuário/workspace de QA
+foi removido; as seis tabelas do calendário voltaram a zero registros de teste.
+
+No navegador, HTTPS e rota do calendário responderam `200`, endpoint privado
+Google sem JWT respondeu `401`, slug público inexistente respondeu `404`, o
+console ficou sem erros e a entrada em 390×844 não apresentou overflow
+horizontal.
+
+O ambiente continua em `DEMO_MODE=true`; Client ID/Secret Google, OpenAI/Gemini
+e disparos externos não foram habilitados por esta entrega.
 
 ## Homologação externa obrigatória
 
