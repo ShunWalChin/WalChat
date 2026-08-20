@@ -234,7 +234,7 @@ internos com contas e contatos reais, mas o ambiente permanece em
 
 ## Calendário operacional e Google Workspace — 20/08/2026
 
-A release `20260820-operational-calendar-v1-1`, commit `25870fd`, substituiu a
+A release `20260820-operational-calendar-v1-2`, commit `27a65bf`, substituiu a
 tela estática por uma agenda persistente integrada ao CRM, às automações e aos
 agentes. A migration `20260820230000` passou primeiro em banco isolado e depois
 foi aplicada em transação única na homologação.
@@ -245,6 +245,7 @@ foi aplicada em transação única na homologação.
 | Mês, semana e agenda         | Persistência e leitura unificada aprovadas                          |
 | Evento, tarefa e dia inteiro | CRUD local aprovado                                                 |
 | Reserva pública              | Contato, booking e evento atômicos aprovados                        |
+| Fuso da agenda pública       | Data e hora renderizadas no timezone configurado                    |
 | Concorrência                 | Lock, idempotência e buffer de 15 minutos aprovados                 |
 | Scheduler                    | Sync Google periódico inicializa sem falha                          |
 | Google privado sem sessão    | `401`                                                               |

@@ -47,8 +47,8 @@ antes desse ensaio isolado.
 ## Publicação e smoke integrado
 
 - URL: `https://wal-chat.64.181.178.125.nip.io`;
-- release: `/opt/wal-chat/releases/20260820-operational-calendar-v1-1`;
-- commit de código: `25870fd`;
+- release: `/opt/wal-chat/releases/20260820-operational-calendar-v1-2`;
+- commit de código: `27a65bf`;
 - migration: `20260820230000`, registrada no histórico do Supabase;
 - backup anterior: `/opt/wal-chat/backups/20260820-before-calendar-269a50c.dump`;
 - SHA-256 do backup:
@@ -58,6 +58,8 @@ App, worker de webhooks, scheduler e Redis ficaram saudáveis. O smoke dentro do
 container publicado aprovou evento, tarefa, página, reserva, replay idempotente,
 buffer simétrico, leitura unificada e status Google. O usuário/workspace de QA
 foi removido; as seis tabelas do calendário voltaram a zero registros de teste.
+As datas e horas da página pública são renderizadas no fuso configurado na
+agenda, independentemente do fuso do navegador do lead.
 
 No navegador, HTTPS e rota do calendário responderam `200`, endpoint privado
 Google sem JWT respondeu `401`, slug público inexistente respondeu `404`, o
