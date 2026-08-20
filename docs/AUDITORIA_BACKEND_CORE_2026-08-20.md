@@ -45,6 +45,7 @@ Esta revisão corrige esses bloqueios e transforma o backend em **candidato a pi
 | Corpos HTTP eram lidos sem limite                                  | Alta       | JSON 256 KiB, webhook 1 MiB e exclusão 32 KiB com leitura streaming                                                                                                |
 | Callback de exclusão só gerava protocolo                           | Crítica    | Signed request valida algoritmo/HMAC; RPC remove conta, contatos, tokens, interações, jobs, payloads e auditorias vinculadas, desativa envios e expõe status opaco |
 | Host encaminhado influenciava URL canônica                         | Alta       | Runtime usa somente `APP_ORIGIN`; Nginx sobrescreve forwarded headers                                                                                              |
+| Proxy versionado não declarava os hosts TLS em `443`               | Crítica    | Blocos HTTPS usam o certificado Let's Encrypt correto; HTTP apenas redireciona e o deploy foi validado externamente                                                |
 | Containers sem limites/log rotation                                | Média      | CPU, memória, PIDs, grace period e rotação adicionados                                                                                                             |
 
 ## Modelo de autorização após a revisão
