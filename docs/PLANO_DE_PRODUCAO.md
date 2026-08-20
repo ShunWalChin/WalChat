@@ -7,7 +7,12 @@ Este documento separa o que já existe, o que ainda bloqueia contas reais e a or
 - A aplicação, o webhook, OAuth Meta, Inbox, compliance, agentes de IA, Redis, worker e scheduler possuem implementação backend.
 - A homologação pública continua em `DEMO_MODE=true`; portanto, não deve enviar mensagens reais.
 - O ambiente atual usa Supabase CLI isolado. Ele atende ao desenvolvimento e à homologação temporária, mas não é a topologia de banco recomendada para produção.
-- Publicação, calendário, insights e outros módulos visuais ainda têm partes demonstrativas e precisam de contratos Graph API e testes próprios antes de serem vendidos como funcionais.
+- O calendário operacional possui persistência, Google Calendar/Tasks,
+  Free/Busy, Meet e agendamento público; a conexão externa ainda depende das
+  credenciais OAuth do ambiente e da matriz de homologação.
+- Publicação editorial na Meta, insights e outros módulos visuais ainda têm
+  partes demonstrativas e precisam de contratos Graph API e testes próprios
+  antes de serem vendidos como funcionais.
 
 ## Gates obrigatórios
 
@@ -57,7 +62,16 @@ Este documento separa o que já existe, o que ainda bloqueia contas reais e a or
 - [ ] Modo copiloto validado antes de liberar qualquer modo autônomo.
 - [ ] Falhas do provedor nunca geram envio automático inventado.
 
-### Gate 5 — operação
+### Gate 5 — Google Agenda
+
+- [x] CRUD local de eventos, tarefas e reuniões persistente.
+- [x] OAuth Authorization Code com state, PKCE e tokens cifrados.
+- [x] Reserva transacional e Free/Busy com falha fechada.
+- [x] Integração do link oficial com gatilhos, sequências e agentes de IA.
+- [ ] OAuth, Calendar, Tasks, Meet e revogação validados com a conta piloto.
+- [ ] Dupla reserva e indisponibilidade do Google ensaiadas em homologação.
+
+### Gate 6 — operação
 
 - [ ] Piloto com um workspace, uma conta Professional e usuários nominados.
 - [ ] Dashboards e alertas para webhook, fila, scheduler, Meta e IA.
@@ -71,7 +85,7 @@ Este documento separa o que já existe, o que ainda bloqueia contas reais e a or
 2. Aplicar migrations por versão, capturando backup e evidência de rollback.
 3. Configurar SMTP, Redis persistente, observabilidade e alertas.
 4. Fazer deploy com `DEMO_MODE=true` e validar `/api/health`, `/api/ready` e healthchecks dos workers.
-5. Configurar Meta e IA com um workspace piloto.
+5. Configurar Meta, IA e Google Workspace com um workspace piloto.
 6. Executar a matriz completa de compliance sem disparo em massa.
 7. Autorizar explicitamente a troca para `DEMO_MODE=false`.
 8. Liberar tráfego gradualmente, acompanhar erros, fila, bloqueios e custos.

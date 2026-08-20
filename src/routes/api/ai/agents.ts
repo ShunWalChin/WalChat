@@ -18,6 +18,7 @@ const agentFields = {
   modelOverride: z.string().max(80).nullable().optional(),
   maxReplyChars: z.number().int().min(100).max(1_000),
   fallbackToCopilot: z.boolean(),
+  bookingPageId: z.uuid().nullable().optional(),
 }
 const createSchema = z.object(agentFields)
 const updateSchema = z
@@ -25,6 +26,21 @@ const updateSchema = z
   .partial()
   .required({ id: true })
 const deleteSchema = z.object({ id: z.string().uuid() })
+
+async function bookingPageBelongs(
+  context: Awaited<ReturnType<typeof requireWorkspaceContext>>,
+  bookingPageId: string | null | undefined,
+) {
+  if (!bookingPageId) return true
+  const { count, error } = await context.supabase
+    .from('booking_pages')
+    .select('id', { count: 'exact', head: true })
+    .eq('workspace_id', context.workspaceId)
+    .eq('id', bookingPageId)
+    .eq('is_active', true)
+  if (error) throw error
+  return Boolean(count)
+}
 
 export const Route = createFileRoute('/api/ai/agents')({
   server: {
@@ -35,6 +51,7 @@ export const Route = createFileRoute('/api/ai/agents')({
           const [
             { data: agents, error },
             { data: documents, error: documentsError },
+            { data: bookingPages, error: bookingPagesError },
           ] = await Promise.all([
             context.supabase
               .from('ai_agents')
@@ -45,9 +62,16 @@ export const Route = createFileRoute('/api/ai/agents')({
               .from('knowledge_documents')
               .select('ai_agent_id')
               .eq('workspace_id', context.workspaceId),
+            context.supabase
+              .from('booking_pages')
+              .select('id,title,slug,is_active')
+              .eq('workspace_id', context.workspaceId)
+              .eq('is_active', true)
+              .order('title'),
           ])
           if (error) throw error
           if (documentsError) throw documentsError
+          if (bookingPagesError) throw bookingPagesError
           const counts = new Map<string, number>()
           for (const document of documents)
             if (document.ai_agent_id)
@@ -67,8 +91,10 @@ export const Route = createFileRoute('/api/ai/agents')({
               modelOverride: agent.model_override,
               maxReplyChars: agent.max_reply_chars,
               fallbackToCopilot: agent.fallback_to_copilot,
+              bookingPageId: agent.booking_page_id,
               knowledgeCount: counts.get(agent.id) ?? 0,
             })),
+            bookingPages,
           })
         } catch (error) {
           return apiErrorResponse(error, 'Falha ao consultar os agentes.')
@@ -82,6 +108,11 @@ export const Route = createFileRoute('/api/ai/agents')({
             'admin',
           ])
           const body = createSchema.parse(await readJsonBody(request))
+          if (!(await bookingPageBelongs(context, body.bookingPageId)))
+            return Response.json(
+              { error: 'Agenda não pertence ao workspace.' },
+              { status: 422 },
+            )
           const { data, error } = await context.supabase
             .from('ai_agents')
             .insert({
@@ -95,6 +126,7 @@ export const Route = createFileRoute('/api/ai/agents')({
               model_override: body.modelOverride ?? null,
               max_reply_chars: body.maxReplyChars,
               fallback_to_copilot: body.fallbackToCopilot,
+              booking_page_id: body.bookingPageId ?? null,
             })
             .select('id')
             .single()
@@ -112,6 +144,11 @@ export const Route = createFileRoute('/api/ai/agents')({
             'admin',
           ])
           const body = updateSchema.parse(await readJsonBody(request))
+          if (!(await bookingPageBelongs(context, body.bookingPageId)))
+            return Response.json(
+              { error: 'Agenda não pertence ao workspace.' },
+              { status: 422 },
+            )
           const changes: Record<string, unknown> = {}
           if (body.name !== undefined) changes.name = body.name
           if (body.persona !== undefined) changes.persona = body.persona
@@ -126,6 +163,8 @@ export const Route = createFileRoute('/api/ai/agents')({
             changes.max_reply_chars = body.maxReplyChars
           if (body.fallbackToCopilot !== undefined)
             changes.fallback_to_copilot = body.fallbackToCopilot
+          if (body.bookingPageId !== undefined)
+            changes.booking_page_id = body.bookingPageId
           const { data, error } = await context.supabase
             .from('ai_agents')
             .update(changes)

@@ -17,6 +17,7 @@ const fields = {
   postId: z.string().uuid().nullable().optional(),
   cooldownHours: z.number().int().min(24).max(168),
   isActive: z.boolean(),
+  bookingPageId: z.uuid().nullable().optional(),
 }
 const createSchema = z.object(fields)
 const updateSchema = z
@@ -24,6 +25,21 @@ const updateSchema = z
   .partial()
   .required({ id: true })
 const deleteSchema = z.object({ id: z.string().uuid() })
+
+async function bookingPageBelongs(
+  context: Awaited<ReturnType<typeof requireWorkspaceContext>>,
+  bookingPageId: string | null | undefined,
+) {
+  if (!bookingPageId) return true
+  const { count, error } = await context.supabase
+    .from('booking_pages')
+    .select('id', { count: 'exact', head: true })
+    .eq('workspace_id', context.workspaceId)
+    .eq('id', bookingPageId)
+    .eq('is_active', true)
+  if (error) throw error
+  return Boolean(count)
+}
 
 export const Route = createFileRoute('/api/triggers')({
   server: {
@@ -35,11 +51,12 @@ export const Route = createFileRoute('/api/triggers')({
             { data: triggers, error },
             { data: cooldowns, error: cooldownsError },
             { data: runs, error: runsError },
+            { data: bookingPages, error: bookingPagesError },
           ] = await Promise.all([
             context.supabase
               .from('triggers')
               .select(
-                'id,name,source,keyword,match_mode,response_text,post_id,cooldown_hours,is_active,created_at',
+                'id,name,source,keyword,match_mode,response_text,post_id,cooldown_hours,is_active,booking_page_id,created_at',
               )
               .eq('workspace_id', context.workspaceId)
               .order('created_at'),
@@ -51,10 +68,17 @@ export const Route = createFileRoute('/api/triggers')({
               .from('automation_runs')
               .select('trigger_id,status')
               .eq('workspace_id', context.workspaceId),
+            context.supabase
+              .from('booking_pages')
+              .select('id,title,slug')
+              .eq('workspace_id', context.workspaceId)
+              .eq('is_active', true)
+              .order('title'),
           ])
           if (error) throw error
           if (cooldownsError) throw cooldownsError
           if (runsError) throw runsError
+          if (bookingPagesError) throw bookingPagesError
           const counts = new Map<string, number>()
           for (const item of cooldowns)
             counts.set(item.trigger_id, (counts.get(item.trigger_id) ?? 0) + 1)
@@ -80,10 +104,12 @@ export const Route = createFileRoute('/api/triggers')({
               postId: trigger.post_id,
               cooldownHours: trigger.cooldown_hours,
               isActive: trigger.is_active,
+              bookingPageId: trigger.booking_page_id,
               fired: counts.get(trigger.id) ?? 0,
               sent: runCounts.get(trigger.id)?.sent ?? 0,
               failed: runCounts.get(trigger.id)?.failed ?? 0,
             })),
+            bookingPages,
           })
         } catch (error) {
           return apiErrorResponse(error, 'Falha ao consultar gatilhos.')
@@ -97,6 +123,11 @@ export const Route = createFileRoute('/api/triggers')({
             'admin',
           ])
           const body = createSchema.parse(await readJsonBody(request))
+          if (!(await bookingPageBelongs(context, body.bookingPageId)))
+            return Response.json(
+              { error: 'Agenda não pertence ao workspace.' },
+              { status: 422 },
+            )
           if (body.postId) {
             const { data: post, error: postError } = await context.supabase
               .from('posts_cache')
@@ -123,6 +154,7 @@ export const Route = createFileRoute('/api/triggers')({
               post_id: body.postId ?? null,
               cooldown_hours: body.cooldownHours,
               is_active: body.isActive,
+              booking_page_id: body.bookingPageId ?? null,
             })
             .select('id')
             .single()
@@ -140,6 +172,11 @@ export const Route = createFileRoute('/api/triggers')({
             'admin',
           ])
           const body = updateSchema.parse(await readJsonBody(request))
+          if (!(await bookingPageBelongs(context, body.bookingPageId)))
+            return Response.json(
+              { error: 'Agenda não pertence ao workspace.' },
+              { status: 422 },
+            )
           if (body.postId) {
             const { data: post, error: postError } = await context.supabase
               .from('posts_cache')
@@ -165,6 +202,8 @@ export const Route = createFileRoute('/api/triggers')({
           if (body.cooldownHours !== undefined)
             changes.cooldown_hours = body.cooldownHours
           if (body.isActive !== undefined) changes.is_active = body.isActive
+          if (body.bookingPageId !== undefined)
+            changes.booking_page_id = body.bookingPageId
           const { data, error } = await context.supabase
             .from('triggers')
             .update(changes)

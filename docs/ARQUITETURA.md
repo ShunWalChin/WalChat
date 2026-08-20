@@ -25,12 +25,14 @@ flowchart TB
     subgraph Externos["Serviços externos"]
       Meta["Meta Graph API"]
       AI["OpenAI Responses API / Gemini"]
+      Google["Google Calendar / Meet / Tasks"]
     end
 
     Nginx --> App
     App --> Auth
     App --> DB
     App --> AI
+    App <--> Google
     Meta --> Nginx
     App --> Redis
     Redis --> WebhookWorker
@@ -72,6 +74,8 @@ Executa a cada 60 segundos e reivindica até 50 jobs por ciclo numa transação 
 - WhatsApp Cloud API: Embedded Signup, WABA, telefone, templates, mensagens e statuses.
 - OpenAI Responses API: provedor padrão para agentes, com `store: false`, safety identifier e configuração por workspace.
 - Gemini 2.5 Flash: provedor opcional preservado para workspaces que o selecionarem.
+- Google Workspace: OAuth com state/PKCE, Calendar, Meet, Tasks, sync
+  incremental e Free/Busy. Tokens usam o mesmo cofre cifrado por tenant.
 - SMTP: não configurado no MVP; necessário para confirmação e recuperação de contas.
 
 ## 4. Fluxo do webhook
@@ -126,6 +130,7 @@ O webhook responde rapidamente após persistência/enfileiramento. Nenhuma chama
 | Worker/Scheduler | Backend privilegiado      | Service role e logs estruturados                        |
 | OpenAI/Gemini    | Serviço externo           | Contexto limitado, sem secrets e opt-out pós-processado |
 | Meta Graph API   | Serviço externo           | Tokens no backend, timeout/retry operacional            |
+| Google Workspace | Serviço externo           | OAuth PKCE, token cifrado, Free/Busy e sync idempotente |
 
 ## 7. Disponibilidade e falhas
 

@@ -18,6 +18,8 @@ import {
   privateReplyFailureStatus,
 } from '../server/scheduled-job-policy'
 import { writeWorkerHeartbeat } from '../server/worker-heartbeat'
+import { applyBookingLink } from '../server/booking-links.server'
+import { syncGoogleConnection } from '../server/google-calendar.server'
 
 /** Falha cedo: um scheduler sem service role não pode operar com segurança. */
 function requireSupabase() {
@@ -32,6 +34,7 @@ function requireSupabase() {
 const supabase = requireSupabase()
 let lastTokenRefreshSweep = 0
 let lastRecoverySweep = 0
+let lastGoogleCalendarSweep = 0
 
 /**
  * Recupera locks abandonados após crash. Claims externos antigos viram
@@ -150,6 +153,51 @@ async function refreshDueMetaTokens() {
   if (whatsappExpiryError) throw whatsappExpiryError
 }
 
+/** Mantém Calendar e Tasks atualizados sem depender do botão da interface. */
+async function syncDueGoogleCalendars() {
+  if (Date.now() - lastGoogleCalendarSweep < 5 * 60_000) return
+  lastGoogleCalendarSweep = Date.now()
+  const cutoff = Date.now() - 5 * 60_000
+  const { data: connections, error } = await supabase
+    .from('calendar_connections')
+    .select('id,workspace_id,last_sync_at')
+    .eq('status', 'connected')
+    .order('last_sync_at', { ascending: true, nullsFirst: true })
+    .limit(10)
+  if (error) throw error
+  for (const connection of connections) {
+    if (
+      connection.last_sync_at &&
+      new Date(connection.last_sync_at).getTime() > cutoff
+    )
+      continue
+    try {
+      await syncGoogleConnection({
+        workspaceId: connection.workspace_id,
+        connectionId: connection.id,
+      })
+    } catch (caught) {
+      const code = operationalErrorCode(caught)
+      await supabase
+        .from('calendar_connections')
+        .update({
+          connection_error: code,
+          last_sync_at: new Date().toISOString(),
+        })
+        .eq('id', connection.id)
+        .eq('workspace_id', connection.workspace_id)
+      await writeIntegrationAudit({
+        workspaceId: connection.workspace_id,
+        provider: 'google',
+        action: 'calendar_sync',
+        status: 'failure',
+        resourceId: connection.id,
+        details: { code },
+      })
+    }
+  }
+}
+
 /**
  * Busca um lote limitado e adquire lock otimista com update condicional.
  * Falhas transitórias recebem backoff exponencial; a quinta tentativa é terminal.
@@ -225,6 +273,9 @@ async function processSequenceJob(job: {
     ? String(payload.automationRunId)
     : null
   const triggerId = payload.triggerId ? String(payload.triggerId) : null
+  const bookingPageId = payload.bookingPageId
+    ? String(payload.bookingPageId)
+    : null
   const position = Number(payload.position ?? 0)
   const requestedPlatform =
     payload.platform === 'whatsapp' ? 'whatsapp' : 'instagram'
@@ -258,6 +309,12 @@ async function processSequenceJob(job: {
     }
     if (step.kind !== 'typing') message = step.content ?? undefined
   }
+  if (message && bookingPageId)
+    message = await applyBookingLink({
+      workspaceId: job.workspace_id,
+      bookingPageId,
+      message,
+    })
   if (!contactId) throw new Error('Job sem contato.')
 
   const [contactResult, blocklistResult] = await Promise.all([
@@ -517,6 +574,7 @@ async function processSequenceJob(job: {
             commentCreatedAt,
             triggerId,
             automationRunId,
+            bookingPageId,
           },
           run_at: runAt,
         },
@@ -549,6 +607,7 @@ async function tick() {
   try {
     await recoverStaleWork()
     await refreshDueMetaTokens()
+    await syncDueGoogleCalendars()
     await processDueJobs()
     await writeWorkerHeartbeat('scheduler', 'healthy')
   } catch (error) {

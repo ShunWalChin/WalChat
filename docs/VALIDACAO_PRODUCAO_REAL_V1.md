@@ -16,6 +16,8 @@ Nenhuma etapa deste documento autoriza automaticamente deploy, migration, conex�
 - um gatilho simples, uma Private Reply e uma sequência curta;
 - opt-out, blocklist, cooldown e rodapé `Responda PARAR`;
 - agente de IA somente em modo copiloto;
+- calendário operacional local e Google, tarefas, Meet e links públicos de
+  agendamento para leads;
 - auditoria de entradas, bloqueios e entregas.
 
 ### Fora do piloto
@@ -23,7 +25,7 @@ Nenhuma etapa deste documento autoriza automaticamente deploy, migration, conex�
 - campanhas ou reengajamento em massa;
 - modo autônomo de IA;
 - publicação de Feed, Reels, Story ou Carrossel;
-- calendário editorial ligado à Graph API;
+- publicação editorial acionada diretamente pelo calendário na Graph API;
 - auto-like;
 - insights reais e métricas editoriais;
 - múltiplos clientes ou onboarding público.
@@ -60,6 +62,14 @@ As telas fora do piloto podem permanecer visíveis como demonstração, mas não
 - chave armazenada cifrada pelo workspace ou como secret do backend;
 - agente piloto em modo `copilot`.
 
+### Google Workspace
+
+- projeto Google Cloud exclusivo do ambiente;
+- Calendar API e Tasks API habilitadas;
+- OAuth Client do tipo Web com origem e redirect URI definitivos;
+- tela de consentimento e usuários de teste configurados durante homologação;
+- uma conta piloto com agenda e lista do Tasks controladas pela equipe.
+
 ## 3. Contrato de configuração
 
 Valores secretos nunca entram no Git, issue, PR, screenshot ou relatório. A implantação deve fornecer:
@@ -84,6 +94,9 @@ OPENAI_MODEL
 OPENAI_PROJECT
 OPENAI_ORGANIZATION
 GOOGLE_GENERATIVE_AI_API_KEY
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+GOOGLE_OAUTH_REDIRECT_URI
 ```
 
 Use somente o provedor de IA escolhido. Tokens de usuário Meta são obtidos pelo OAuth e cifrados em `integration_credentials`; não devem ser copiados para variáveis do frontend.
@@ -101,6 +114,7 @@ Use somente o provedor de IA escolhido. Tokens de usuário Meta são obtidos pel
 | Entrega    | DM permitida, bloqueada e ambígua                    | Sem duplicidade                   |
 | Compliance | 24 h, opt-out, cooldown e Private Reply              | Matriz integral aprovada          |
 | IA         | Copiloto, limites e isolamento                       | Sem envio autônomo                |
+| Agenda     | OAuth, CRUD, Free/Busy, Meet, Tasks e dupla reserva  | Matriz integral aprovada          |
 | Operação   | Alertas, rollback e responsáveis                     | Plantão nominal definido          |
 
 Se qualquer resultado exigido falhar, o status permanece `no-go`.
@@ -121,7 +135,7 @@ Checkpoint: aprovação do responsável técnico para preparar banco e integraç
 ### Fase 1 — dados
 
 1. Capturar backup e registrar o identificador.
-2. Aplicar migrations em ordem, incluindo `20260730223000_outbound_delivery_idempotency.sql`, `20260820120000_operational_go_live.sql`, `20260820180000_backend_core_hardening.sql`, `20260820183000_backend_core_hotfix.sql` e `20260820184500_data_deletion_cleanup.sql`.
+2. Aplicar migrations em ordem, incluindo `20260730223000_outbound_delivery_idempotency.sql`, `20260820120000_operational_go_live.sql`, `20260820180000_backend_core_hardening.sql`, `20260820183000_backend_core_hotfix.sql`, `20260820184500_data_deletion_cleanup.sql`, `20260820220000_contacts_tags_crm.sql` e `20260820230000_operational_calendar_google.sql`.
 3. Executar lint do banco.
 4. Criar dois usuários de teste em workspaces diferentes.
 5. Confirmar que JWT de um workspace não lê nem altera linhas do outro.

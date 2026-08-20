@@ -6,21 +6,22 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 
 ## Estado do projeto
 
-| Item                      | Estado                                                                   |
-| ------------------------- | ------------------------------------------------------------------------ |
-| MVP navegável             | Disponível                                                               |
-| Homologação HTTPS         | [wal-chat.64.181.178.125.nip.io](https://wal-chat.64.181.178.125.nip.io) |
-| Auth, Postgres e RLS      | Supabase isolado                                                         |
-| Filas e workers           | Redis + BullMQ                                                           |
-| Webhooks Meta             | Instagram + WhatsApp com HMAC, idempotência, Inbox e worker              |
-| Segurança de entrega      | Claim persistente; resposta ambígua não é reenviada automaticamente      |
-| Hardening do backend      | JWT + RLS, ingestão transacional, SKIP LOCKED e limites distribuídos     |
-| Reconciliação da fila     | Postgres/BullMQ por `jobId` canônico                                     |
-| OAuth Instagram           | Login, token cifrado por tenant, assinatura e validação implementados    |
-| WhatsApp Cloud API        | Embedded Signup, WABA, telefone, templates e receipts implementados      |
-| OpenAI / Gemini           | Responses API + Gemini opcional, configuráveis por workspace             |
-| Modo atual da homologação | `DEMO_MODE=true`                                                         |
-| Live Mode Meta            | Depende de app, tokens, permissões e revisão da Meta                     |
+| Item                      | Estado                                                                      |
+| ------------------------- | --------------------------------------------------------------------------- |
+| MVP navegável             | Disponível                                                                  |
+| Homologação HTTPS         | [wal-chat.64.181.178.125.nip.io](https://wal-chat.64.181.178.125.nip.io)    |
+| Auth, Postgres e RLS      | Supabase isolado                                                            |
+| Filas e workers           | Redis + BullMQ                                                              |
+| Webhooks Meta             | Instagram + WhatsApp com HMAC, idempotência, Inbox e worker                 |
+| Segurança de entrega      | Claim persistente; resposta ambígua não é reenviada automaticamente         |
+| Hardening do backend      | JWT + RLS, ingestão transacional, SKIP LOCKED e limites distribuídos        |
+| Reconciliação da fila     | Postgres/BullMQ por `jobId` canônico                                        |
+| OAuth Instagram           | Login, token cifrado por tenant, assinatura e validação implementados       |
+| WhatsApp Cloud API        | Embedded Signup, WABA, telefone, templates e receipts implementados         |
+| OpenAI / Gemini           | Responses API + Gemini opcional, configuráveis por workspace                |
+| Google Workspace          | OAuth PKCE, Calendar, Meet, Tasks, Free/Busy e links públicos implementados |
+| Modo atual da homologação | `DEMO_MODE=true`                                                            |
+| Live Mode Meta            | Depende de app, tokens, permissões e revisão da Meta                        |
 
 > As integrações Instagram/WhatsApp e IA estão preparadas para teste integrado. A entrega real depende das credenciais, ativos de teste e permissões concedidas pela Meta; publicação e sincronização completa de Insights ainda mantêm partes demonstrativas.
 
@@ -36,7 +37,8 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 - Sequências com texto, mídia, typing e delays.
 - Agentes de IA em modo copiloto ou autônomo.
 - Reengajamento com filtro de elegibilidade e limite de taxa.
-- Calendário editorial com visão mensal/semanal.
+- Calendário operacional com mês/semana/agenda, CRUD, Google Calendar/Tasks,
+  Meet, Free/Busy, links públicos e atividade dos demais módulos.
 - Criação de Feed, Reels, Story e Carrossel.
 - Auto-like por regra, sentimento ou palavra-chave.
 - Insights, heatmap, top posts e análise em PT-BR.
@@ -62,6 +64,9 @@ flowchart LR
     Sender --> Meta
     Webhook --> Supabase
     AI["OpenAI Responses API / Gemini"] -->|"Sugestão com opt-out"| Scheduler
+    Google["Google Calendar + Tasks"] <-->|"OAuth PKCE + sync"| Webhook
+    Booking["Página pública de agenda"] -->|"Reserva transacional"| Supabase
+    Booking -->|"Free/Busy + Meet"| Google
 ```
 
 O backend recebe o corpo bruto do webhook, valida `X-Hub-Signature-256`, persiste uma chave idempotente e enfileira o processamento. O worker normaliza contatos e interações; o scheduler executa sequências e chama o motor de compliance imediatamente antes de qualquer envio. DMs recebem um claim persistente antes da chamada externa; timeout ou resposta ambígua vira estado `unknown` e não dispara retry automático.
@@ -194,6 +199,9 @@ Essa credencial existe apenas para desenvolvimento. Nunca reutilize a senha loca
 | `OPENAI_PROJECT`                          | Secreta   | Projeto OpenAI opcional                   |
 | `OPENAI_ORGANIZATION`                     | Secreta   | Organização OpenAI opcional               |
 | `GOOGLE_GENERATIVE_AI_API_KEY`            | Secreta   | Gemini 2.5 Flash                          |
+| `GOOGLE_CLIENT_ID`                        | Backend   | OAuth Web Client do Google Workspace      |
+| `GOOGLE_CLIENT_SECRET`                    | Secreta   | Segredo do OAuth Google                   |
+| `GOOGLE_OAUTH_REDIRECT_URI`               | Backend   | Callback exato do Google                  |
 | `APP_ORIGIN`                              | Backend   | Origem pública da aplicação               |
 | `DEMO_MODE`                               | Backend   | Impede efeitos externos quando `true`     |
 
@@ -222,34 +230,40 @@ Somente `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` podem chegar ao bundle do
 
 ## API e webhook
 
-| Método      | Endpoint                                    | Responsabilidade                              |
-| ----------- | ------------------------------------------- | --------------------------------------------- |
-| `GET`       | `/api/health`                               | Liveness do processo, sem sondar dependências |
-| `GET`       | `/api/ready`                                | Readiness real de Supabase e Redis            |
-| `GET/POST`  | `/api/public/webhooks/instagram`            | Challenge, HMAC e fila Meta                   |
-| `GET/POST`  | `/api/public/webhooks/whatsapp`             | Challenge, HMAC e fila WhatsApp               |
-| `POST`      | `/api/integrations/meta/start`              | Início OAuth com state de uso único           |
-| `GET`       | `/api/integrations/meta/status`             | Estado sanitizado da conexão                  |
-| `GET`       | `/api/integrations/meta/callback`           | Code exchange e token cifrado                 |
-| `POST`      | `/api/integrations/meta/validate`           | Revalidação de perfil, token e webhooks       |
-| `DELETE`    | `/api/integrations/meta/disconnect`         | Desassinatura e remoção da credencial         |
-| `POST`      | `/api/integrations/meta/whatsapp/complete`  | Finaliza Embedded Signup e assina a WABA      |
-| `POST`      | `/api/integrations/meta/whatsapp/validate`  | Revalida token, WABA, telefone e webhook      |
-| `GET/POST`  | `/api/integrations/meta/whatsapp/templates` | Lista e sincroniza templates oficiais         |
-| `POST`      | `/api/integrations/meta/whatsapp/register`  | Registra telefone com PIN efêmero             |
-| `GET/PUT`   | `/api/ai/settings`                          | Provedor, modelo e chave cifrada              |
-| `GET/*`     | `/api/ai/agents`, `/api/ai/knowledge`       | CRUD autenticado de agentes e conhecimento    |
-| `POST`      | `/api/ai/suggest`                           | Playground/sugestão a partir do agente salvo  |
-| `GET/PATCH` | `/api/operations/go-live`                   | Diagnóstico e kill switches do workspace      |
-| `GET/POST`  | `/api/operations/webhooks`                  | Observabilidade e replay seguro de falhas     |
-| `GET/POST`  | `/api/integrations/meta/media`              | Cache e sincronização de publicações reais    |
-| `GET/PATCH` | `/api/inbox`                                | Conversas reais, mensagens, leitura e IA      |
-| `GET`       | `/api/contacts`                             | CRM multicanal e elegibilidade                |
-| `GET`       | `/api/dashboard`                            | Métricas operacionais reais                   |
-| `GET/*`     | `/api/triggers`                             | CRUD de gatilhos simples persistidos          |
-| `POST`      | `/api/messages/send`                        | Envio humano com compliance                   |
-| `POST`      | `/api/compliance/check`                     | Decisão pura de elegibilidade                 |
-| `POST`      | `/api/data-deletion`                        | Signed request de exclusão da Meta            |
+| Método      | Endpoint                                     | Responsabilidade                              |
+| ----------- | -------------------------------------------- | --------------------------------------------- |
+| `GET`       | `/api/health`                                | Liveness do processo, sem sondar dependências |
+| `GET`       | `/api/ready`                                 | Readiness real de Supabase e Redis            |
+| `GET/POST`  | `/api/public/webhooks/instagram`             | Challenge, HMAC e fila Meta                   |
+| `GET/POST`  | `/api/public/webhooks/whatsapp`              | Challenge, HMAC e fila WhatsApp               |
+| `POST`      | `/api/integrations/meta/start`               | Início OAuth com state de uso único           |
+| `GET`       | `/api/integrations/meta/status`              | Estado sanitizado da conexão                  |
+| `GET`       | `/api/integrations/meta/callback`            | Code exchange e token cifrado                 |
+| `POST`      | `/api/integrations/meta/validate`            | Revalidação de perfil, token e webhooks       |
+| `DELETE`    | `/api/integrations/meta/disconnect`          | Desassinatura e remoção da credencial         |
+| `POST`      | `/api/integrations/meta/whatsapp/complete`   | Finaliza Embedded Signup e assina a WABA      |
+| `POST`      | `/api/integrations/meta/whatsapp/validate`   | Revalida token, WABA, telefone e webhook      |
+| `GET/POST`  | `/api/integrations/meta/whatsapp/templates`  | Lista e sincroniza templates oficiais         |
+| `POST`      | `/api/integrations/meta/whatsapp/register`   | Registra telefone com PIN efêmero             |
+| `GET/PUT`   | `/api/ai/settings`                           | Provedor, modelo e chave cifrada              |
+| `GET/*`     | `/api/ai/agents`, `/api/ai/knowledge`        | CRUD autenticado de agentes e conhecimento    |
+| `POST`      | `/api/ai/suggest`                            | Playground/sugestão a partir do agente salvo  |
+| `GET/PATCH` | `/api/operations/go-live`                    | Diagnóstico e kill switches do workspace      |
+| `GET/POST`  | `/api/operations/webhooks`                   | Observabilidade e replay seguro de falhas     |
+| `GET/POST`  | `/api/integrations/meta/media`               | Cache e sincronização de publicações reais    |
+| `GET/PATCH` | `/api/inbox`                                 | Conversas reais, mensagens, leitura e IA      |
+| `GET`       | `/api/contacts`                              | CRM multicanal e elegibilidade                |
+| `GET`       | `/api/dashboard`                             | Métricas operacionais reais                   |
+| `GET/*`     | `/api/triggers`                              | CRUD de gatilhos simples persistidos          |
+| `GET/*`     | `/api/calendar`                              | Agenda unificada e CRUD de eventos/tarefas    |
+| `GET/*`     | `/api/calendar/booking-pages`                | Tipos e links públicos de agendamento         |
+| `GET/POST`  | `/api/public/bookings/:slug`                 | Free/Busy e reserva pública transacional      |
+| `POST/GET`  | `/api/integrations/google/start`, `callback` | OAuth Google com state, PKCE e token cifrado  |
+| `GET/PATCH` | `/api/integrations/google/status`            | Seleção de calendário e lista do Tasks        |
+| `POST`      | `/api/integrations/google/sync`              | Sync incremental Calendar e Tasks             |
+| `POST`      | `/api/messages/send`                         | Envio humano com compliance                   |
+| `POST`      | `/api/compliance/check`                      | Decisão pura de elegibilidade                 |
+| `POST`      | `/api/data-deletion`                         | Signed request de exclusão da Meta            |
 
 Contratos, respostas e códigos HTTP: [API e webhooks](docs/API_E_WEBHOOKS.md).
 
@@ -302,33 +316,39 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 
 - [Manual interno de implementação e operação](docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md)
 - [Configuração real da Meta e OpenAI](docs/CONFIGURACAO_META_E_OPENAI.md)
+- [Configuração do Google Calendar, Meet e Tasks](docs/CONFIGURACAO_GOOGLE_CALENDAR.md)
 - [Manual em PDF](output/pdf/manual-interno-wal-chat.pdf)
 - [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)
 
 ## Documentação
 
-| Documento                                                                           | Conteúdo                                     |
-| ----------------------------------------------------------------------------------- | -------------------------------------------- |
-| [Arquitetura](docs/ARQUITETURA.md)                                                  | Componentes, fluxos, isolamento e decisões   |
-| [API e webhooks](docs/API_E_WEBHOOKS.md)                                            | Contratos HTTP e eventos Meta                |
-| [Banco de dados](docs/BANCO_DE_DADOS.md)                                            | Tabelas, RLS, GRANTs, views e jobs           |
-| [Segurança e compliance](docs/SEGURANCA_E_COMPLIANCE.md)                            | Regras Meta, secrets e controles             |
-| [Configuração Meta e OpenAI](docs/CONFIGURACAO_META_E_OPENAI.md)                    | Onboarding e testes com contas reais         |
-| [Instagram + WhatsApp Business](docs/INTEGRACOES_META_INSTAGRAM_WHATSAPP.md)        | Setup completo, callbacks, testes e operação |
-| [Mapa do código](docs/MAPA_DO_CODIGO.md)                                            | Responsabilidade de cada arquivo             |
-| [Guia de desenvolvimento](docs/GUIA_DE_DESENVOLVIMENTO.md)                          | Convenções, testes e extensão do produto     |
-| [Plano de produção](docs/PLANO_DE_PRODUCAO.md)                                      | Gates, riscos e sequência segura de go-live  |
-| [Validação de produção real V1](docs/VALIDACAO_PRODUCAO_REAL_V1.md)                 | Escopo, evidências e aprovação do piloto     |
-| [Atualização operacional V1](docs/ATUALIZACAO_OPERACIONAL_V1.md)                    | Go-Live, gateway, Inbox, Comment-to-DM e RAG |
-| [Auditoria técnica 30/07](docs/AUDITORIA_TECNICA_2026-07-30.md)                     | Achados priorizados e parecer de promoção    |
-| [Manual operacional](docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md)               | Implantação e contas reais                   |
-| [Manual completo de acessos](docs/MANUAL_COMPLETO_ACESSOS_OPERACAO_CONFIGURACAO.md) | URLs, usuários, módulos e configuração       |
-| [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)                 | Evidências da validação publicada            |
+| Documento                                                                           | Conteúdo                                      |
+| ----------------------------------------------------------------------------------- | --------------------------------------------- |
+| [Arquitetura](docs/ARQUITETURA.md)                                                  | Componentes, fluxos, isolamento e decisões    |
+| [API e webhooks](docs/API_E_WEBHOOKS.md)                                            | Contratos HTTP e eventos Meta                 |
+| [Banco de dados](docs/BANCO_DE_DADOS.md)                                            | Tabelas, RLS, GRANTs, views e jobs            |
+| [Segurança e compliance](docs/SEGURANCA_E_COMPLIANCE.md)                            | Regras Meta, secrets e controles              |
+| [Configuração Meta e OpenAI](docs/CONFIGURACAO_META_E_OPENAI.md)                    | Onboarding e testes com contas reais          |
+| [Google Calendar, Meet e Tasks](docs/CONFIGURACAO_GOOGLE_CALENDAR.md)               | OAuth, agenda pública, sync e homologação     |
+| [Validação do Calendário](docs/VALIDACAO_CALENDARIO_OPERACIONAL_2026-08-20.md)      | Evidências locais e checklist da conta piloto |
+| [Instagram + WhatsApp Business](docs/INTEGRACOES_META_INSTAGRAM_WHATSAPP.md)        | Setup completo, callbacks, testes e operação  |
+| [Mapa do código](docs/MAPA_DO_CODIGO.md)                                            | Responsabilidade de cada arquivo              |
+| [Guia de desenvolvimento](docs/GUIA_DE_DESENVOLVIMENTO.md)                          | Convenções, testes e extensão do produto      |
+| [Plano de produção](docs/PLANO_DE_PRODUCAO.md)                                      | Gates, riscos e sequência segura de go-live   |
+| [Validação de produção real V1](docs/VALIDACAO_PRODUCAO_REAL_V1.md)                 | Escopo, evidências e aprovação do piloto      |
+| [Atualização operacional V1](docs/ATUALIZACAO_OPERACIONAL_V1.md)                    | Go-Live, gateway, Inbox, Comment-to-DM e RAG  |
+| [Auditoria técnica 30/07](docs/AUDITORIA_TECNICA_2026-07-30.md)                     | Achados priorizados e parecer de promoção     |
+| [Manual operacional](docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md)               | Implantação e contas reais                    |
+| [Manual completo de acessos](docs/MANUAL_COMPLETO_ACESSOS_OPERACAO_CONFIGURACAO.md) | URLs, usuários, módulos e configuração        |
+| [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)                 | Evidências da validação publicada             |
 
 ## Limites conhecidos do MVP
 
 - Alcance editorial e publicação ainda dependem dos serviços de sincronização/publicação da Instagram API; mensagens, CRM, Inbox e conexões já usam o backend real.
 - Instagram Login e WhatsApp Embedded Signup estão implementados, mas a homologação real depende do App ID/secret, WABA, telefone, conta Professional e Advanced Access.
+- Calendar/Meet/Tasks funcionam localmente; efeitos no Google dependem do OAuth
+  Client, APIs habilitadas e consentimento do usuário. Sem credenciais, a UI
+  informa a pendência e mantém a agenda local.
 - O endpoint de exclusão valida o signed request, remove dados Instagram/WhatsApp em transação e devolve um protocolo consultável.
 - SMTP de produção é necessário para confirmação de e-mail e recuperação de senha.
 - Rate limiting por rota está versionado no Nginx; a validação no domínio final e o monitoramento/alertas seguem obrigatórios antes de tráfego em escala.

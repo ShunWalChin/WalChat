@@ -188,29 +188,29 @@ o login Supabase e não deve ser usado para configurar Meta ou IA.
 
 ## 5. Matriz real das funcionalidades
 
-| Módulo            | Estado implantado                             | O que funciona hoje                                                    |
-| ----------------- | --------------------------------------------- | ---------------------------------------------------------------------- |
-| Autenticação      | Funcional                                     | Login Supabase, sessão, criação de workspace e RLS                     |
-| Multi-tenant      | Funcional no backend                          | Papéis e isolamento no banco                                           |
-| Central Go-Live   | Funcional                                     | Diagnóstico, confirmação forte e três kill switches por workspace      |
-| Webhook Instagram | Funcional tecnicamente                        | Challenge, HMAC SHA-256, idempotência, fila e worker                   |
-| Observabilidade   | Funcional                                     | Status, tentativas, latência, erro e replay restrito a falhas          |
-| Configuração Meta | Backend e tela funcionais; credencial ausente | OAuth, status, validação, assinatura e desconexão                      |
-| Inbox             | Integrada ao backend                          | Conversas, atribuição, prioridade, notas, IA e envio com compliance    |
-| Gatilhos          | CRUD real                                     | Palavra-chave, origem, resposta, sequência, cooldown e tag             |
-| Comment-to-DM     | Backend real; aguarda conta Meta              | Post específico, regra, cooldown e uma Private Reply por comentário    |
-| Agentes de IA     | CRUD real                                     | Personas, base pesquisável, fontes, tom, modo e playground             |
-| IA OpenAI/Gemini  | Código funcional; chave ausente               | Sugestão real após configurar provedor                                 |
-| Compliance        | Funcional                                     | 24h, 7d humano, opt-out, blocklist, cooldown e Private Reply           |
-| Dashboard         | Demonstrativo                                 | Métricas e gráfico usam dados de demonstração no frontend              |
-| Contatos          | Demonstrativo                                 | Lista e CSV atuais usam dados de demonstração                          |
-| Sequências        | Parcial                                       | Tabelas e scheduler existem; editor visual ainda usa estado/demo local |
-| Reengajamento     | Protótipo                                     | Preview e taxa são visuais; não liberar campanha real                  |
-| Calendário        | Protótipo                                     | Estado local, sem persistência e publicação real                       |
-| Publicar          | Protótipo                                     | Preview/roteiro visual; não publica Feed, Reel, Story ou carrossel     |
-| Auto-like         | Protótipo                                     | Seleção visual; não executa likes reais                                |
-| Insights          | Demonstrativo                                 | Gráfico e heatmap usam dados de demonstração                           |
-| Páginas legais    | Funcional                                     | Privacidade, termos e exclusão disponíveis publicamente                |
+| Módulo            | Estado implantado                             | O que funciona hoje                                                      |
+| ----------------- | --------------------------------------------- | ------------------------------------------------------------------------ |
+| Autenticação      | Funcional                                     | Login Supabase, sessão, criação de workspace e RLS                       |
+| Multi-tenant      | Funcional no backend                          | Papéis e isolamento no banco                                             |
+| Central Go-Live   | Funcional                                     | Diagnóstico, confirmação forte e três kill switches por workspace        |
+| Webhook Instagram | Funcional tecnicamente                        | Challenge, HMAC SHA-256, idempotência, fila e worker                     |
+| Observabilidade   | Funcional                                     | Status, tentativas, latência, erro e replay restrito a falhas            |
+| Configuração Meta | Backend e tela funcionais; credencial ausente | OAuth, status, validação, assinatura e desconexão                        |
+| Inbox             | Integrada ao backend                          | Conversas, atribuição, prioridade, notas, IA e envio com compliance      |
+| Gatilhos          | CRUD real                                     | Palavra-chave, origem, resposta, sequência, cooldown e tag               |
+| Comment-to-DM     | Backend real; aguarda conta Meta              | Post específico, regra, cooldown e uma Private Reply por comentário      |
+| Agentes de IA     | CRUD real                                     | Personas, base pesquisável, fontes, tom, modo e playground               |
+| IA OpenAI/Gemini  | Código funcional; chave ausente               | Sugestão real após configurar provedor                                   |
+| Compliance        | Funcional                                     | 24h, 7d humano, opt-out, blocklist, cooldown e Private Reply             |
+| Dashboard         | Demonstrativo                                 | Métricas e gráfico usam dados de demonstração no frontend                |
+| Contatos          | Demonstrativo                                 | Lista e CSV atuais usam dados de demonstração                            |
+| Sequências        | Parcial                                       | Tabelas e scheduler existem; editor visual ainda usa estado/demo local   |
+| Reengajamento     | Protótipo                                     | Preview e taxa são visuais; não liberar campanha real                    |
+| Calendário        | Funcional                                     | CRUD, Google Calendar/Tasks, Meet, Free/Busy, links e trilha operacional |
+| Publicar          | Protótipo                                     | Preview/roteiro visual; não publica Feed, Reel, Story ou carrossel       |
+| Auto-like         | Protótipo                                     | Seleção visual; não executa likes reais                                  |
+| Insights          | Demonstrativo                                 | Gráfico e heatmap usam dados de demonstração                             |
+| Páginas legais    | Funcional                                     | Privacidade, termos e exclusão disponíveis publicamente                  |
 
 ### Consequência operacional
 
@@ -517,13 +517,32 @@ Antes de implementar o sender:
 - permitir pausa e cancelamento;
 - registrar auditoria por destinatário.
 
-### 9.8 Calendário, Publicar e Auto-like
+### 9.8 Calendário e agendamento
 
-São protótipos visuais. Não representam persistência ou execução pela API Meta.
-Não prometer ao usuário final publicação de Feed, Reel, Story, carrossel ou
-auto-like até concluir integração, testes e permissões específicas.
+O calendário é persistente e operacional. Ele apresenta eventos, tarefas,
+agendamentos, conteúdo, campanhas, sequências, jobs e atividades com dia/hora.
+Também possui OAuth Google com Calendar, Meet, Tasks, sync incremental e
+Free/Busy.
 
-### 9.9 Insights
+Operação inicial:
+
+1. configure `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e a redirect URI;
+2. conecte uma conta em **Calendário > Conectar Google**;
+3. escolha o calendário e a lista do Tasks;
+4. crie e sincronize um evento controlado com Meet;
+5. crie um link público e teste reserva/conflito em janela anônima;
+6. vincule a agenda a um gatilho ou agente somente após o teste.
+
+O passo a passo completo está em
+[Google Calendar, Meet e Tasks](CONFIGURACAO_GOOGLE_CALENDAR.md).
+
+### 9.9 Publicar e Auto-like
+
+Continuam protótipos visuais. Não representam execução completa pela API Meta.
+Não prometer publicação de Feed, Reel, Story, carrossel ou auto-like até
+concluir integração, testes e permissões específicas.
+
+### 9.10 Insights
 
 Gráficos e heatmap atuais são demonstrativos. É necessário alimentar
 `insights_daily` e trocar o frontend para consultas do workspace.

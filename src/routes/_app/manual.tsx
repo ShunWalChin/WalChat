@@ -5,6 +5,7 @@ import {
   ArrowRight,
   BookOpenCheck,
   Bot,
+  CalendarDays,
   Check,
   CheckCircle2,
   ClipboardCheck,
@@ -116,6 +117,7 @@ const goLiveItems = [
   'Webhooks reais dos dois canais observados na Central',
   'DM, template, opt-out, cooldown e Private Reply testados',
   'OpenAI ou Gemini com orçamento, limite e alerta configurados',
+  'Google Calendar/Tasks OAuth e página pública de agenda testados',
   'Backup restaurado em ambiente isolado',
   'Responsável do piloto e procedimento de incidente definidos',
 ] as const
@@ -736,6 +738,70 @@ function ManualPage() {
                 title="Mapa das funcionalidades"
                 description="Use esta matriz para não vender protótipo como integração real."
               >
+                <div className="manual-feature-grid">
+                  <article>
+                    <CalendarDays />
+                    <strong>Calendário operacional</strong>
+                    <p>
+                      Mês, semana e agenda reúnem eventos, tarefas, reuniões,
+                      conteúdo, campanhas, sequências, jobs e atividade do
+                      sistema com data e hora reais.
+                    </p>
+                    <Link
+                      to="/calendario"
+                      search={{ view: 'month', source: 'all' }}
+                    >
+                      Abrir calendário
+                    </Link>
+                  </article>
+                  <article>
+                    <ExternalLink />
+                    <strong>Google Workspace</strong>
+                    <p>
+                      Owner/admin conecta por OAuth. Escolha o calendário e a
+                      lista do Tasks; eventos podem gerar Meet e convidados.
+                    </p>
+                    <Link
+                      to="/calendario"
+                      search={{ view: 'month', source: 'all' }}
+                    >
+                      Configurar Google
+                    </Link>
+                  </article>
+                  <article>
+                    <Zap />
+                    <strong>Agendamento de leads</strong>
+                    <p>
+                      Crie links públicos com duração, disponibilidade,
+                      intervalo e antecedência. O servidor revalida Free/Busy
+                      antes de reservar.
+                    </p>
+                    <Link
+                      to="/calendario"
+                      search={{ view: 'month', source: 'all' }}
+                    >
+                      Criar link de agenda
+                    </Link>
+                  </article>
+                </div>
+                <ol className="manual-compact-steps">
+                  <li>
+                    <span>1</span> Configure as APIs Calendar e Tasks e a URI
+                    OAuth exibida na tela.
+                  </li>
+                  <li>
+                    <span>2</span> Conecte o Google, escolha calendário/lista e
+                    execute Sincronizar.
+                  </li>
+                  <li>
+                    <span>3</span> Crie um tipo de reunião e teste o link em uma
+                    janela anônima.
+                  </li>
+                  <li>
+                    <span>4</span> Vincule a agenda a um gatilho ou agente de IA
+                    e faça um teste controlado.
+                  </li>
+                </ol>
                 <div className="manual-table-wrap">
                   <table className="manual-table">
                     <thead>
@@ -808,11 +874,20 @@ function ManualPage() {
                         Não realiza campanha real completa.
                       </ModuleRow>
                       <ModuleRow
-                        name="Calendário, publicar e auto-like"
+                        name="Calendário e agendamentos"
+                        status="Funcional"
+                        tone="green"
+                      >
+                        CRUD, Google Calendar/Tasks, Meet, Free/Busy, links
+                        públicos, CRM e integração com IA/gatilhos. Requer
+                        credenciais Google para efeitos externos.
+                      </ModuleRow>
+                      <ModuleRow
+                        name="Publicar e auto-like"
                         status="Protótipo"
                         tone="red"
                       >
-                        Interface visual, sem execução Meta de produção.
+                        Interface visual; execução Meta ainda não é produção.
                       </ModuleRow>
                     </tbody>
                   </table>

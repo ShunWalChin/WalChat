@@ -28,8 +28,11 @@ type Agent = {
   modelOverride: string | null
   maxReplyChars: number
   fallbackToCopilot: boolean
+  bookingPageId: string | null
   knowledgeCount: number
 }
+
+type BookingPageOption = { id: string; title: string; slug: string }
 
 type KnowledgeDocument = {
   id: string
@@ -54,6 +57,7 @@ const emptyAgent: Omit<Agent, 'id' | 'knowledgeCount'> = {
   modelOverride: null,
   maxReplyChars: 500,
   fallbackToCopilot: true,
+  bookingPageId: null,
 }
 
 export const Route = createFileRoute('/_app/agentes')({ component: AgentsPage })
@@ -63,6 +67,7 @@ function AgentsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [form, setForm] = useState<Agent | null>(null)
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([])
+  const [bookingPages, setBookingPages] = useState<BookingPageOption[]>([])
   const [documentTitle, setDocumentTitle] = useState('')
   const [documentContent, setDocumentContent] = useState('')
   const [documentSourceUrl, setDocumentSourceUrl] = useState('')
@@ -80,8 +85,12 @@ function AgentsPage() {
   const loadAgents = useCallback(
     async (preferId?: string) => {
       try {
-        const result = await apiFetch<{ agents: Agent[] }>('/api/ai/agents')
+        const result = await apiFetch<{
+          agents: Agent[]
+          bookingPages: BookingPageOption[]
+        }>('/api/ai/agents')
         setAgents(result.agents)
+        setBookingPages(result.bookingPages)
         const nextId =
           preferId ??
           (result.agents.some((item) => item.id === selectedId)
@@ -392,6 +401,28 @@ function AgentsPage() {
                 />
               </label>
             </div>
+            <label>
+              Agenda oficial para conversão
+              <select
+                value={form.bookingPageId ?? ''}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    bookingPageId: event.target.value || null,
+                  })
+                }
+              >
+                <option value="">Não oferecer agendamento</option>
+                {bookingPages.map((page) => (
+                  <option key={page.id} value={page.id}>
+                    {page.title} · /agendar/{page.slug}
+                  </option>
+                ))}
+              </select>
+              <small className="form-helper">
+                Quando houver intenção real, a IA poderá oferecer este link.
+              </small>
+            </label>
             <button
               className="button button-dark"
               onClick={() => void saveAgent()}

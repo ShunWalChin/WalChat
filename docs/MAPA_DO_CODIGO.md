@@ -53,7 +53,8 @@ Este documento funciona como índice de manutenção. Os comentários nos arquiv
 | `src/routes/_app/sequencias.tsx`    | Editor de blocos e delays                        |
 | `src/routes/_app/agentes.tsx`       | CRUD real de personas, conhecimento e playground |
 | `src/routes/_app/reengajamento.tsx` | Segmentação, elegibilidade e preview             |
-| `src/routes/_app/calendario.tsx`    | Agenda mês/semana e drag-and-drop                |
+| `src/routes/_app/calendario.tsx`    | Agenda operacional, Google, tarefas e bookings   |
+| `src/routes/agendar/$slug.tsx`      | Página pública responsiva de agendamento         |
 | `src/routes/_app/publicar.tsx`      | Tipos de post, copy e preview Instagram          |
 | `src/routes/_app/auto-like.tsx`     | Modos de curtida automática                      |
 | `src/routes/_app/insights.tsx`      | Crescimento, heatmap, posts e leitura IA         |
@@ -63,25 +64,29 @@ Este documento funciona como índice de manutenção. Os comentários nos arquiv
 
 ## API
 
-| Arquivo                                       | Responsabilidade                            |
-| --------------------------------------------- | ------------------------------------------- |
-| `src/routes/api/health.ts`                    | Saúde e presença de configuração            |
-| `src/routes/api/ready.ts`                     | Readiness real de Supabase e Redis          |
-| `src/routes/api/public/webhooks/instagram.ts` | Challenge, HMAC, parse e fila               |
-| `src/routes/api/public/webhooks/whatsapp.ts`  | Challenge, HMAC e fila WhatsApp             |
-| `src/routes/api/integrations/meta/*.ts`       | OAuth, status, validação e desconexão Meta  |
-| `src/routes/api/integrations/meta/whatsapp/*` | WABA, telefone, templates, mídia e conexão  |
-| `src/routes/api/contacts.ts`                  | CRM multicanal e elegibilidade              |
-| `src/routes/api/dashboard.ts`                 | Métricas reais dos dois canais              |
-| `src/routes/api/ai/settings.ts`               | Provedor/modelo e chave cifrada             |
-| `src/routes/api/ai/agents.ts`                 | CRUD autenticado de agentes                 |
-| `src/routes/api/ai/knowledge.ts`              | CRUD autenticado de conhecimento            |
-| `src/routes/api/ai/suggest.ts`                | Sugestão a partir do agente salvo           |
-| `src/routes/api/inbox.ts`                     | Conversas/mensagens reais e estado da Inbox |
-| `src/routes/api/triggers.ts`                  | CRUD dos gatilhos processados pelo worker   |
-| `src/routes/api/messages/send.ts`             | Envio humano com compliance                 |
-| `src/routes/api/compliance/check.ts`          | Prévia do motor de elegibilidade            |
-| `src/routes/api/data-deletion.ts`             | Signed request de exclusão Meta             |
+| Arquivo                                       | Responsabilidade                              |
+| --------------------------------------------- | --------------------------------------------- |
+| `src/routes/api/health.ts`                    | Saúde e presença de configuração              |
+| `src/routes/api/ready.ts`                     | Readiness real de Supabase e Redis            |
+| `src/routes/api/public/webhooks/instagram.ts` | Challenge, HMAC, parse e fila                 |
+| `src/routes/api/public/webhooks/whatsapp.ts`  | Challenge, HMAC e fila WhatsApp               |
+| `src/routes/api/integrations/meta/*.ts`       | OAuth, status, validação e desconexão Meta    |
+| `src/routes/api/integrations/meta/whatsapp/*` | WABA, telefone, templates, mídia e conexão    |
+| `src/routes/api/contacts.ts`                  | CRM multicanal e elegibilidade                |
+| `src/routes/api/dashboard.ts`                 | Métricas reais dos dois canais                |
+| `src/routes/api/calendar.ts`                  | Feed temporal e CRUD de eventos/tarefas       |
+| `src/routes/api/calendar/*`                   | Tipos de agenda e gestão de bookings          |
+| `src/routes/api/integrations/google/*`        | OAuth, preferências, sync e desconexão Google |
+| `src/routes/api/public/bookings/$slug.ts`     | Free/Busy e reserva pública transacional      |
+| `src/routes/api/ai/settings.ts`               | Provedor/modelo e chave cifrada               |
+| `src/routes/api/ai/agents.ts`                 | CRUD autenticado de agentes                   |
+| `src/routes/api/ai/knowledge.ts`              | CRUD autenticado de conhecimento              |
+| `src/routes/api/ai/suggest.ts`                | Sugestão a partir do agente salvo             |
+| `src/routes/api/inbox.ts`                     | Conversas/mensagens reais e estado da Inbox   |
+| `src/routes/api/triggers.ts`                  | CRUD dos gatilhos processados pelo worker     |
+| `src/routes/api/messages/send.ts`             | Envio humano com compliance                   |
+| `src/routes/api/compliance/check.ts`          | Prévia do motor de elegibilidade              |
+| `src/routes/api/data-deletion.ts`             | Signed request de exclusão Meta               |
 
 ## Domínio no backend
 

@@ -62,6 +62,7 @@ Nunca versionar:
 - `SUPABASE_SERVICE_ROLE_KEY`;
 - `META_APP_SECRET`, access tokens ou publish tokens;
 - `GOOGLE_GENERATIVE_AI_API_KEY`;
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e tokens OAuth Google;
 - `OPENAI_API_KEY`, `OPENAI_PROJECT` e `CREDENTIALS_ENCRYPTION_KEY`;
 - dumps, `status.env`, chaves SSH ou logs contendo credenciais.
 
@@ -70,9 +71,11 @@ Regras operacionais:
 1. Uma credencial por ambiente.
 2. Privilégio mínimo e rotação periódica.
 3. Tokens e API keys de cada tenant cifrados em `integration_credentials`, sem GRANT para `anon/authenticated`.
-4. Revogação imediata após desligamento do cliente.
-5. Nunca expor secrets em screenshots, issues ou PRs.
-6. Em Supabase self-hosted, substituir qualquer segredo JWT de exemplo antes do primeiro usuário real; rotacionar Auth, REST, Storage, publishable/anon e service role em uma janela coordenada, invalidando sessões antigas.
+4. OAuth Google usa state de uso único, PKCE S256, cookies HttpOnly/Secure em
+   HTTPS e refresh token cifrado com AAD da conexão.
+5. Revogação imediata após desligamento do cliente.
+6. Nunca expor secrets em screenshots, issues ou PRs.
+7. Em Supabase self-hosted, substituir qualquer segredo JWT de exemplo antes do primeiro usuário real; rotacionar Auth, REST, Storage, publishable/anon e service role em uma janela coordenada, invalidando sessões antigas.
 
 ## 4. Superfície HTTP
 
@@ -90,6 +93,7 @@ Regras operacionais:
 - [ ] Verificação empresarial concluída.
 - [ ] App Review e Advanced Access aprovados.
 - [x] OAuth por workspace implementado no backend.
+- [x] Google Calendar/Tasks com OAuth PKCE, Free/Busy e reserva transacional.
 - [x] Tokens cifrados por tenant e sender sem fallback global em live.
 - [ ] OAuth testado com App ID/secret e conta Professional reais.
 - [ ] Rotação operacional ensaiada.

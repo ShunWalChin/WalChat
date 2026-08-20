@@ -179,6 +179,27 @@ Mutações exigem `owner/admin`, bearer token e Origin confiável. O callback é
 
 Leitura exige associação ao workspace. Escrita exige `owner/admin`. A chave nunca é devolvida; o status informa apenas `configured` e a origem `tenant`, `server` ou `none`.
 
+## Calendário e Google Workspace
+
+| Método                  | Endpoint                              | Uso                                       |
+| ----------------------- | ------------------------------------- | ----------------------------------------- |
+| `GET/POST/PATCH/DELETE` | `/api/calendar`                       | Feed temporal e CRUD de eventos/tarefas   |
+| `GET/POST/PATCH/DELETE` | `/api/calendar/booking-pages`         | Tipos públicos de reunião                 |
+| `PATCH`                 | `/api/calendar/bookings`              | Confirmar, concluir, cancelar ou no-show  |
+| `POST`                  | `/api/integrations/google/start`      | State, PKCE, cookies HttpOnly e URL OAuth |
+| `GET`                   | `/api/integrations/google/callback`   | Code exchange e tokens cifrados           |
+| `GET/PATCH`             | `/api/integrations/google/status`     | Estado sanitizado e calendários/listas    |
+| `POST`                  | `/api/integrations/google/sync`       | Sync incremental Calendar e Tasks         |
+| `POST`                  | `/api/integrations/google/disconnect` | Remove access/refresh tokens locais       |
+| `GET/POST`              | `/api/public/bookings/:slug`          | Disponibilidade e reserva transacional    |
+
+As rotas privadas exigem JWT, workspace e origem confiável; `viewer` não pode
+alterar agenda. O endpoint público não recebe identificadores internos nem
+credenciais. A reserva POST recalcula o slot, consulta Free/Busy, usa lock
+transacional e retorna `409` se outra requisição ocupou o intervalo.
+
+Detalhes: [Google Calendar, Meet e Tasks](CONFIGURACAO_GOOGLE_CALENDAR.md).
+
 ## `POST /api/messages/send`
 
 Envio manual autenticado por `owner/admin/agent`. Recebe `contactId`, `message` e `humanAgent`; para WhatsApp fora de 24h, recebe um template já sincronizado (`name`, `language`, `components`). O backend relê contato, canal e blocklist, aplica compliance, usa o token da conta do mesmo workspace e persiste sucessos e bloqueios.

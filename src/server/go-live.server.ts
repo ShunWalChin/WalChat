@@ -57,6 +57,7 @@ export async function getWorkspaceGoLiveStatus(workspaceId: string) {
     { data: metaCredentials, error: credentialsError },
     { data: aiSettings, error: aiSettingsError },
     { data: aiCredentials, error: aiCredentialsError },
+    { data: calendarConnections, error: calendarConnectionsError },
     { count: failedWebhooks, error: webhookError },
     { count: unknownDeliveries, error: deliveriesError },
   ] = await Promise.all([
@@ -98,6 +99,12 @@ export async function getWorkspaceGoLiveStatus(workspaceId: string) {
       .eq('workspace_id', workspaceId)
       .eq('credential_type', 'api_key'),
     supabase
+      .from('calendar_connections')
+      .select('id,account_email,status,last_sync_at,connection_error')
+      .eq('workspace_id', workspaceId)
+      .eq('provider', 'google')
+      .order('created_at'),
+    supabase
       .from('webhook_events')
       .select('id', { count: 'exact', head: true })
       .eq('workspace_id', workspaceId)
@@ -116,6 +123,7 @@ export async function getWorkspaceGoLiveStatus(workspaceId: string) {
     credentialsError,
     aiSettingsError,
     aiCredentialsError,
+    calendarConnectionsError,
     webhookError,
     deliveriesError,
   ])
@@ -186,6 +194,12 @@ export async function getWorkspaceGoLiveStatus(workspaceId: string) {
       : Boolean(env.GOOGLE_GENERATIVE_AI_API_KEY)
   const aiConfigured = Boolean(
     aiSettings?.is_enabled && (tenantAiConfigured || serverAiConfigured),
+  )
+  const activeGoogleCalendar = (calendarConnections ?? []).find(
+    (connection) => connection.status === 'connected',
+  )
+  const googlePlatformConfigured = Boolean(
+    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
   )
 
   const checks: GoLiveCheck[] = [
@@ -307,6 +321,17 @@ export async function getWorkspaceGoLiveStatus(workspaceId: string) {
       `${selectedAiProvider} está habilitado e possui credencial.`,
       'Configure a chave do provedor para liberar sugestões reais.',
       { warning: true, actionHref: '/configuracoes' },
+    ),
+    check(
+      'google_calendar',
+      'operations',
+      'Google Agenda e Meet',
+      googlePlatformConfigured && Boolean(activeGoogleCalendar),
+      `Agenda conectada${activeGoogleCalendar?.account_email ? ` a ${activeGoogleCalendar.account_email}` : ''}.`,
+      googlePlatformConfigured
+        ? 'Conecte uma conta Google para sincronizar agenda, tarefas e Meet.'
+        : 'Configure GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET no backend.',
+      { warning: true, actionHref: '/calendario' },
     ),
   ]
   const criticalFailures = checks.filter((item) => item.status === 'fail')

@@ -269,7 +269,7 @@ async function matchAndScheduleTrigger(input: {
   const { data: triggers, error } = await input.supabase
     .from('triggers')
     .select(
-      'id,keyword,match_mode,response_text,sequence_id,post_id,cooldown_hours,auto_tag_id',
+      'id,keyword,match_mode,response_text,sequence_id,post_id,cooldown_hours,auto_tag_id,booking_page_id',
     )
     .eq('workspace_id', input.workspaceId)
     .eq('source', source)
@@ -400,6 +400,7 @@ async function matchAndScheduleTrigger(input: {
       commentCreatedAt: source === 'comment' ? input.receivedAt : null,
       triggerId: trigger.id,
       automationRunId: automationRun.id,
+      bookingPageId: trigger.booking_page_id,
     }
     let scheduledJobId: string | null = null
     if (trigger.sequence_id) {

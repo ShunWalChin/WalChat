@@ -29,6 +29,8 @@ import { Route as AppOperacoesRouteImport } from './routes/_app/operacoes'
 import { Route as AppPublicarRouteImport } from './routes/_app/publicar'
 import { Route as AppReengajamentoRouteImport } from './routes/_app/reengajamento'
 import { Route as AppSequenciasRouteImport } from './routes/_app/sequencias'
+import { Route as AgendarSlugRouteImport } from './routes/agendar/$slug'
+import { Route as ApiCalendarRouteImport } from './routes/api/calendar'
 import { Route as ApiContactTagsRouteImport } from './routes/api/contact-tags'
 import { Route as ApiContactsRouteImport } from './routes/api/contacts'
 import { Route as ApiDashboardRouteImport } from './routes/api/dashboard'
@@ -41,6 +43,8 @@ import { Route as ApiAiAgentsRouteImport } from './routes/api/ai/agents'
 import { Route as ApiAiKnowledgeRouteImport } from './routes/api/ai/knowledge'
 import { Route as ApiAiSettingsRouteImport } from './routes/api/ai/settings'
 import { Route as ApiAiSuggestRouteImport } from './routes/api/ai/suggest'
+import { Route as ApiCalendarBookingPagesRouteImport } from './routes/api/calendar/booking-pages'
+import { Route as ApiCalendarBookingsRouteImport } from './routes/api/calendar/bookings'
 import { Route as ApiComplianceCheckRouteImport } from './routes/api/compliance/check'
 import { Route as ApiContactsContactIdRouteImport } from './routes/api/contacts/$contactId'
 import { Route as ApiContactsBulkRouteImport } from './routes/api/contacts/bulk'
@@ -48,12 +52,18 @@ import { Route as ApiMessagesSendRouteImport } from './routes/api/messages/send'
 import { Route as ApiOperationsGoLiveRouteImport } from './routes/api/operations/go-live'
 import { Route as ApiOperationsWebhooksRouteImport } from './routes/api/operations/webhooks'
 import { Route as ApiContactsContactIdNotesRouteImport } from './routes/api/contacts/$contactId/notes'
+import { Route as ApiIntegrationsGoogleCallbackRouteImport } from './routes/api/integrations/google/callback'
+import { Route as ApiIntegrationsGoogleDisconnectRouteImport } from './routes/api/integrations/google/disconnect'
+import { Route as ApiIntegrationsGoogleStartRouteImport } from './routes/api/integrations/google/start'
+import { Route as ApiIntegrationsGoogleStatusRouteImport } from './routes/api/integrations/google/status'
+import { Route as ApiIntegrationsGoogleSyncRouteImport } from './routes/api/integrations/google/sync'
 import { Route as ApiIntegrationsMetaCallbackRouteImport } from './routes/api/integrations/meta/callback'
 import { Route as ApiIntegrationsMetaDisconnectRouteImport } from './routes/api/integrations/meta/disconnect'
 import { Route as ApiIntegrationsMetaMediaRouteImport } from './routes/api/integrations/meta/media'
 import { Route as ApiIntegrationsMetaStartRouteImport } from './routes/api/integrations/meta/start'
 import { Route as ApiIntegrationsMetaStatusRouteImport } from './routes/api/integrations/meta/status'
 import { Route as ApiIntegrationsMetaValidateRouteImport } from './routes/api/integrations/meta/validate'
+import { Route as ApiPublicBookingsSlugRouteImport } from './routes/api/public/bookings/$slug'
 import { Route as ApiPublicWebhooksInstagramRouteImport } from './routes/api/public/webhooks/instagram'
 import { Route as ApiPublicWebhooksWhatsappRouteImport } from './routes/api/public/webhooks/whatsapp'
 import { Route as ApiIntegrationsMetaWhatsappCompleteRouteImport } from './routes/api/integrations/meta/whatsapp/complete'
@@ -162,6 +172,16 @@ const AppSequenciasRoute = AppSequenciasRouteImport.update({
   path: '/sequencias',
   getParentRoute: () => AppRoute,
 } as any)
+const AgendarSlugRoute = AgendarSlugRouteImport.update({
+  id: '/agendar/$slug',
+  path: '/agendar/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCalendarRoute = ApiCalendarRouteImport.update({
+  id: '/api/calendar',
+  path: '/api/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiContactTagsRoute = ApiContactTagsRouteImport.update({
   id: '/api/contact-tags',
   path: '/api/contact-tags',
@@ -222,6 +242,16 @@ const ApiAiSuggestRoute = ApiAiSuggestRouteImport.update({
   path: '/api/ai/suggest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCalendarBookingPagesRoute = ApiCalendarBookingPagesRouteImport.update({
+  id: '/booking-pages',
+  path: '/booking-pages',
+  getParentRoute: () => ApiCalendarRoute,
+} as any)
+const ApiCalendarBookingsRoute = ApiCalendarBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => ApiCalendarRoute,
+} as any)
 const ApiComplianceCheckRoute = ApiComplianceCheckRouteImport.update({
   id: '/api/compliance/check',
   path: '/api/compliance/check',
@@ -257,6 +287,36 @@ const ApiContactsContactIdNotesRoute =
     id: '/notes',
     path: '/notes',
     getParentRoute: () => ApiContactsContactIdRoute,
+  } as any)
+const ApiIntegrationsGoogleCallbackRoute =
+  ApiIntegrationsGoogleCallbackRouteImport.update({
+    id: '/api/integrations/google/callback',
+    path: '/api/integrations/google/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsGoogleDisconnectRoute =
+  ApiIntegrationsGoogleDisconnectRouteImport.update({
+    id: '/api/integrations/google/disconnect',
+    path: '/api/integrations/google/disconnect',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsGoogleStartRoute =
+  ApiIntegrationsGoogleStartRouteImport.update({
+    id: '/api/integrations/google/start',
+    path: '/api/integrations/google/start',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsGoogleStatusRoute =
+  ApiIntegrationsGoogleStatusRouteImport.update({
+    id: '/api/integrations/google/status',
+    path: '/api/integrations/google/status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsGoogleSyncRoute =
+  ApiIntegrationsGoogleSyncRouteImport.update({
+    id: '/api/integrations/google/sync',
+    path: '/api/integrations/google/sync',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const ApiIntegrationsMetaCallbackRoute =
   ApiIntegrationsMetaCallbackRouteImport.update({
@@ -294,6 +354,11 @@ const ApiIntegrationsMetaValidateRoute =
     path: '/api/integrations/meta/validate',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicBookingsSlugRoute = ApiPublicBookingsSlugRouteImport.update({
+  id: '/api/public/bookings/$slug',
+  path: '/api/public/bookings/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicWebhooksInstagramRoute =
   ApiPublicWebhooksInstagramRouteImport.update({
     id: '/api/public/webhooks/instagram',
@@ -363,6 +428,8 @@ export interface FileRoutesByFullPath {
   '/publicar': typeof AppPublicarRoute
   '/reengajamento': typeof AppReengajamentoRoute
   '/sequencias': typeof AppSequenciasRoute
+  '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/calendar': typeof ApiCalendarRouteWithChildren
   '/api/contact-tags': typeof ApiContactTagsRoute
   '/api/contacts': typeof ApiContactsRouteWithChildren
   '/api/dashboard': typeof ApiDashboardRoute
@@ -375,6 +442,8 @@ export interface FileRoutesByFullPath {
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
   '/api/ai/settings': typeof ApiAiSettingsRoute
   '/api/ai/suggest': typeof ApiAiSuggestRoute
+  '/api/calendar/booking-pages': typeof ApiCalendarBookingPagesRoute
+  '/api/calendar/bookings': typeof ApiCalendarBookingsRoute
   '/api/compliance/check': typeof ApiComplianceCheckRoute
   '/api/contacts/$contactId': typeof ApiContactsContactIdRouteWithChildren
   '/api/contacts/bulk': typeof ApiContactsBulkRoute
@@ -382,12 +451,18 @@ export interface FileRoutesByFullPath {
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
+  '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
+  '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
+  '/api/integrations/google/start': typeof ApiIntegrationsGoogleStartRoute
+  '/api/integrations/google/status': typeof ApiIntegrationsGoogleStatusRoute
+  '/api/integrations/google/sync': typeof ApiIntegrationsGoogleSyncRoute
   '/api/integrations/meta/callback': typeof ApiIntegrationsMetaCallbackRoute
   '/api/integrations/meta/disconnect': typeof ApiIntegrationsMetaDisconnectRoute
   '/api/integrations/meta/media': typeof ApiIntegrationsMetaMediaRoute
   '/api/integrations/meta/start': typeof ApiIntegrationsMetaStartRoute
   '/api/integrations/meta/status': typeof ApiIntegrationsMetaStatusRoute
   '/api/integrations/meta/validate': typeof ApiIntegrationsMetaValidateRoute
+  '/api/public/bookings/$slug': typeof ApiPublicBookingsSlugRoute
   '/api/public/webhooks/instagram': typeof ApiPublicWebhooksInstagramRoute
   '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
   '/api/integrations/meta/whatsapp/complete': typeof ApiIntegrationsMetaWhatsappCompleteRoute
@@ -417,6 +492,8 @@ export interface FileRoutesByTo {
   '/publicar': typeof AppPublicarRoute
   '/reengajamento': typeof AppReengajamentoRoute
   '/sequencias': typeof AppSequenciasRoute
+  '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/calendar': typeof ApiCalendarRouteWithChildren
   '/api/contact-tags': typeof ApiContactTagsRoute
   '/api/contacts': typeof ApiContactsRouteWithChildren
   '/api/dashboard': typeof ApiDashboardRoute
@@ -429,6 +506,8 @@ export interface FileRoutesByTo {
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
   '/api/ai/settings': typeof ApiAiSettingsRoute
   '/api/ai/suggest': typeof ApiAiSuggestRoute
+  '/api/calendar/booking-pages': typeof ApiCalendarBookingPagesRoute
+  '/api/calendar/bookings': typeof ApiCalendarBookingsRoute
   '/api/compliance/check': typeof ApiComplianceCheckRoute
   '/api/contacts/$contactId': typeof ApiContactsContactIdRouteWithChildren
   '/api/contacts/bulk': typeof ApiContactsBulkRoute
@@ -436,12 +515,18 @@ export interface FileRoutesByTo {
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
+  '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
+  '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
+  '/api/integrations/google/start': typeof ApiIntegrationsGoogleStartRoute
+  '/api/integrations/google/status': typeof ApiIntegrationsGoogleStatusRoute
+  '/api/integrations/google/sync': typeof ApiIntegrationsGoogleSyncRoute
   '/api/integrations/meta/callback': typeof ApiIntegrationsMetaCallbackRoute
   '/api/integrations/meta/disconnect': typeof ApiIntegrationsMetaDisconnectRoute
   '/api/integrations/meta/media': typeof ApiIntegrationsMetaMediaRoute
   '/api/integrations/meta/start': typeof ApiIntegrationsMetaStartRoute
   '/api/integrations/meta/status': typeof ApiIntegrationsMetaStatusRoute
   '/api/integrations/meta/validate': typeof ApiIntegrationsMetaValidateRoute
+  '/api/public/bookings/$slug': typeof ApiPublicBookingsSlugRoute
   '/api/public/webhooks/instagram': typeof ApiPublicWebhooksInstagramRoute
   '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
   '/api/integrations/meta/whatsapp/complete': typeof ApiIntegrationsMetaWhatsappCompleteRoute
@@ -473,6 +558,8 @@ export interface FileRoutesById {
   '/_app/publicar': typeof AppPublicarRoute
   '/_app/reengajamento': typeof AppReengajamentoRoute
   '/_app/sequencias': typeof AppSequenciasRoute
+  '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/calendar': typeof ApiCalendarRouteWithChildren
   '/api/contact-tags': typeof ApiContactTagsRoute
   '/api/contacts': typeof ApiContactsRouteWithChildren
   '/api/dashboard': typeof ApiDashboardRoute
@@ -485,6 +572,8 @@ export interface FileRoutesById {
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
   '/api/ai/settings': typeof ApiAiSettingsRoute
   '/api/ai/suggest': typeof ApiAiSuggestRoute
+  '/api/calendar/booking-pages': typeof ApiCalendarBookingPagesRoute
+  '/api/calendar/bookings': typeof ApiCalendarBookingsRoute
   '/api/compliance/check': typeof ApiComplianceCheckRoute
   '/api/contacts/$contactId': typeof ApiContactsContactIdRouteWithChildren
   '/api/contacts/bulk': typeof ApiContactsBulkRoute
@@ -492,12 +581,18 @@ export interface FileRoutesById {
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
+  '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
+  '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
+  '/api/integrations/google/start': typeof ApiIntegrationsGoogleStartRoute
+  '/api/integrations/google/status': typeof ApiIntegrationsGoogleStatusRoute
+  '/api/integrations/google/sync': typeof ApiIntegrationsGoogleSyncRoute
   '/api/integrations/meta/callback': typeof ApiIntegrationsMetaCallbackRoute
   '/api/integrations/meta/disconnect': typeof ApiIntegrationsMetaDisconnectRoute
   '/api/integrations/meta/media': typeof ApiIntegrationsMetaMediaRoute
   '/api/integrations/meta/start': typeof ApiIntegrationsMetaStartRoute
   '/api/integrations/meta/status': typeof ApiIntegrationsMetaStatusRoute
   '/api/integrations/meta/validate': typeof ApiIntegrationsMetaValidateRoute
+  '/api/public/bookings/$slug': typeof ApiPublicBookingsSlugRoute
   '/api/public/webhooks/instagram': typeof ApiPublicWebhooksInstagramRoute
   '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
   '/api/integrations/meta/whatsapp/complete': typeof ApiIntegrationsMetaWhatsappCompleteRoute
@@ -529,6 +624,8 @@ export interface FileRouteTypes {
     | '/publicar'
     | '/reengajamento'
     | '/sequencias'
+    | '/agendar/$slug'
+    | '/api/calendar'
     | '/api/contact-tags'
     | '/api/contacts'
     | '/api/dashboard'
@@ -541,6 +638,8 @@ export interface FileRouteTypes {
     | '/api/ai/knowledge'
     | '/api/ai/settings'
     | '/api/ai/suggest'
+    | '/api/calendar/booking-pages'
+    | '/api/calendar/bookings'
     | '/api/compliance/check'
     | '/api/contacts/$contactId'
     | '/api/contacts/bulk'
@@ -548,12 +647,18 @@ export interface FileRouteTypes {
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
     | '/api/contacts/$contactId/notes'
+    | '/api/integrations/google/callback'
+    | '/api/integrations/google/disconnect'
+    | '/api/integrations/google/start'
+    | '/api/integrations/google/status'
+    | '/api/integrations/google/sync'
     | '/api/integrations/meta/callback'
     | '/api/integrations/meta/disconnect'
     | '/api/integrations/meta/media'
     | '/api/integrations/meta/start'
     | '/api/integrations/meta/status'
     | '/api/integrations/meta/validate'
+    | '/api/public/bookings/$slug'
     | '/api/public/webhooks/instagram'
     | '/api/public/webhooks/whatsapp'
     | '/api/integrations/meta/whatsapp/complete'
@@ -583,6 +688,8 @@ export interface FileRouteTypes {
     | '/publicar'
     | '/reengajamento'
     | '/sequencias'
+    | '/agendar/$slug'
+    | '/api/calendar'
     | '/api/contact-tags'
     | '/api/contacts'
     | '/api/dashboard'
@@ -595,6 +702,8 @@ export interface FileRouteTypes {
     | '/api/ai/knowledge'
     | '/api/ai/settings'
     | '/api/ai/suggest'
+    | '/api/calendar/booking-pages'
+    | '/api/calendar/bookings'
     | '/api/compliance/check'
     | '/api/contacts/$contactId'
     | '/api/contacts/bulk'
@@ -602,12 +711,18 @@ export interface FileRouteTypes {
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
     | '/api/contacts/$contactId/notes'
+    | '/api/integrations/google/callback'
+    | '/api/integrations/google/disconnect'
+    | '/api/integrations/google/start'
+    | '/api/integrations/google/status'
+    | '/api/integrations/google/sync'
     | '/api/integrations/meta/callback'
     | '/api/integrations/meta/disconnect'
     | '/api/integrations/meta/media'
     | '/api/integrations/meta/start'
     | '/api/integrations/meta/status'
     | '/api/integrations/meta/validate'
+    | '/api/public/bookings/$slug'
     | '/api/public/webhooks/instagram'
     | '/api/public/webhooks/whatsapp'
     | '/api/integrations/meta/whatsapp/complete'
@@ -638,6 +753,8 @@ export interface FileRouteTypes {
     | '/_app/publicar'
     | '/_app/reengajamento'
     | '/_app/sequencias'
+    | '/agendar/$slug'
+    | '/api/calendar'
     | '/api/contact-tags'
     | '/api/contacts'
     | '/api/dashboard'
@@ -650,6 +767,8 @@ export interface FileRouteTypes {
     | '/api/ai/knowledge'
     | '/api/ai/settings'
     | '/api/ai/suggest'
+    | '/api/calendar/booking-pages'
+    | '/api/calendar/bookings'
     | '/api/compliance/check'
     | '/api/contacts/$contactId'
     | '/api/contacts/bulk'
@@ -657,12 +776,18 @@ export interface FileRouteTypes {
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
     | '/api/contacts/$contactId/notes'
+    | '/api/integrations/google/callback'
+    | '/api/integrations/google/disconnect'
+    | '/api/integrations/google/start'
+    | '/api/integrations/google/status'
+    | '/api/integrations/google/sync'
     | '/api/integrations/meta/callback'
     | '/api/integrations/meta/disconnect'
     | '/api/integrations/meta/media'
     | '/api/integrations/meta/start'
     | '/api/integrations/meta/status'
     | '/api/integrations/meta/validate'
+    | '/api/public/bookings/$slug'
     | '/api/public/webhooks/instagram'
     | '/api/public/webhooks/whatsapp'
     | '/api/integrations/meta/whatsapp/complete'
@@ -679,6 +804,8 @@ export interface RootRouteChildren {
   ExclusaoDeDadosRoute: typeof ExclusaoDeDadosRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
+  AgendarSlugRoute: typeof AgendarSlugRoute
+  ApiCalendarRoute: typeof ApiCalendarRouteWithChildren
   ApiContactTagsRoute: typeof ApiContactTagsRoute
   ApiContactsRoute: typeof ApiContactsRouteWithChildren
   ApiDashboardRoute: typeof ApiDashboardRoute
@@ -695,12 +822,18 @@ export interface RootRouteChildren {
   ApiMessagesSendRoute: typeof ApiMessagesSendRoute
   ApiOperationsGoLiveRoute: typeof ApiOperationsGoLiveRoute
   ApiOperationsWebhooksRoute: typeof ApiOperationsWebhooksRoute
+  ApiIntegrationsGoogleCallbackRoute: typeof ApiIntegrationsGoogleCallbackRoute
+  ApiIntegrationsGoogleDisconnectRoute: typeof ApiIntegrationsGoogleDisconnectRoute
+  ApiIntegrationsGoogleStartRoute: typeof ApiIntegrationsGoogleStartRoute
+  ApiIntegrationsGoogleStatusRoute: typeof ApiIntegrationsGoogleStatusRoute
+  ApiIntegrationsGoogleSyncRoute: typeof ApiIntegrationsGoogleSyncRoute
   ApiIntegrationsMetaCallbackRoute: typeof ApiIntegrationsMetaCallbackRoute
   ApiIntegrationsMetaDisconnectRoute: typeof ApiIntegrationsMetaDisconnectRoute
   ApiIntegrationsMetaMediaRoute: typeof ApiIntegrationsMetaMediaRoute
   ApiIntegrationsMetaStartRoute: typeof ApiIntegrationsMetaStartRoute
   ApiIntegrationsMetaStatusRoute: typeof ApiIntegrationsMetaStatusRoute
   ApiIntegrationsMetaValidateRoute: typeof ApiIntegrationsMetaValidateRoute
+  ApiPublicBookingsSlugRoute: typeof ApiPublicBookingsSlugRoute
   ApiPublicWebhooksInstagramRoute: typeof ApiPublicWebhooksInstagramRoute
   ApiPublicWebhooksWhatsappRoute: typeof ApiPublicWebhooksWhatsappRoute
   ApiIntegrationsMetaWhatsappCompleteRoute: typeof ApiIntegrationsMetaWhatsappCompleteRoute
@@ -853,6 +986,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSequenciasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/agendar/$slug': {
+      id: '/agendar/$slug'
+      path: '/agendar/$slug'
+      fullPath: '/agendar/$slug'
+      preLoaderRoute: typeof AgendarSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/calendar': {
+      id: '/api/calendar'
+      path: '/api/calendar'
+      fullPath: '/api/calendar'
+      preLoaderRoute: typeof ApiCalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/contact-tags': {
       id: '/api/contact-tags'
       path: '/api/contact-tags'
@@ -937,6 +1084,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiSuggestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/calendar/booking-pages': {
+      id: '/api/calendar/booking-pages'
+      path: '/booking-pages'
+      fullPath: '/api/calendar/booking-pages'
+      preLoaderRoute: typeof ApiCalendarBookingPagesRouteImport
+      parentRoute: typeof ApiCalendarRoute
+    }
+    '/api/calendar/bookings': {
+      id: '/api/calendar/bookings'
+      path: '/bookings'
+      fullPath: '/api/calendar/bookings'
+      preLoaderRoute: typeof ApiCalendarBookingsRouteImport
+      parentRoute: typeof ApiCalendarRoute
+    }
     '/api/compliance/check': {
       id: '/api/compliance/check'
       path: '/api/compliance/check'
@@ -986,6 +1147,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiContactsContactIdNotesRouteImport
       parentRoute: typeof ApiContactsContactIdRoute
     }
+    '/api/integrations/google/callback': {
+      id: '/api/integrations/google/callback'
+      path: '/api/integrations/google/callback'
+      fullPath: '/api/integrations/google/callback'
+      preLoaderRoute: typeof ApiIntegrationsGoogleCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/google/disconnect': {
+      id: '/api/integrations/google/disconnect'
+      path: '/api/integrations/google/disconnect'
+      fullPath: '/api/integrations/google/disconnect'
+      preLoaderRoute: typeof ApiIntegrationsGoogleDisconnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/google/start': {
+      id: '/api/integrations/google/start'
+      path: '/api/integrations/google/start'
+      fullPath: '/api/integrations/google/start'
+      preLoaderRoute: typeof ApiIntegrationsGoogleStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/google/status': {
+      id: '/api/integrations/google/status'
+      path: '/api/integrations/google/status'
+      fullPath: '/api/integrations/google/status'
+      preLoaderRoute: typeof ApiIntegrationsGoogleStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/google/sync': {
+      id: '/api/integrations/google/sync'
+      path: '/api/integrations/google/sync'
+      fullPath: '/api/integrations/google/sync'
+      preLoaderRoute: typeof ApiIntegrationsGoogleSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/integrations/meta/callback': {
       id: '/api/integrations/meta/callback'
       path: '/api/integrations/meta/callback'
@@ -1026,6 +1222,13 @@ declare module '@tanstack/react-router' {
       path: '/api/integrations/meta/validate'
       fullPath: '/api/integrations/meta/validate'
       preLoaderRoute: typeof ApiIntegrationsMetaValidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/bookings/$slug': {
+      id: '/api/public/bookings/$slug'
+      path: '/api/public/bookings/$slug'
+      fullPath: '/api/public/bookings/$slug'
+      preLoaderRoute: typeof ApiPublicBookingsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/webhooks/instagram': {
@@ -1125,6 +1328,20 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface ApiCalendarRouteChildren {
+  ApiCalendarBookingPagesRoute: typeof ApiCalendarBookingPagesRoute
+  ApiCalendarBookingsRoute: typeof ApiCalendarBookingsRoute
+}
+
+const ApiCalendarRouteChildren: ApiCalendarRouteChildren = {
+  ApiCalendarBookingPagesRoute: ApiCalendarBookingPagesRoute,
+  ApiCalendarBookingsRoute: ApiCalendarBookingsRoute,
+}
+
+const ApiCalendarRouteWithChildren = ApiCalendarRoute._addFileChildren(
+  ApiCalendarRouteChildren,
+)
+
 interface ApiContactsContactIdRouteChildren {
   ApiContactsContactIdNotesRoute: typeof ApiContactsContactIdNotesRoute
 }
@@ -1156,6 +1373,8 @@ const rootRouteChildren: RootRouteChildren = {
   ExclusaoDeDadosRoute: ExclusaoDeDadosRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
+  AgendarSlugRoute: AgendarSlugRoute,
+  ApiCalendarRoute: ApiCalendarRouteWithChildren,
   ApiContactTagsRoute: ApiContactTagsRoute,
   ApiContactsRoute: ApiContactsRouteWithChildren,
   ApiDashboardRoute: ApiDashboardRoute,
@@ -1172,12 +1391,18 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMessagesSendRoute: ApiMessagesSendRoute,
   ApiOperationsGoLiveRoute: ApiOperationsGoLiveRoute,
   ApiOperationsWebhooksRoute: ApiOperationsWebhooksRoute,
+  ApiIntegrationsGoogleCallbackRoute: ApiIntegrationsGoogleCallbackRoute,
+  ApiIntegrationsGoogleDisconnectRoute: ApiIntegrationsGoogleDisconnectRoute,
+  ApiIntegrationsGoogleStartRoute: ApiIntegrationsGoogleStartRoute,
+  ApiIntegrationsGoogleStatusRoute: ApiIntegrationsGoogleStatusRoute,
+  ApiIntegrationsGoogleSyncRoute: ApiIntegrationsGoogleSyncRoute,
   ApiIntegrationsMetaCallbackRoute: ApiIntegrationsMetaCallbackRoute,
   ApiIntegrationsMetaDisconnectRoute: ApiIntegrationsMetaDisconnectRoute,
   ApiIntegrationsMetaMediaRoute: ApiIntegrationsMetaMediaRoute,
   ApiIntegrationsMetaStartRoute: ApiIntegrationsMetaStartRoute,
   ApiIntegrationsMetaStatusRoute: ApiIntegrationsMetaStatusRoute,
   ApiIntegrationsMetaValidateRoute: ApiIntegrationsMetaValidateRoute,
+  ApiPublicBookingsSlugRoute: ApiPublicBookingsSlugRoute,
   ApiPublicWebhooksInstagramRoute: ApiPublicWebhooksInstagramRoute,
   ApiPublicWebhooksWhatsappRoute: ApiPublicWebhooksWhatsappRoute,
   ApiIntegrationsMetaWhatsappCompleteRoute:

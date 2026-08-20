@@ -23,6 +23,9 @@ export const Route = createFileRoute('/api/health')({
               credentialEncryption: hasValidCredentialEncryptionKey(),
               openai: Boolean(env.OPENAI_API_KEY),
               gemini: Boolean(env.GOOGLE_GENERATIVE_AI_API_KEY),
+              googleWorkspace: Boolean(
+                env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
+              ),
             },
             mode: env.DEMO_MODE === 'true' ? 'demo' : 'live',
             readinessUrl: '/api/ready',

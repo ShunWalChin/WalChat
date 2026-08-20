@@ -255,7 +255,7 @@ async function scheduleWhatsAppTrigger(input: {
   const { data: triggers, error } = await input.supabase
     .from('triggers')
     .select(
-      'id,keyword,match_mode,response_text,sequence_id,cooldown_hours,auto_tag_id',
+      'id,keyword,match_mode,response_text,sequence_id,cooldown_hours,auto_tag_id,booking_page_id',
     )
     .eq('workspace_id', input.workspaceId)
     .eq('source', 'whatsapp')
@@ -356,6 +356,7 @@ async function scheduleWhatsAppTrigger(input: {
               position: 0,
               triggerId: trigger.id,
               automationRunId: run.id,
+              bookingPageId: trigger.booking_page_id,
             },
             run_at: new Date().toISOString(),
           },
@@ -381,6 +382,7 @@ async function scheduleWhatsAppTrigger(input: {
               responseText: trigger.response_text,
               triggerId: trigger.id,
               automationRunId: run.id,
+              bookingPageId: trigger.booking_page_id,
             },
             run_at: new Date().toISOString(),
           },

@@ -118,6 +118,9 @@ export async function checkRuntimeReadiness(input?: {
       credentialEncryptionConfigured: hasValidCredentialEncryptionKey(),
       openaiConfigured: Boolean(env.OPENAI_API_KEY),
       geminiConfigured: Boolean(env.GOOGLE_GENERATIVE_AI_API_KEY),
+      googleWorkspaceConfigured: Boolean(
+        env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
+      ),
     },
   }
 }

@@ -2,6 +2,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import {
   ArrowRight,
+  CalendarDays,
   LoaderCircle,
   MessageCircle,
   Plus,
@@ -27,8 +28,11 @@ type Trigger = {
   responseText: string
   cooldownHours: number
   isActive: boolean
+  bookingPageId: string | null
   fired: number
 }
+
+type BookingPageOption = { id: string; title: string; slug: string }
 
 const initialForm: Omit<Trigger, 'id' | 'fired'> = {
   name: '',
@@ -38,6 +42,7 @@ const initialForm: Omit<Trigger, 'id' | 'fired'> = {
   responseText: '',
   cooldownHours: 24,
   isActive: true,
+  bookingPageId: null,
 }
 
 function sourceLabel(source: Source) {
@@ -57,12 +62,17 @@ function TriggersPage() {
   const [form, setForm] = useState(initialForm)
   const [busy, setBusy] = useState<string | null>('load')
   const [error, setError] = useState('')
+  const [bookingPages, setBookingPages] = useState<BookingPageOption[]>([])
 
   const loadTriggers = useCallback(async () => {
     setBusy('load')
     try {
-      const result = await apiFetch<{ triggers: Trigger[] }>('/api/triggers')
+      const result = await apiFetch<{
+        triggers: Trigger[]
+        bookingPages: BookingPageOption[]
+      }>('/api/triggers')
       setItems(result.triggers)
+      setBookingPages(result.bookingPages)
       setError('')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Falha ao carregar.')
@@ -203,6 +213,29 @@ function TriggersPage() {
               placeholder="Mensagem que será validada e enviada uma única vez."
             />
           </label>
+          <label>
+            Levar para agendamento (opcional)
+            <select
+              value={form.bookingPageId ?? ''}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  bookingPageId: event.target.value || null,
+                })
+              }
+            >
+              <option value="">Sem link de agenda</option>
+              {bookingPages.map((page) => (
+                <option key={page.id} value={page.id}>
+                  {page.title} · /agendar/{page.slug}
+                </option>
+              ))}
+            </select>
+            <small className="form-helper">
+              Use {'{{booking_link}}'} na mensagem para escolher a posição; sem
+              o marcador, o link será incluído ao final.
+            </small>
+          </label>
           <div className="trigger-editor-actions">
             <small>
               Cooldown mínimo: 24h. O rodapé “Responda PARAR” é acrescentado
@@ -277,6 +310,12 @@ function TriggersPage() {
                 <span>DM: {trigger.responseText}</span>
                 <ArrowRight size={14} />
               </div>
+              {trigger.bookingPageId && (
+                <div className="flow-line booking-flow-line">
+                  <CalendarDays size={14} />
+                  <span>Conduz para agendamento validado</span>
+                </div>
+              )}
             </div>
             <div className="trigger-metrics">
               <strong>{trigger.fired}</strong>

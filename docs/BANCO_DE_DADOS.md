@@ -22,6 +22,11 @@ erDiagram
     SEQUENCES ||--o{ SEQUENCE_STEPS : possui
     CONTACTS ||--o{ SEQUENCE_ENROLLMENTS : entra
     SEQUENCE_ENROLLMENTS ||--o{ SCHEDULED_JOBS : agenda
+    WORKSPACES ||--o{ CALENDAR_CONNECTIONS : conecta
+    CALENDAR_CONNECTIONS ||--o{ CALENDAR_EVENTS : sincroniza
+    BOOKING_PAGES ||--o{ BOOKINGS : recebe
+    BOOKINGS ||--o| CALENDAR_EVENTS : cria
+    CONTACTS ||--o{ BOOKINGS : agenda
 ```
 
 ## 2. Tipos enumerados
@@ -54,6 +59,7 @@ erDiagram
 | `integration_credentials`    | Tokens/API keys cifrados; sem acesso `anon/authenticated`        |
 | `integration_oauth_states`   | States Meta curtos, de uso único e protegidos contra replay      |
 | `integration_audit_logs`     | Auditoria sanitizada de conectar, validar, renovar e desconectar |
+| `calendar_connections`       | Conta Google, escopos, seleções e sync token; sem credenciais    |
 
 ### CRM e Inbox
 
@@ -77,6 +83,16 @@ erDiagram
 | `posts_cache`    | Cache de publicações e métricas Meta           |
 | `content_items`  | Planejamento editorial e payload de publicação |
 | `insights_daily` | Métricas agregadas por dia                     |
+
+### Calendário e agendamentos
+
+| Tabela                | Responsabilidade                                                 |
+| --------------------- | ---------------------------------------------------------------- |
+| `calendar_events`     | Eventos locais/Google, Meet, convidados e vínculos do produto    |
+| `calendar_tasks`      | Tarefas locais ou Google Tasks, prazo, prioridade e responsável  |
+| `booking_pages`       | Slug, duração, fuso, disponibilidade, buffers e antecedência     |
+| `bookings`            | Reserva do lead, contato, intervalo, estado, Meet e idempotência |
+| `calendar_activities` | Trilha temporal das principais ações do Wal Chat                 |
 
 ### Automação
 
@@ -135,6 +151,8 @@ RLS do workspace.
 | `ingest_whatsapp_inbound`        | Ingestão WhatsApp transacional e idempotente           |
 | `apply_whatsapp_delivery_status` | Delivery receipt monotônico e atômico                  |
 | `process_meta_data_deletion`     | Exclusão transacional de dados Instagram/WhatsApp      |
+| `reserve_calendar_booking`       | Lock e reserva sem sobreposição, somente service role  |
+| `record_wal_calendar_activity`   | Projeta ações relevantes na linha do tempo             |
 
 As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e parâmetros explícitos para evitar que a policy recursiva consulte diretamente a própria tabela protegida.
 
@@ -146,6 +164,9 @@ As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e par�
 - Demais tabelas recebem policies baseadas em `workspace_id`.
 - `instagram_accounts`, `ai_agents`, `knowledge_documents` e `ai_provider_settings` só podem ser alteradas por `owner/admin`; membros mantêm leitura.
 - `integration_credentials` e `integration_oauth_states` não têm GRANT para `anon/authenticated` e são operadas somente pela service role.
+- `calendar_activities` é append-only para usuários; conexões Google só podem
+  ser alteradas por `owner/admin`; eventos, tarefas e bookings por
+  `owner/admin/agent`.
 - `outbound_deliveries` também é service-role only: contém corpo da mensagem, destinatário, decisão de compliance e estado de entrega.
 - `authenticated` recebe DML no schema público, sempre limitado pelo RLS.
 - `service_role` recebe acesso total aos schemas público e privado.
@@ -166,6 +187,10 @@ As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e par�
 - jobs: índice parcial por `run_at` quando `pending`;
 - gatilhos: índice por workspace, origem e estado;
 - posts: índice por workspace e data de publicação.
+- reservas: chave idempotente por workspace e um slot ativo por página/início;
+  a RPC também bloqueia qualquer intervalo sobreposto;
+- eventos/tarefas: unicidade por conexão e ID Google, com índices por intervalo;
+- atividades: índice por workspace/data e por origem.
 
 ## 8. Migrations e seed
 

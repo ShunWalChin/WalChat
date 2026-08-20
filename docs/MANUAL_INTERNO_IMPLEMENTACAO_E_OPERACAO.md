@@ -256,7 +256,9 @@ Esse teste valida Auth, RLS, webhook GET, assinatura HMAC, rejeição de assinat
 - **Sequências:** blocos, delay e ordenação.
 - **Agentes:** persona, modo copilot/autônomo e playground.
 - **Reengajamento:** filtro, preview, elegibilidade e limite de taxa.
-- **Calendário:** mês/semana e drag-and-drop.
+- **Calendário:** mês/semana/agenda, CRUD persistente, Google Calendar/Tasks,
+  Meet, Free/Busy, links públicos e trilha das ações do sistema. A configuração
+  real está em [Google Calendar, Meet e Tasks](CONFIGURACAO_GOOGLE_CALENDAR.md).
 - **Publicar:** feed, reel, story e carrossel.
 - **Auto-like:** todos, sentimento positivo e palavra-gatilho.
 - **Insights:** crescimento, heatmap, top posts e análise IA.
