@@ -33,7 +33,7 @@ describe('calendar domain', () => {
       ],
       now: new Date('2026-08-20T12:00:00.000Z'),
     })
-    expect(slots.map((slot) => slot.localTime)).toEqual(['10:00', '10:30'])
+    expect(slots.map((slot) => slot.localTime)).toEqual(['10:30'])
   })
 
   it('valida agenda semanal e normaliza slug', () => {

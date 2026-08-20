@@ -162,6 +162,16 @@ ele fornece o link; o endpoint público executa todas as validações.
 
 ## 9. Matriz mínima de homologação
 
+O core local pode ser revalidado dentro do container da aplicação com um
+usuário/workspace descartável:
+
+```bash
+ALLOW_CALENDAR_SMOKE=true node scripts/smoke-calendar-production.mjs
+```
+
+O script elimina os dados temporários no `finally` e não imprime senha, JWT ou
+secrets. Ele não substitui a matriz externa com uma conta Google piloto.
+
 | Teste                     | Resultado esperado                                    |
 | ------------------------- | ----------------------------------------------------- |
 | OAuth cancelado           | Retorno seguro, sem conexão nem token parcial         |

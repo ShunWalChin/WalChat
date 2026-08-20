@@ -128,6 +128,14 @@ export function generateAvailableSlots(input: {
   const now = input.now ?? new Date()
   const earliest = now.getTime() + input.minimumNoticeMinutes * 60_000
   const latest = now.getTime() + input.maxAdvanceDays * 86_400_000
+  const busyWithBuffers = input.busy.map((range) => ({
+    start: new Date(
+      new Date(range.start).getTime() - input.bufferBeforeMinutes * 60_000,
+    ).toISOString(),
+    end: new Date(
+      new Date(range.end).getTime() + input.bufferAfterMinutes * 60_000,
+    ).toISOString(),
+  }))
   const slots: AvailableSlot[] = []
   for (const localDate of dateRange(input.from, input.to)) {
     const weekday = new Date(`${localDate}T12:00:00.000Z`).getUTCDay()
@@ -153,7 +161,7 @@ export function generateAvailableSlots(input: {
           overlaps(
             start - input.bufferBeforeMinutes * 60_000,
             end + input.bufferAfterMinutes * 60_000,
-            input.busy,
+            busyWithBuffers,
           )
         )
           continue

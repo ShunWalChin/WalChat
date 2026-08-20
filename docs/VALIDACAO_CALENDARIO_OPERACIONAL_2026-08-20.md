@@ -36,6 +36,10 @@ inventou Client ID, Client Secret ou acesso a uma agenda real.
 | Reserva após o buffer                             | confirmada                               |
 | Vínculo reserva-evento                            | 2 reservas e 2 eventos, ambos vinculados |
 
+O smoke reproduzível está em `scripts/smoke-calendar-production.mjs`. Ele exige
+`ALLOW_CALENDAR_SMOKE=true`, cria um tenant descartável e executa evento, tarefa,
+página, reserva, replay idempotente, buffer e leitura unificada.
+
 O banco temporário `wal_chat_calendar_migration_test` foi removido após as
 asserções. A migration não foi testada diretamente sobre dados de produção
 antes desse ensaio isolado.
