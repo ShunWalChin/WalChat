@@ -2,6 +2,7 @@
 import { Link, Navigate, Outlet, useRouterState } from '@tanstack/react-router'
 import {
   BarChart3,
+  BookOpenCheck,
   Bot,
   CalendarDays,
   ChevronDown,
@@ -81,6 +82,7 @@ const titles: Record<string, { eyebrow: string; title: string }> = {
   '/publicar': { eyebrow: 'ESTÚDIO DE CONTEÚDO', title: 'Publicar' },
   '/insights': { eyebrow: 'PERFORMANCE DO INSTAGRAM', title: 'Insights' },
   '/configuracoes': { eyebrow: 'CONTA E INTEGRAÇÕES', title: 'Configurações' },
+  '/manual': { eyebrow: 'ACESSOS, OPERAÇÃO E CONFIGURAÇÃO', title: 'Manual' },
 }
 
 /** Protege as rotas internas e organiza sidebar, topo e conteúdo. */
@@ -194,6 +196,13 @@ export function AppShell() {
             </div>
             <small>344 de 360 DMs elegíveis</small>
           </div>
+          <Link
+            to="/manual"
+            className="nav-item"
+            activeProps={{ className: 'nav-item active' }}
+          >
+            <BookOpenCheck size={18} /> Manual do sistema
+          </Link>
           <Link
             to="/configuracoes"
             className="nav-item"

@@ -40,6 +40,7 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 - Central de Go-Live com diagnóstico, kill switches e observabilidade de webhooks.
 - Comment-to-DM por publicação real e Inbox com atribuição, prioridade e notas.
 - Copiloto com recuperação de conhecimento e indicação das fontes usadas.
+- Manual HTML pesquisável de acessos, configuração, operação e Go-Live.
 
 ## Arquitetura
 

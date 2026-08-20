@@ -24,6 +24,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppGatilhosRouteImport } from './routes/_app/gatilhos'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
 import { Route as AppInsightsRouteImport } from './routes/_app/insights'
+import { Route as AppManualRouteImport } from './routes/_app/manual'
 import { Route as AppOperacoesRouteImport } from './routes/_app/operacoes'
 import { Route as AppPublicarRouteImport } from './routes/_app/publicar'
 import { Route as AppReengajamentoRouteImport } from './routes/_app/reengajamento'
@@ -121,6 +122,11 @@ const AppInboxRoute = AppInboxRouteImport.update({
 const AppInsightsRoute = AppInsightsRouteImport.update({
   id: '/insights',
   path: '/insights',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppManualRoute = AppManualRouteImport.update({
+  id: '/manual',
+  path: '/manual',
   getParentRoute: () => AppRoute,
 } as any)
 const AppOperacoesRoute = AppOperacoesRouteImport.update({
@@ -266,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/gatilhos': typeof AppGatilhosRoute
   '/inbox': typeof AppInboxRoute
   '/insights': typeof AppInsightsRoute
+  '/manual': typeof AppManualRoute
   '/operacoes': typeof AppOperacoesRoute
   '/publicar': typeof AppPublicarRoute
   '/reengajamento': typeof AppReengajamentoRoute
@@ -306,6 +313,7 @@ export interface FileRoutesByTo {
   '/gatilhos': typeof AppGatilhosRoute
   '/inbox': typeof AppInboxRoute
   '/insights': typeof AppInsightsRoute
+  '/manual': typeof AppManualRoute
   '/operacoes': typeof AppOperacoesRoute
   '/publicar': typeof AppPublicarRoute
   '/reengajamento': typeof AppReengajamentoRoute
@@ -348,6 +356,7 @@ export interface FileRoutesById {
   '/_app/gatilhos': typeof AppGatilhosRoute
   '/_app/inbox': typeof AppInboxRoute
   '/_app/insights': typeof AppInsightsRoute
+  '/_app/manual': typeof AppManualRoute
   '/_app/operacoes': typeof AppOperacoesRoute
   '/_app/publicar': typeof AppPublicarRoute
   '/_app/reengajamento': typeof AppReengajamentoRoute
@@ -390,6 +399,7 @@ export interface FileRouteTypes {
     | '/gatilhos'
     | '/inbox'
     | '/insights'
+    | '/manual'
     | '/operacoes'
     | '/publicar'
     | '/reengajamento'
@@ -430,6 +440,7 @@ export interface FileRouteTypes {
     | '/gatilhos'
     | '/inbox'
     | '/insights'
+    | '/manual'
     | '/operacoes'
     | '/publicar'
     | '/reengajamento'
@@ -471,6 +482,7 @@ export interface FileRouteTypes {
     | '/_app/gatilhos'
     | '/_app/inbox'
     | '/_app/insights'
+    | '/_app/manual'
     | '/_app/operacoes'
     | '/_app/publicar'
     | '/_app/reengajamento'
@@ -630,6 +642,13 @@ declare module '@tanstack/react-router' {
       path: '/insights'
       fullPath: '/insights'
       preLoaderRoute: typeof AppInsightsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/manual': {
+      id: '/_app/manual'
+      path: '/manual'
+      fullPath: '/manual'
+      preLoaderRoute: typeof AppManualRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/operacoes': {
@@ -814,6 +833,7 @@ interface AppRouteChildren {
   AppGatilhosRoute: typeof AppGatilhosRoute
   AppInboxRoute: typeof AppInboxRoute
   AppInsightsRoute: typeof AppInsightsRoute
+  AppManualRoute: typeof AppManualRoute
   AppOperacoesRoute: typeof AppOperacoesRoute
   AppPublicarRoute: typeof AppPublicarRoute
   AppReengajamentoRoute: typeof AppReengajamentoRoute
@@ -831,6 +851,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppGatilhosRoute: AppGatilhosRoute,
   AppInboxRoute: AppInboxRoute,
   AppInsightsRoute: AppInsightsRoute,
+  AppManualRoute: AppManualRoute,
   AppOperacoesRoute: AppOperacoesRoute,
   AppPublicarRoute: AppPublicarRoute,
   AppReengajamentoRoute: AppReengajamentoRoute,

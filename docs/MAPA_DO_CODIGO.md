@@ -58,6 +58,7 @@ Este documento funciona como índice de manutenção. Os comentários nos arquiv
 | `src/routes/_app/auto-like.tsx`     | Modos de curtida automática                      |
 | `src/routes/_app/insights.tsx`      | Crescimento, heatmap, posts e leitura IA         |
 | `src/routes/_app/configuracoes.tsx` | OAuth Instagram, diagnóstico e provedor de IA    |
+| `src/routes/_app/manual.tsx`        | Manual HTML pesquisável, tutoriais e Go-Live     |
 | `src/lib/demo-data.ts`              | Fixtures visuais do MVP em modo demo             |
 
 ## API
