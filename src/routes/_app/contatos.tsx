@@ -142,7 +142,6 @@ type ContactDetail = {
     category: string
     unread_count: number
     last_message_at: string | null
-    ai_enabled: boolean
   }>
   interactions: Array<{
     id: string

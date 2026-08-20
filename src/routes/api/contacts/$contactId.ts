@@ -89,9 +89,7 @@ export const Route = createFileRoute('/api/contacts/$contactId')({
               .limit(50),
             context.supabase
               .from('conversations')
-              .select(
-                'id,platform,category,unread_count,last_message_at,ai_enabled',
-              )
+              .select('id,platform,category,unread_count,last_message_at')
               .eq('workspace_id', context.workspaceId)
               .eq('contact_id', contactId)
               .order('last_message_at', { ascending: false }),
