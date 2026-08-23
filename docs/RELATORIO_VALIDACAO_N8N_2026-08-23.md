@@ -1,19 +1,19 @@
 # Relatório de validação — Wizard e integração n8n
 
 Data: 23 de agosto de 2026  
-Commit validado: `975bee65e6353f181eb94ad643371c74ededd267`
+Commit publicado: `05de829c7f2b63dfbaf5f4c70505cdbc44dd89ae`
 
 ## Resultado executivo
 
 O conector n8n e o wizard central de integrações estão implementados,
-documentados e aprovados nas validações locais. As migrations do motor DAG e
-do n8n também passaram em um banco temporário criado a partir do esquema de
-produção.
+documentados, validados e publicados em produção. As migrations do motor DAG e
+do n8n passaram primeiro em um banco temporário criado a partir do esquema de
+produção e depois foram aplicadas transacionalmente no banco ativo.
 
-A release de produção **não foi trocada nesta execução**. O histórico da tarefa
-continha instruções conflitantes sobre deploy e a autorização de mutation do
-banco foi recusada de forma segura. A release ativa continua sendo
-`20260820-security-seo-v1`.
+A release `20260823-n8n-wizard-v1` está ativa, com os quatro serviços saudáveis,
+smokes públicos e autenticados aprovados e todos os kill switches de envio real
+desligados. A versão anterior e o backup pré-migration foram preservados para
+rollback.
 
 ## Escopo entregue
 
@@ -42,6 +42,11 @@ banco foi recusada de forma segura. A release ativa continua sendo
 | QA visual desktop            | 1440 × 900 aprovado                               |
 | QA visual mobile             | 375 × 812, sem overflow, aprovado                 |
 | Ensaio de migrations         | aprovado em banco temporário isolado              |
+| Migrations em produção       | 2 versões aplicadas e registradas                 |
+| Smoke autenticado de módulos | integrações, CRM, inbox, IA e observabilidade OK  |
+| Smoke de workers/webhooks    | Meta, WhatsApp, BullMQ e scheduler aprovados      |
+| Auditoria pós-deploy         | RLS, triggers, logs e containers aprovados        |
+| QA público em produção       | HTTPS, console limpo e sem overflow               |
 
 O ensaio confirmou `automation_executions`, `integration_connections`,
 `integration_webhook_deliveries`, quatro triggers de eventos n8n e a nova
@@ -50,27 +55,30 @@ constraint de tipos da fila.
 ## Estado seguro de produção
 
 - URL: `https://wal-chat.64.181.178.125.nip.io`;
-- containers atuais estavam saudáveis na inspeção;
-- disparos externos, Comment-to-DM e IA autônoma estavam desligados;
+- release ativa:
+  `/opt/wal-chat/releases/20260823-n8n-wizard-v1`;
+- app, webhooks, scheduler e Redis estão saudáveis;
+- disparos externos, Comment-to-DM e IA autônoma permanecem desligados;
 - backup anterior à migration:
   `/opt/wal-chat/backups/20260823-n8n-wizard-v1/postgres-before.dump`;
 - dump custom validado com `pg_restore --list` e SHA-256 registrado no servidor;
-- release candidata, ainda inativa:
-  `/opt/wal-chat/releases/20260823-n8n-wizard-v1`.
+- imagem anterior preservada:
+  `wal-chat-app:rollback-20260820-security-seo-v1`.
 
-## Gate para concluir o deploy
+## Deploy concluído
 
-É necessária uma confirmação nova e explícita para alterar produção. Depois da
-aprovação, a sequência é:
+A publicação seguiu os seguintes gates:
 
-1. aplicar `20260822010000_automation_dag_core.sql` em transação;
-2. aplicar `20260822020000_n8n_integration_core.sql` em transação;
-3. registrar as duas versões em `supabase_migrations.schema_migrations`;
-4. copiar o `.env.production` sem imprimir seus valores;
-5. construir e subir a release candidata com Docker Compose;
-6. aguardar health de app, webhooks, scheduler e Redis;
-7. executar smoke público e autenticado com kill switches desligados;
-8. voltar imediatamente à release anterior se qualquer gate falhar.
+1. backup pré-migration criado e restaurabilidade validada;
+2. `20260822010000_automation_dag_core.sql` aplicada em transação;
+3. `20260822020000_n8n_integration_core.sql` aplicada em transação;
+4. duas versões registradas em `supabase_migrations.schema_migrations`;
+5. imagem de rollback da release anterior preservada;
+6. nova imagem construída e os quatro serviços recriados;
+7. health e readiness aprovados;
+8. smokes público, autenticado, webhooks, workers e scheduler aprovados;
+9. RLS, triggers, kill switches e ausência de erros críticos confirmados;
+10. QA público em navegador concluído sem erros no console ou overflow.
 
 ## Limites conhecidos
 
@@ -82,6 +90,10 @@ permanecem bloqueados para execução real. A matriz completa está em
 Também faltam credenciais reais de Meta e OpenAI no ambiente inspecionado. O
 wizard está pronto para recebê-las, mas o E2E com redes reais depende de App
 Review, permissões, tokens e uma instância n8n fornecida pelo operador.
+
+O build em produção emitiu um aviso não bloqueante para um chunk cliente de
+aproximadamente 520 kB. A divisão adicional desse bundle fica registrada como
+otimização de desempenho, sem impacto no gate funcional desta release.
 
 ## Segurança pós-deploy
 
