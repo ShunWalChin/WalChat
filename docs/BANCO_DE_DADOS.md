@@ -19,6 +19,10 @@ erDiagram
     CONTACTS ||--o{ CONVERSATIONS : participa
     CONVERSATIONS ||--o{ MESSAGES : contem
     WORKSPACES ||--o{ TRIGGERS : configura
+    WORKSPACES ||--o{ AUTOMATION_FLOWS : configura
+    AUTOMATION_FLOWS ||--o{ AUTOMATION_FLOW_VERSIONS : publica
+    AUTOMATION_FLOW_VERSIONS ||--o{ AUTOMATION_EXECUTIONS : executa
+    AUTOMATION_EXECUTIONS ||--o{ AUTOMATION_EXECUTION_STEPS : audita
     SEQUENCES ||--o{ SEQUENCE_STEPS : possui
     CONTACTS ||--o{ SEQUENCE_ENROLLMENTS : entra
     SEQUENCE_ENROLLMENTS ||--o{ SCHEDULED_JOBS : agenda
@@ -96,17 +100,23 @@ erDiagram
 
 ### Automação
 
-| Tabela                    | Responsabilidade                                      |
-| ------------------------- | ----------------------------------------------------- |
-| `triggers`                | Palavra, origem, modo de match, resposta ou sequência |
-| `trigger_cooldowns`       | Última execução por gatilho/contato                   |
-| `comment_private_replies` | Trava de resposta privada única por comentário        |
-| `sequences`               | Definição da automação multi-passo                    |
-| `sequence_steps`          | Blocos ordenados e respectivos delays                 |
-| `sequence_enrollments`    | Progresso do contato em uma sequência                 |
-| `scheduled_jobs`          | Outbox/scheduler transacional                         |
-| `webhook_events`          | Evento bruto, idempotência e estado de processamento  |
-| `automation_runs`         | Execução auditável de cada match de automação         |
+| Tabela                       | Responsabilidade                                      |
+| ---------------------------- | ----------------------------------------------------- |
+| `triggers`                   | Palavra, origem, modo de match, resposta ou sequência |
+| `trigger_cooldowns`          | Última execução por gatilho/contato                   |
+| `comment_private_replies`    | Trava de resposta privada única por comentário        |
+| `sequences`                  | Definição da automação multi-passo                    |
+| `sequence_steps`             | Blocos ordenados e respectivos delays                 |
+| `sequence_enrollments`       | Progresso do contato em uma sequência                 |
+| `scheduled_jobs`             | Outbox/scheduler transacional                         |
+| `webhook_events`             | Evento bruto, idempotência e estado de processamento  |
+| `automation_runs`            | Execução auditável de cada match de automação         |
+| `custom_field_definitions`   | Catálogo tipado de campos por contato                 |
+| `automation_bot_fields`      | Variáveis globais tipadas do workspace                |
+| `automation_flows`           | Rascunho e revisão otimista do DAG                    |
+| `automation_flow_versions`   | Snapshots publicados, imutáveis e com checksum        |
+| `automation_executions`      | Estado persistente do fluxo por contato               |
+| `automation_execution_steps` | Auditoria de cada nó interpretado                     |
 
 ### IA, campanhas e proteção
 
@@ -147,20 +157,23 @@ RLS do workspace.
 
 ## 5. Funções e triggers
 
-| Objeto                           | Função                                                 |
-| -------------------------------- | ------------------------------------------------------ |
-| `set_updated_at`                 | Atualiza `updated_at` antes de alterações              |
-| `is_workspace_member`            | Confirma associação do usuário autenticado             |
-| `has_workspace_role`             | Confirma papel permitido no workspace                  |
-| `handle_new_user`                | Cria workspace e membro `owner` após cadastro          |
-| `on_auth_user_created`           | Liga `auth.users` ao provisionamento do tenant         |
-| `set_*_updated_at`               | Triggers gerados para tabelas mutáveis                 |
-| `search_knowledge_documents`     | Busca full-text PT-BR da base, restrita à service role |
-| `ingest_whatsapp_inbound`        | Ingestão WhatsApp transacional e idempotente           |
-| `apply_whatsapp_delivery_status` | Delivery receipt monotônico e atômico                  |
-| `process_meta_data_deletion`     | Exclusão transacional de dados Instagram/WhatsApp      |
-| `reserve_calendar_booking`       | Lock e reserva sem sobreposição, somente service role  |
-| `record_wal_calendar_activity`   | Projeta ações relevantes na linha do tempo             |
+| Objeto                            | Função                                                 |
+| --------------------------------- | ------------------------------------------------------ |
+| `set_updated_at`                  | Atualiza `updated_at` antes de alterações              |
+| `is_workspace_member`             | Confirma associação do usuário autenticado             |
+| `has_workspace_role`              | Confirma papel permitido no workspace                  |
+| `handle_new_user`                 | Cria workspace e membro `owner` após cadastro          |
+| `on_auth_user_created`            | Liga `auth.users` ao provisionamento do tenant         |
+| `set_*_updated_at`                | Triggers gerados para tabelas mutáveis                 |
+| `search_knowledge_documents`      | Busca full-text PT-BR da base, restrita à service role |
+| `ingest_whatsapp_inbound`         | Ingestão WhatsApp transacional e idempotente           |
+| `apply_whatsapp_delivery_status`  | Delivery receipt monotônico e atômico                  |
+| `process_meta_data_deletion`      | Exclusão transacional de dados Instagram/WhatsApp      |
+| `reserve_calendar_booking`        | Lock e reserva sem sobreposição, somente service role  |
+| `record_wal_calendar_activity`    | Projeta ações relevantes na linha do tempo             |
+| `publish_automation_flow`         | Publica snapshot do DAG sob lock e revisão             |
+| `apply_automation_actions`        | Tags e campos tipados em uma transação                 |
+| `validate_automation_field_value` | Valida tipos também dentro do PostgreSQL               |
 
 As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e parâmetros explícitos para evitar que a policy recursiva consulte diretamente a própria tabela protegida.
 
@@ -180,6 +193,9 @@ As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e par�
   `anon/authenticated`; a API pública devolve somente protocolo/status ou
   avaliações já verificadas, consentidas e publicadas.
 - `authenticated` recebe DML no schema público, sempre limitado pelo RLS.
+- As tabelas de autoria e execução do DAG são uma exceção deliberada: o
+  navegador recebe somente `SELECT`; mutações passam pelas APIs e pela
+  `service_role` depois de autenticação, papel e origem serem validados.
 - `service_role` recebe acesso total aos schemas público e privado.
 - `authenticated` não recebe uso do schema `private`.
 
@@ -202,6 +218,8 @@ As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e par�
   a RPC também bloqueia qualquer intervalo sobreposto;
 - eventos/tarefas: unicidade por conexão e ID Google, com índices por intervalo;
 - atividades: índice por workspace/data e por origem.
+- automações: nome único por workspace, versão única por fluxo, execução única
+  por chave idempotente e etapa única por execução/nó/tentativa.
 
 ## 8. Migrations e seed
 
@@ -220,6 +238,11 @@ A migration `20260821010000_public_privacy_reviews.sql` adiciona pedidos LGPD
 persistidos e o catálogo de avaliações reais. As duas tabelas são
 `service_role`-only; publicar uma avaliação sem consentimento e verificação
 viola uma constraint do banco.
+
+A migration `20260822010000_automation_dag_core.sql` adiciona o DAG versionado,
+variáveis tipadas, execução auditável, publicação atômica, RLS/GRANTs restritos
+e validações de escopo entre tenants. Consulte
+[Backend e automações DAG](ARQUITETURA_BACKEND_AUTOMACOES_DAG_2026-08-22.md).
 
 Fluxo seguro:
 

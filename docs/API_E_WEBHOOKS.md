@@ -243,7 +243,25 @@ service role. O opt-in restaurado exige confirmação e origem registradas.
 - `GET /api/inbox`: lista até 100 conversas da categoria, contato sanitizado, janela calculada, até 200 mensagens e agentes ativos.
 - `PATCH /api/inbox`: marca leitura e altera categoria/IA do contato; exige `owner/admin/agent`.
 - `GET /api/triggers`: lista gatilhos e quantidade de contatos em cooldown.
-- `POST/PATCH/DELETE /api/triggers`: cria, altera ou exclui gatilhos simples; exige `owner/admin`.
+- `POST/PATCH/DELETE /api/triggers`: cria, altera ou exclui gatilhos com um
+  destino exclusivo entre resposta simples, sequência e automação DAG; exige
+  `owner/admin`.
+
+## Automações DAG
+
+- `GET/POST /api/automations`: lista e cria fluxos.
+- `GET/PATCH/POST/DELETE /api/automations/:flowId`: consulta, salva com revisão
+  otimista, publica uma versão imutável ou arquiva.
+- `POST /api/automations/:flowId/execute`: inicia execução manual idempotente
+  para um contato; permite `owner/admin/agent`.
+- `GET/POST/PATCH /api/automations/fields`: catálogo de campos de contato e
+  variáveis globais tipadas.
+
+Publicar e editar exige `owner/admin`, origem confiável, limite de corpo e JWT.
+O endpoint de execução apenas cria o workflow; qualquer mensagem continua no
+scheduler e no gateway central de compliance.
+
+Contrato, estados e runbook: [Backend e automações DAG](ARQUITETURA_BACKEND_AUTOMACOES_DAG_2026-08-22.md).
 
 ## `POST /api/compliance/check`
 

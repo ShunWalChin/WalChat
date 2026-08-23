@@ -20,6 +20,11 @@ import {
 import { writeWorkerHeartbeat } from '../server/worker-heartbeat'
 import { applyBookingLink } from '../server/booking-links.server'
 import { syncGoogleConnection } from '../server/google-calendar.server'
+import {
+  markAutomationExecutionFailure,
+  processAutomationStep,
+  resumeAutomationAfterMessage,
+} from '../server/automation-engine.server'
 
 /** Falha cedo: um scheduler sem service role não pode operar com segurança. */
 function requireSupabase() {
@@ -210,6 +215,7 @@ async function processDueJobs() {
   for (const job of jobs) {
     try {
       if (job.kind === 'sequence_step') await processSequenceJob(job)
+      else if (job.kind === 'automation_step') await processAutomationStep(job)
       else throw new UnsupportedScheduledJobError(job.kind)
       const { error: completedError } = await supabase
         .from('scheduled_jobs')
@@ -240,6 +246,14 @@ async function processDueJobs() {
           })
           .eq('id', automationRunId)
           .eq('workspace_id', job.workspace_id)
+      const flowExecutionId = job.payload?.flowExecutionId
+      if (typeof flowExecutionId === 'string')
+        await markAutomationExecutionFailure({
+          workspaceId: job.workspace_id,
+          executionId: flowExecutionId,
+          terminal,
+          errorCode: message,
+        })
       console.error(
         JSON.stringify({
           event: 'scheduled_job_failed',
@@ -271,6 +285,13 @@ async function processSequenceJob(job: {
   const aiGenerated = payload.aiGenerated === true
   const automationRunId = payload.automationRunId
     ? String(payload.automationRunId)
+    : null
+  const flowExecutionId = payload.flowExecutionId
+    ? String(payload.flowExecutionId)
+    : null
+  const flowNodeId = payload.flowNodeId ? String(payload.flowNodeId) : null
+  const flowNextNodeId = payload.flowNextNodeId
+    ? String(payload.flowNextNodeId)
     : null
   const triggerId = payload.triggerId ? String(payload.triggerId) : null
   const bookingPageId = payload.bookingPageId
@@ -510,6 +531,19 @@ async function processSequenceJob(job: {
         last_outbound_at: result.sent ? new Date().toISOString() : null,
       })
       .eq('id', contact.id)
+    if (flowExecutionId && flowNodeId && flowNextNodeId) {
+      await resumeAutomationAfterMessage({
+        workspaceId: job.workspace_id,
+        executionId: flowExecutionId,
+        nodeId: flowNodeId,
+        nextNodeId: flowNextNodeId,
+        sent: result.sent,
+        privateReply: Boolean(commentId),
+        reason: result.sent ? null : result.decision.reason,
+        policy: result.decision.policy,
+      })
+      return
+    }
     if (!result.sent) {
       if (enrollmentId)
         await supabase

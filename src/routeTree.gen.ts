@@ -31,6 +31,7 @@ import { Route as AppPublicarRouteImport } from './routes/_app/publicar'
 import { Route as AppReengajamentoRouteImport } from './routes/_app/reengajamento'
 import { Route as AppSequenciasRouteImport } from './routes/_app/sequencias'
 import { Route as AgendarSlugRouteImport } from './routes/agendar/$slug'
+import { Route as ApiAutomationsRouteImport } from './routes/api/automations'
 import { Route as ApiCalendarRouteImport } from './routes/api/calendar'
 import { Route as ApiContactTagsRouteImport } from './routes/api/contact-tags'
 import { Route as ApiContactsRouteImport } from './routes/api/contacts'
@@ -44,6 +45,8 @@ import { Route as ApiAiAgentsRouteImport } from './routes/api/ai/agents'
 import { Route as ApiAiKnowledgeRouteImport } from './routes/api/ai/knowledge'
 import { Route as ApiAiSettingsRouteImport } from './routes/api/ai/settings'
 import { Route as ApiAiSuggestRouteImport } from './routes/api/ai/suggest'
+import { Route as ApiAutomationsFlowIdRouteImport } from './routes/api/automations/$flowId'
+import { Route as ApiAutomationsFieldsRouteImport } from './routes/api/automations/fields'
 import { Route as ApiCalendarBookingPagesRouteImport } from './routes/api/calendar/booking-pages'
 import { Route as ApiCalendarBookingsRouteImport } from './routes/api/calendar/bookings'
 import { Route as ApiComplianceCheckRouteImport } from './routes/api/compliance/check'
@@ -54,6 +57,7 @@ import { Route as ApiOperationsGoLiveRouteImport } from './routes/api/operations
 import { Route as ApiOperationsWebhooksRouteImport } from './routes/api/operations/webhooks'
 import { Route as ApiPrivacyDeletionRequestsRouteImport } from './routes/api/privacy/deletion-requests'
 import { Route as ApiPublicReviewsRouteImport } from './routes/api/public/reviews'
+import { Route as ApiAutomationsFlowIdExecuteRouteImport } from './routes/api/automations/$flowId/execute'
 import { Route as ApiContactsContactIdNotesRouteImport } from './routes/api/contacts/$contactId/notes'
 import { Route as ApiIntegrationsGoogleCallbackRouteImport } from './routes/api/integrations/google/callback'
 import { Route as ApiIntegrationsGoogleDisconnectRouteImport } from './routes/api/integrations/google/disconnect'
@@ -185,6 +189,11 @@ const AgendarSlugRoute = AgendarSlugRouteImport.update({
   path: '/agendar/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAutomationsRoute = ApiAutomationsRouteImport.update({
+  id: '/api/automations',
+  path: '/api/automations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCalendarRoute = ApiCalendarRouteImport.update({
   id: '/api/calendar',
   path: '/api/calendar',
@@ -250,6 +259,16 @@ const ApiAiSuggestRoute = ApiAiSuggestRouteImport.update({
   path: '/api/ai/suggest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAutomationsFlowIdRoute = ApiAutomationsFlowIdRouteImport.update({
+  id: '/$flowId',
+  path: '/$flowId',
+  getParentRoute: () => ApiAutomationsRoute,
+} as any)
+const ApiAutomationsFieldsRoute = ApiAutomationsFieldsRouteImport.update({
+  id: '/fields',
+  path: '/fields',
+  getParentRoute: () => ApiAutomationsRoute,
+} as any)
 const ApiCalendarBookingPagesRoute = ApiCalendarBookingPagesRouteImport.update({
   id: '/booking-pages',
   path: '/booking-pages',
@@ -301,6 +320,12 @@ const ApiPublicReviewsRoute = ApiPublicReviewsRouteImport.update({
   path: '/api/public/reviews',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAutomationsFlowIdExecuteRoute =
+  ApiAutomationsFlowIdExecuteRouteImport.update({
+    id: '/execute',
+    path: '/execute',
+    getParentRoute: () => ApiAutomationsFlowIdRoute,
+  } as any)
 const ApiContactsContactIdNotesRoute =
   ApiContactsContactIdNotesRouteImport.update({
     id: '/notes',
@@ -449,6 +474,7 @@ export interface FileRoutesByFullPath {
   '/reengajamento': typeof AppReengajamentoRoute
   '/sequencias': typeof AppSequenciasRoute
   '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/automations': typeof ApiAutomationsRouteWithChildren
   '/api/calendar': typeof ApiCalendarRouteWithChildren
   '/api/contact-tags': typeof ApiContactTagsRoute
   '/api/contacts': typeof ApiContactsRouteWithChildren
@@ -462,6 +488,8 @@ export interface FileRoutesByFullPath {
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
   '/api/ai/settings': typeof ApiAiSettingsRoute
   '/api/ai/suggest': typeof ApiAiSuggestRoute
+  '/api/automations/$flowId': typeof ApiAutomationsFlowIdRouteWithChildren
+  '/api/automations/fields': typeof ApiAutomationsFieldsRoute
   '/api/calendar/booking-pages': typeof ApiCalendarBookingPagesRoute
   '/api/calendar/bookings': typeof ApiCalendarBookingsRoute
   '/api/compliance/check': typeof ApiComplianceCheckRoute
@@ -472,6 +500,7 @@ export interface FileRoutesByFullPath {
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
   '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
   '/api/public/reviews': typeof ApiPublicReviewsRoute
+  '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
   '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
   '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
@@ -516,6 +545,7 @@ export interface FileRoutesByTo {
   '/reengajamento': typeof AppReengajamentoRoute
   '/sequencias': typeof AppSequenciasRoute
   '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/automations': typeof ApiAutomationsRouteWithChildren
   '/api/calendar': typeof ApiCalendarRouteWithChildren
   '/api/contact-tags': typeof ApiContactTagsRoute
   '/api/contacts': typeof ApiContactsRouteWithChildren
@@ -529,6 +559,8 @@ export interface FileRoutesByTo {
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
   '/api/ai/settings': typeof ApiAiSettingsRoute
   '/api/ai/suggest': typeof ApiAiSuggestRoute
+  '/api/automations/$flowId': typeof ApiAutomationsFlowIdRouteWithChildren
+  '/api/automations/fields': typeof ApiAutomationsFieldsRoute
   '/api/calendar/booking-pages': typeof ApiCalendarBookingPagesRoute
   '/api/calendar/bookings': typeof ApiCalendarBookingsRoute
   '/api/compliance/check': typeof ApiComplianceCheckRoute
@@ -539,6 +571,7 @@ export interface FileRoutesByTo {
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
   '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
   '/api/public/reviews': typeof ApiPublicReviewsRoute
+  '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
   '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
   '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
@@ -585,6 +618,7 @@ export interface FileRoutesById {
   '/_app/reengajamento': typeof AppReengajamentoRoute
   '/_app/sequencias': typeof AppSequenciasRoute
   '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/automations': typeof ApiAutomationsRouteWithChildren
   '/api/calendar': typeof ApiCalendarRouteWithChildren
   '/api/contact-tags': typeof ApiContactTagsRoute
   '/api/contacts': typeof ApiContactsRouteWithChildren
@@ -598,6 +632,8 @@ export interface FileRoutesById {
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
   '/api/ai/settings': typeof ApiAiSettingsRoute
   '/api/ai/suggest': typeof ApiAiSuggestRoute
+  '/api/automations/$flowId': typeof ApiAutomationsFlowIdRouteWithChildren
+  '/api/automations/fields': typeof ApiAutomationsFieldsRoute
   '/api/calendar/booking-pages': typeof ApiCalendarBookingPagesRoute
   '/api/calendar/bookings': typeof ApiCalendarBookingsRoute
   '/api/compliance/check': typeof ApiComplianceCheckRoute
@@ -608,6 +644,7 @@ export interface FileRoutesById {
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
   '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
   '/api/public/reviews': typeof ApiPublicReviewsRoute
+  '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
   '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
   '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
@@ -654,6 +691,7 @@ export interface FileRouteTypes {
     | '/reengajamento'
     | '/sequencias'
     | '/agendar/$slug'
+    | '/api/automations'
     | '/api/calendar'
     | '/api/contact-tags'
     | '/api/contacts'
@@ -667,6 +705,8 @@ export interface FileRouteTypes {
     | '/api/ai/knowledge'
     | '/api/ai/settings'
     | '/api/ai/suggest'
+    | '/api/automations/$flowId'
+    | '/api/automations/fields'
     | '/api/calendar/booking-pages'
     | '/api/calendar/bookings'
     | '/api/compliance/check'
@@ -677,6 +717,7 @@ export interface FileRouteTypes {
     | '/api/operations/webhooks'
     | '/api/privacy/deletion-requests'
     | '/api/public/reviews'
+    | '/api/automations/$flowId/execute'
     | '/api/contacts/$contactId/notes'
     | '/api/integrations/google/callback'
     | '/api/integrations/google/disconnect'
@@ -721,6 +762,7 @@ export interface FileRouteTypes {
     | '/reengajamento'
     | '/sequencias'
     | '/agendar/$slug'
+    | '/api/automations'
     | '/api/calendar'
     | '/api/contact-tags'
     | '/api/contacts'
@@ -734,6 +776,8 @@ export interface FileRouteTypes {
     | '/api/ai/knowledge'
     | '/api/ai/settings'
     | '/api/ai/suggest'
+    | '/api/automations/$flowId'
+    | '/api/automations/fields'
     | '/api/calendar/booking-pages'
     | '/api/calendar/bookings'
     | '/api/compliance/check'
@@ -744,6 +788,7 @@ export interface FileRouteTypes {
     | '/api/operations/webhooks'
     | '/api/privacy/deletion-requests'
     | '/api/public/reviews'
+    | '/api/automations/$flowId/execute'
     | '/api/contacts/$contactId/notes'
     | '/api/integrations/google/callback'
     | '/api/integrations/google/disconnect'
@@ -789,6 +834,7 @@ export interface FileRouteTypes {
     | '/_app/reengajamento'
     | '/_app/sequencias'
     | '/agendar/$slug'
+    | '/api/automations'
     | '/api/calendar'
     | '/api/contact-tags'
     | '/api/contacts'
@@ -802,6 +848,8 @@ export interface FileRouteTypes {
     | '/api/ai/knowledge'
     | '/api/ai/settings'
     | '/api/ai/suggest'
+    | '/api/automations/$flowId'
+    | '/api/automations/fields'
     | '/api/calendar/booking-pages'
     | '/api/calendar/bookings'
     | '/api/compliance/check'
@@ -812,6 +860,7 @@ export interface FileRouteTypes {
     | '/api/operations/webhooks'
     | '/api/privacy/deletion-requests'
     | '/api/public/reviews'
+    | '/api/automations/$flowId/execute'
     | '/api/contacts/$contactId/notes'
     | '/api/integrations/google/callback'
     | '/api/integrations/google/disconnect'
@@ -843,6 +892,7 @@ export interface RootRouteChildren {
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
   AgendarSlugRoute: typeof AgendarSlugRoute
+  ApiAutomationsRoute: typeof ApiAutomationsRouteWithChildren
   ApiCalendarRoute: typeof ApiCalendarRouteWithChildren
   ApiContactTagsRoute: typeof ApiContactTagsRoute
   ApiContactsRoute: typeof ApiContactsRouteWithChildren
@@ -1040,6 +1090,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgendarSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/automations': {
+      id: '/api/automations'
+      path: '/api/automations'
+      fullPath: '/api/automations'
+      preLoaderRoute: typeof ApiAutomationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/calendar': {
       id: '/api/calendar'
       path: '/api/calendar'
@@ -1131,6 +1188,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiSuggestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/automations/$flowId': {
+      id: '/api/automations/$flowId'
+      path: '/$flowId'
+      fullPath: '/api/automations/$flowId'
+      preLoaderRoute: typeof ApiAutomationsFlowIdRouteImport
+      parentRoute: typeof ApiAutomationsRoute
+    }
+    '/api/automations/fields': {
+      id: '/api/automations/fields'
+      path: '/fields'
+      fullPath: '/api/automations/fields'
+      preLoaderRoute: typeof ApiAutomationsFieldsRouteImport
+      parentRoute: typeof ApiAutomationsRoute
+    }
     '/api/calendar/booking-pages': {
       id: '/api/calendar/booking-pages'
       path: '/booking-pages'
@@ -1200,6 +1271,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/public/reviews'
       preLoaderRoute: typeof ApiPublicReviewsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/automations/$flowId/execute': {
+      id: '/api/automations/$flowId/execute'
+      path: '/execute'
+      fullPath: '/api/automations/$flowId/execute'
+      preLoaderRoute: typeof ApiAutomationsFlowIdExecuteRouteImport
+      parentRoute: typeof ApiAutomationsFlowIdRoute
     }
     '/api/contacts/$contactId/notes': {
       id: '/api/contacts/$contactId/notes'
@@ -1389,6 +1467,31 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface ApiAutomationsFlowIdRouteChildren {
+  ApiAutomationsFlowIdExecuteRoute: typeof ApiAutomationsFlowIdExecuteRoute
+}
+
+const ApiAutomationsFlowIdRouteChildren: ApiAutomationsFlowIdRouteChildren = {
+  ApiAutomationsFlowIdExecuteRoute: ApiAutomationsFlowIdExecuteRoute,
+}
+
+const ApiAutomationsFlowIdRouteWithChildren =
+  ApiAutomationsFlowIdRoute._addFileChildren(ApiAutomationsFlowIdRouteChildren)
+
+interface ApiAutomationsRouteChildren {
+  ApiAutomationsFlowIdRoute: typeof ApiAutomationsFlowIdRouteWithChildren
+  ApiAutomationsFieldsRoute: typeof ApiAutomationsFieldsRoute
+}
+
+const ApiAutomationsRouteChildren: ApiAutomationsRouteChildren = {
+  ApiAutomationsFlowIdRoute: ApiAutomationsFlowIdRouteWithChildren,
+  ApiAutomationsFieldsRoute: ApiAutomationsFieldsRoute,
+}
+
+const ApiAutomationsRouteWithChildren = ApiAutomationsRoute._addFileChildren(
+  ApiAutomationsRouteChildren,
+)
+
 interface ApiCalendarRouteChildren {
   ApiCalendarBookingPagesRoute: typeof ApiCalendarBookingPagesRoute
   ApiCalendarBookingsRoute: typeof ApiCalendarBookingsRoute
@@ -1436,6 +1539,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
   AgendarSlugRoute: AgendarSlugRoute,
+  ApiAutomationsRoute: ApiAutomationsRouteWithChildren,
   ApiCalendarRoute: ApiCalendarRouteWithChildren,
   ApiContactTagsRoute: ApiContactTagsRoute,
   ApiContactsRoute: ApiContactsRouteWithChildren,

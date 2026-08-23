@@ -13,17 +13,31 @@ const fields = {
   source: z.enum(['comment', 'dm', 'story', 'whatsapp']),
   keyword: z.string().trim().min(1).max(100),
   matchMode: z.enum(['exact', 'contains']),
-  responseText: z.string().trim().min(1).max(1_000),
   postId: z.string().uuid().nullable().optional(),
   cooldownHours: z.number().int().min(24).max(168),
   isActive: z.boolean(),
   bookingPageId: z.uuid().nullable().optional(),
 }
-const createSchema = z.object(fields)
-const updateSchema = z
-  .object({ id: z.string().uuid(), ...fields })
-  .partial()
-  .required({ id: true })
+const destinationFields = {
+  responseText: z.string().trim().min(1).max(1_000).nullable().optional(),
+  sequenceId: z.uuid().nullable().optional(),
+  flowId: z.uuid().nullable().optional(),
+}
+const triggerInputSchema = z
+  .object({ ...fields, ...destinationFields })
+  .strict()
+const createSchema = triggerInputSchema.superRefine((value, context) => {
+  if (
+    [value.responseText, value.sequenceId, value.flowId].filter(Boolean)
+      .length !== 1
+  )
+    context.addIssue({
+      code: 'custom',
+      path: ['responseText'],
+      message: 'Escolha exatamente uma resposta, sequência ou automação.',
+    })
+})
+const updateSchema = triggerInputSchema.partial().extend({ id: z.uuid() })
 const deleteSchema = z.object({ id: z.string().uuid() })
 
 async function bookingPageBelongs(
@@ -41,6 +55,33 @@ async function bookingPageBelongs(
   return Boolean(count)
 }
 
+async function destinationBelongs(
+  context: Awaited<ReturnType<typeof requireWorkspaceContext>>,
+  destination: { sequenceId?: string | null; flowId?: string | null },
+) {
+  if (destination.sequenceId) {
+    const { count, error } = await context.supabase
+      .from('sequences')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', context.workspaceId)
+      .eq('id', destination.sequenceId)
+      .eq('is_active', true)
+    if (error) throw error
+    if (!count) return false
+  }
+  if (destination.flowId) {
+    const { count, error } = await context.supabase
+      .from('automation_flows')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', context.workspaceId)
+      .eq('id', destination.flowId)
+      .eq('status', 'published')
+    if (error) throw error
+    if (!count) return false
+  }
+  return true
+}
+
 export const Route = createFileRoute('/api/triggers')({
   server: {
     handlers: {
@@ -52,11 +93,13 @@ export const Route = createFileRoute('/api/triggers')({
             { data: cooldowns, error: cooldownsError },
             { data: runs, error: runsError },
             { data: bookingPages, error: bookingPagesError },
+            { data: flows, error: flowsError },
+            { data: sequences, error: sequencesError },
           ] = await Promise.all([
             context.supabase
               .from('triggers')
               .select(
-                'id,name,source,keyword,match_mode,response_text,post_id,cooldown_hours,is_active,booking_page_id,created_at',
+                'id,name,source,keyword,match_mode,response_text,sequence_id,flow_id,post_id,cooldown_hours,is_active,booking_page_id,created_at',
               )
               .eq('workspace_id', context.workspaceId)
               .order('created_at'),
@@ -74,11 +117,25 @@ export const Route = createFileRoute('/api/triggers')({
               .eq('workspace_id', context.workspaceId)
               .eq('is_active', true)
               .order('title'),
+            context.supabase
+              .from('automation_flows')
+              .select('id,name,current_version')
+              .eq('workspace_id', context.workspaceId)
+              .eq('status', 'published')
+              .order('name'),
+            context.supabase
+              .from('sequences')
+              .select('id,name')
+              .eq('workspace_id', context.workspaceId)
+              .eq('is_active', true)
+              .order('name'),
           ])
           if (error) throw error
           if (cooldownsError) throw cooldownsError
           if (runsError) throw runsError
           if (bookingPagesError) throw bookingPagesError
+          if (flowsError) throw flowsError
+          if (sequencesError) throw sequencesError
           const counts = new Map<string, number>()
           for (const item of cooldowns)
             counts.set(item.trigger_id, (counts.get(item.trigger_id) ?? 0) + 1)
@@ -101,6 +158,8 @@ export const Route = createFileRoute('/api/triggers')({
               keyword: trigger.keyword,
               matchMode: trigger.match_mode,
               responseText: trigger.response_text,
+              sequenceId: trigger.sequence_id,
+              flowId: trigger.flow_id,
               postId: trigger.post_id,
               cooldownHours: trigger.cooldown_hours,
               isActive: trigger.is_active,
@@ -110,6 +169,8 @@ export const Route = createFileRoute('/api/triggers')({
               failed: runCounts.get(trigger.id)?.failed ?? 0,
             })),
             bookingPages,
+            flows,
+            sequences,
           })
         } catch (error) {
           return apiErrorResponse(error, 'Falha ao consultar gatilhos.')
@@ -126,6 +187,11 @@ export const Route = createFileRoute('/api/triggers')({
           if (!(await bookingPageBelongs(context, body.bookingPageId)))
             return Response.json(
               { error: 'Agenda não pertence ao workspace.' },
+              { status: 422 },
+            )
+          if (!(await destinationBelongs(context, body)))
+            return Response.json(
+              { error: 'Destino não pertence ao workspace ou não está ativo.' },
               { status: 422 },
             )
           if (body.postId) {
@@ -150,7 +216,9 @@ export const Route = createFileRoute('/api/triggers')({
               source: body.source,
               keyword: body.keyword,
               match_mode: body.matchMode,
-              response_text: body.responseText,
+              response_text: body.responseText ?? null,
+              sequence_id: body.sequenceId ?? null,
+              flow_id: body.flowId ?? null,
               post_id: body.postId ?? null,
               cooldown_hours: body.cooldownHours,
               is_active: body.isActive,
@@ -177,6 +245,48 @@ export const Route = createFileRoute('/api/triggers')({
               { error: 'Agenda não pertence ao workspace.' },
               { status: 422 },
             )
+          const { data: current, error: currentError } = await context.supabase
+            .from('triggers')
+            .select('response_text,sequence_id,flow_id')
+            .eq('workspace_id', context.workspaceId)
+            .eq('id', body.id)
+            .maybeSingle()
+          if (currentError) throw currentError
+          if (!current)
+            return Response.json(
+              { error: 'Gatilho não encontrado.' },
+              { status: 404 },
+            )
+          const destination = {
+            responseText:
+              body.responseText !== undefined
+                ? body.responseText
+                : current.response_text,
+            sequenceId:
+              body.sequenceId !== undefined
+                ? body.sequenceId
+                : current.sequence_id,
+            flowId: body.flowId !== undefined ? body.flowId : current.flow_id,
+          }
+          if (
+            [
+              destination.responseText,
+              destination.sequenceId,
+              destination.flowId,
+            ].filter(Boolean).length !== 1
+          )
+            return Response.json(
+              {
+                error:
+                  'Escolha exatamente uma resposta, sequência ou automação.',
+              },
+              { status: 422 },
+            )
+          if (!(await destinationBelongs(context, destination)))
+            return Response.json(
+              { error: 'Destino não pertence ao workspace ou não está ativo.' },
+              { status: 422 },
+            )
           if (body.postId) {
             const { data: post, error: postError } = await context.supabase
               .from('posts_cache')
@@ -198,6 +308,9 @@ export const Route = createFileRoute('/api/triggers')({
           if (body.matchMode !== undefined) changes.match_mode = body.matchMode
           if (body.responseText !== undefined)
             changes.response_text = body.responseText
+          if (body.sequenceId !== undefined)
+            changes.sequence_id = body.sequenceId
+          if (body.flowId !== undefined) changes.flow_id = body.flowId
           if (body.postId !== undefined) changes.post_id = body.postId
           if (body.cooldownHours !== undefined)
             changes.cooldown_hours = body.cooldownHours

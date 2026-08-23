@@ -1,6 +1,7 @@
 /** Normaliza webhooks Meta, persiste a inbox e agenda automações elegíveis. */
 import '@tanstack/react-start/server-only'
 import { suggestInstagramReply } from './ai.server'
+import { startAutomationExecution } from './automation-engine.server'
 import { isOptOutKeyword } from './compliance'
 import { getServerEnv } from './env.server'
 import { assertRateLimit } from './rate-limit.server'
@@ -269,7 +270,7 @@ async function matchAndScheduleTrigger(input: {
   const { data: triggers, error } = await input.supabase
     .from('triggers')
     .select(
-      'id,keyword,match_mode,response_text,sequence_id,post_id,cooldown_hours,auto_tag_id,booking_page_id',
+      'id,keyword,match_mode,response_text,sequence_id,flow_id,post_id,cooldown_hours,auto_tag_id,booking_page_id',
     )
     .eq('workspace_id', input.workspaceId)
     .eq('source', source)
@@ -403,7 +404,24 @@ async function matchAndScheduleTrigger(input: {
       bookingPageId: trigger.booking_page_id,
     }
     let scheduledJobId: string | null = null
-    if (trigger.sequence_id) {
+    let flowExecutionId: string | null = null
+    if (trigger.flow_id) {
+      const execution = await startAutomationExecution(
+        {
+          workspaceId: input.workspaceId,
+          flowId: trigger.flow_id,
+          contactId: input.contactId,
+          platform: 'instagram',
+          idempotencyKey: `trigger:${trigger.id}:interaction:${input.interactionId}`,
+          triggerId: trigger.id,
+          sourceInteractionId: input.interactionId,
+          context: commonPayload,
+        },
+        input.supabase,
+      )
+      scheduledJobId = execution.jobId
+      flowExecutionId = execution.executionId
+    } else if (trigger.sequence_id) {
       const { data: enrollment, error: enrollmentError } = await input.supabase
         .from('sequence_enrollments')
         .upsert(
@@ -466,7 +484,11 @@ async function matchAndScheduleTrigger(input: {
     }
     await input.supabase
       .from('automation_runs')
-      .update({ status: 'scheduled', scheduled_job_id: scheduledJobId })
+      .update({
+        status: 'scheduled',
+        scheduled_job_id: scheduledJobId,
+        flow_execution_id: flowExecutionId,
+      })
       .eq('id', automationRun.id)
     return true
   }

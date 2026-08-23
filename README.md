@@ -15,6 +15,7 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | Webhooks Meta             | Instagram + WhatsApp com HMAC, idempotência, Inbox e worker                 |
 | Segurança de entrega      | Claim persistente; resposta ambígua não é reenviada automaticamente         |
 | Hardening do backend      | JWT + RLS, ingestão transacional, SKIP LOCKED e limites distribuídos        |
+| Motor de automações       | DAG versionado, campos tipados, auditoria, delay, condição e A/B            |
 | Reconciliação da fila     | Postgres/BullMQ por `jobId` canônico                                        |
 | OAuth Instagram           | Login, token cifrado por tenant, assinatura e validação implementados       |
 | WhatsApp Cloud API        | Embedded Signup, WABA, telefone, templates e receipts implementados         |
@@ -36,7 +37,9 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
   em lote, elegibilidade e CSV.
 - Gatilhos por comentário, DM, resposta de story ou mensagem do WhatsApp.
 - Embedded Signup do WhatsApp, registro do telefone, sincronização de templates e mídia autenticada.
-- Sequências: scheduler e política de passos existem; o editor completo ainda é parcial.
+- Automações: resposta simples, sequência legada e motor DAG versionado com
+  mensagem, ação, condição, delay e randomização A/B; o editor visual ainda
+  será conectado ao novo contrato.
 - Agentes de IA em modo copiloto ou autônomo.
 - Reengajamento: preview bloqueado; campanha persistida e disparo em massa ainda não estão liberados.
 - Calendário operacional com mês/semana/agenda, CRUD, Google Calendar/Tasks,
@@ -65,7 +68,8 @@ flowchart LR
     Webhook -->|"Evento idempotente"| Redis["Redis / BullMQ"]
     Redis --> Worker["Worker Meta multicanal"]
     Worker --> Supabase
-    Worker --> Scheduler["scheduled_jobs"]
+    Worker --> Engine["DAG versionado"]
+    Engine --> Scheduler["scheduled_jobs"]
     Scheduler --> Compliance["Motor de compliance"]
     Compliance -->|"Permitido"| Sender["Meta Sender"]
     Compliance -->|"Bloqueado"| Audit["interactions_log"]
@@ -80,6 +84,9 @@ flowchart LR
 O backend recebe o corpo bruto do webhook, valida `X-Hub-Signature-256`, persiste uma chave idempotente e enfileira o processamento. O worker normaliza contatos e interações; o scheduler executa sequências e chama o motor de compliance imediatamente antes de qualquer envio. DMs recebem um claim persistente antes da chamada externa; timeout ou resposta ambígua vira estado `unknown` e não dispara retry automático.
 
 A revisão de segurança mais recente está documentada em [Auditoria do backend core — 20/08/2026](docs/AUDITORIA_BACKEND_CORE_2026-08-20.md).
+
+O desenho e o runbook do novo motor estão em
+[Arquitetura do backend e automações DAG — 22/08/2026](docs/ARQUITETURA_BACKEND_AUTOMACOES_DAG_2026-08-22.md).
 
 A auditoria transversal desta release está em
 [Auditoria de pré-produção, segurança, funções e SEO — 20/08/2026](docs/AUDITORIA_PRE_PRODUCAO_SEGURANCA_SEO_2026-08-20.md).

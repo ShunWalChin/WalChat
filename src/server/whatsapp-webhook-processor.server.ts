@@ -1,6 +1,7 @@
 /** Normaliza mensagens/status do WhatsApp e alimenta Inbox e automações. */
 import '@tanstack/react-start/server-only'
 import { suggestInstagramReply } from './ai.server'
+import { startAutomationExecution } from './automation-engine.server'
 import { isOptOutKeyword } from './compliance'
 import { assertRateLimit } from './rate-limit.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
@@ -255,7 +256,7 @@ async function scheduleWhatsAppTrigger(input: {
   const { data: triggers, error } = await input.supabase
     .from('triggers')
     .select(
-      'id,keyword,match_mode,response_text,sequence_id,cooldown_hours,auto_tag_id,booking_page_id',
+      'id,keyword,match_mode,response_text,sequence_id,flow_id,cooldown_hours,auto_tag_id,booking_page_id',
     )
     .eq('workspace_id', input.workspaceId)
     .eq('source', 'whatsapp')
@@ -270,38 +271,51 @@ async function scheduleWhatsAppTrigger(input: {
       (trigger.match_mode === 'contains' && normalized.includes(keyword))
     ))
       continue
-    const { data: cooldown, error: cooldownError } = await input.supabase
-      .from('trigger_cooldowns')
-      .select('last_fired_at')
-      .eq('trigger_id', trigger.id)
-      .eq('contact_id', input.contactId)
-      .maybeSingle()
-    if (cooldownError) throw cooldownError
-    if (
-      cooldown &&
-      Date.now() - new Date(cooldown.last_fired_at).getTime() <
-        trigger.cooldown_hours * 3_600_000
-    )
-      continue
-
-    const { data: run, error: runError } = await input.supabase
+    const { data: existingRun, error: existingRunError } = await input.supabase
       .from('automation_runs')
-      .upsert(
-        {
-          workspace_id: input.workspaceId,
-          trigger_id: trigger.id,
-          contact_id: input.contactId,
-          interaction_id: input.interactionId,
-          source: 'whatsapp',
-          status: 'matched',
-          metadata: { platform: 'whatsapp' },
-        },
-        { onConflict: 'trigger_id,interaction_id' },
-      )
       .select('id,status,scheduled_job_id')
-      .single()
-    if (runError) throw runError
-    if (run.status !== 'matched') return true
+      .eq('trigger_id', trigger.id)
+      .eq('interaction_id', input.interactionId)
+      .maybeSingle()
+    if (existingRunError) throw existingRunError
+    if (existingRun && existingRun.status !== 'matched') return true
+    if (!existingRun) {
+      const { data: cooldown, error: cooldownError } = await input.supabase
+        .from('trigger_cooldowns')
+        .select('last_fired_at')
+        .eq('trigger_id', trigger.id)
+        .eq('contact_id', input.contactId)
+        .maybeSingle()
+      if (cooldownError) throw cooldownError
+      if (
+        cooldown &&
+        Date.now() - new Date(cooldown.last_fired_at).getTime() <
+          trigger.cooldown_hours * 3_600_000
+      )
+        continue
+    }
+
+    let run = existingRun
+    if (!run) {
+      const { data, error: runError } = await input.supabase
+        .from('automation_runs')
+        .upsert(
+          {
+            workspace_id: input.workspaceId,
+            trigger_id: trigger.id,
+            contact_id: input.contactId,
+            interaction_id: input.interactionId,
+            source: 'whatsapp',
+            status: 'matched',
+            metadata: { platform: 'whatsapp' },
+          },
+          { onConflict: 'trigger_id,interaction_id' },
+        )
+        .select('id,status,scheduled_job_id')
+        .single()
+      if (runError) throw runError
+      run = data
+    }
     await input.supabase.from('trigger_cooldowns').upsert(
       {
         workspace_id: input.workspaceId,
@@ -324,7 +338,29 @@ async function scheduleWhatsAppTrigger(input: {
       )
 
     let scheduledJobId: string | null = null
-    if (trigger.sequence_id) {
+    let flowExecutionId: string | null = null
+    if (trigger.flow_id) {
+      const execution = await startAutomationExecution(
+        {
+          workspaceId: input.workspaceId,
+          flowId: trigger.flow_id,
+          contactId: input.contactId,
+          platform: 'whatsapp',
+          idempotencyKey: `trigger:${trigger.id}:interaction:${input.interactionId}`,
+          triggerId: trigger.id,
+          sourceInteractionId: input.interactionId,
+          context: {
+            senderId: input.senderId,
+            triggerId: trigger.id,
+            automationRunId: run.id,
+            bookingPageId: trigger.booking_page_id,
+          },
+        },
+        input.supabase,
+      )
+      scheduledJobId = execution.jobId
+      flowExecutionId = execution.executionId
+    } else if (trigger.sequence_id) {
       const { data: enrollment, error: enrollmentError } = await input.supabase
         .from('sequence_enrollments')
         .upsert(
@@ -395,7 +431,11 @@ async function scheduleWhatsAppTrigger(input: {
     }
     await input.supabase
       .from('automation_runs')
-      .update({ status: 'scheduled', scheduled_job_id: scheduledJobId })
+      .update({
+        status: 'scheduled',
+        scheduled_job_id: scheduledJobId,
+        flow_execution_id: flowExecutionId,
+      })
       .eq('id', run.id)
     return true
   }

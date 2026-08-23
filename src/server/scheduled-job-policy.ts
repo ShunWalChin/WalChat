@@ -1,7 +1,10 @@
 /** Regras puras do scheduler, separadas do processo contínuo para teste. */
 import { OutboundDeliveryError } from './outbound-delivery.server'
 
-export const IMPLEMENTED_SCHEDULED_JOB_KINDS = ['sequence_step'] as const
+export const IMPLEMENTED_SCHEDULED_JOB_KINDS = [
+  'sequence_step',
+  'automation_step',
+] as const
 export type ImplementedScheduledJobKind =
   (typeof IMPLEMENTED_SCHEDULED_JOB_KINDS)[number]
 
