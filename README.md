@@ -21,6 +21,7 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | WhatsApp Cloud API        | Embedded Signup, WABA, telefone, templates e receipts implementados         |
 | OpenAI / Gemini           | Responses API + Gemini opcional, configuráveis por workspace                |
 | Google Workspace          | OAuth PKCE, Calendar, Meet, Tasks, Free/Busy e links públicos implementados |
+| Integração n8n            | API key, HMAC, inbox/outbox idempotente e wizard por workspace              |
 | Site público e SEO        | 404, CTA, FAQ, provas técnicas, sitemap, robots, OG e JSON-LD               |
 | LGPD e Analytics          | Pedido de exclusão persistido e GA4 bloqueado até consentimento             |
 | Modo atual da homologação | `DEMO_MODE=true`                                                            |
@@ -52,6 +53,8 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 - Comment-to-DM por publicação real e Inbox com atribuição, prioridade e notas.
 - Copiloto com recuperação de conhecimento e indicação das fontes usadas.
 - Manual HTML pesquisável de acessos, configuração, operação e Go-Live.
+- Wizard de integrações com diagnóstico de Meta, WhatsApp, Google, IA e n8n.
+- Ponte n8n bidirecional com eventos automáticos e ações inbound controladas.
 - Landing pública com CTA acima da dobra e fixo no mobile, links internos,
   casos de uso tecnicamente validados, avaliações verificadas, FAQ, promessa de
   resposta, localização configurável, 404 e página de obrigado.
@@ -79,6 +82,8 @@ flowchart LR
     Google["Google Calendar + Tasks"] <-->|"OAuth PKCE + sync"| Webhook
     Booking["Página pública de agenda"] -->|"Reserva transacional"| Supabase
     Booking -->|"Free/Busy + Meet"| Google
+    Scheduler -->|"Outbox HMAC"| N8N["n8n"]
+    N8N -->|"Webhook assinado"| Webhook
 ```
 
 O backend recebe o corpo bruto do webhook, valida `X-Hub-Signature-256`, persiste uma chave idempotente e enfileira o processamento. O worker normaliza contatos e interações; o scheduler executa sequências e chama o motor de compliance imediatamente antes de qualquer envio. DMs recebem um claim persistente antes da chamada externa; timeout ou resposta ambígua vira estado `unknown` e não dispara retry automático.
@@ -290,6 +295,10 @@ chaves administrativas ou credenciais de IA.
 | `POST/GET`  | `/api/integrations/google/start`, `callback` | OAuth Google com state, PKCE e token cifrado  |
 | `GET/PATCH` | `/api/integrations/google/status`            | Seleção de calendário e lista do Tasks        |
 | `POST`      | `/api/integrations/google/sync`              | Sync incremental Calendar e Tasks             |
+| `GET/PUT`   | `/api/integrations/n8n/status`, `configure`  | Wizard e credenciais cifradas do n8n          |
+| `POST`      | `/api/integrations/n8n/test`, `events`       | Teste e despacho idempotente de eventos       |
+| `DELETE`    | `/api/integrations/n8n/disconnect`           | Remove conexão e secrets do workspace         |
+| `POST`      | `/api/public/webhooks/n8n/:connectionId`     | HMAC, anti-replay e ações inbound controladas |
 | `POST`      | `/api/messages/send`                         | Envio humano com compliance                   |
 | `POST`      | `/api/compliance/check`                      | Decisão pura de elegibilidade                 |
 | `POST`      | `/api/data-deletion`                         | Signed request de exclusão da Meta            |
@@ -297,6 +306,10 @@ chaves administrativas ou credenciais de IA.
 | `GET`       | `/api/public/reviews`                        | Avaliações verificadas e consentidas          |
 
 Contratos, respostas e códigos HTTP: [API e webhooks](docs/API_E_WEBHOOKS.md).
+
+Configuração, payloads e operação do n8n: [Integração n8n](docs/INTEGRACAO_N8N.md).
+O escopo comparado com o produto de referência está em
+[Paridade Wal Chat × ManyChat](docs/PARIDADE_MANYCHAT_2026-08-22.md).
 
 ## Banco e multi-tenancy
 

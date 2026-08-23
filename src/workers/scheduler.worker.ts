@@ -25,6 +25,8 @@ import {
   processAutomationStep,
   resumeAutomationAfterMessage,
 } from '../server/automation-engine.server'
+import { n8nDispatchSchema } from '../server/n8n-contract'
+import { sendN8nEvent } from '../server/n8n-integration.server'
 
 /** Falha cedo: um scheduler sem service role não pode operar com segurança. */
 function requireSupabase() {
@@ -216,6 +218,8 @@ async function processDueJobs() {
     try {
       if (job.kind === 'sequence_step') await processSequenceJob(job)
       else if (job.kind === 'automation_step') await processAutomationStep(job)
+      else if (job.kind === 'integration_event')
+        await processIntegrationEventJob(job)
       else throw new UnsupportedScheduledJobError(job.kind)
       const { error: completedError } = await supabase
         .from('scheduled_jobs')
@@ -263,6 +267,25 @@ async function processDueJobs() {
       )
     }
   }
+}
+
+/** Entrega a outbox de integrações com o mesmo delivery ID nos retries. */
+async function processIntegrationEventJob(job: {
+  id: string
+  workspace_id: string
+  payload: Record<string, unknown>
+}) {
+  const input = n8nDispatchSchema.parse({
+    eventType: job.payload.eventType,
+    payload: job.payload.eventData,
+    deliveryId: job.payload.deliveryId,
+  })
+  await sendN8nEvent({
+    workspaceId: job.workspace_id,
+    eventType: input.eventType,
+    payload: input.payload,
+    deliveryId: input.deliveryId,
+  })
 }
 
 /** Resolve o passo atual, revalida o contato, envia e agenda o passo seguinte. */

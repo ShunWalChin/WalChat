@@ -41,9 +41,12 @@ async function requestJson(path, init = {}) {
 
 const unauthorized = await fetch(`${appUrl}/api/integrations/meta/status`)
 assert(unauthorized.status === 401, 'Status Meta deve exigir autenticação.')
+const unauthorizedN8n = await fetch(`${appUrl}/api/integrations/n8n/status`)
+assert(unauthorizedN8n.status === 401, 'Status n8n deve exigir autenticação.')
 
 const [
   meta,
+  n8n,
   ai,
   agents,
   inbox,
@@ -56,6 +59,7 @@ const [
   media,
 ] = await Promise.all([
   requestJson('/api/integrations/meta/status'),
+  requestJson('/api/integrations/n8n/status'),
   requestJson('/api/ai/settings'),
   requestJson('/api/ai/agents'),
   requestJson('/api/inbox'),
@@ -74,6 +78,11 @@ assert(
   Array.isArray(meta.whatsapp?.requiredScopes),
   'Status WhatsApp sem scopes.',
 )
+assert(
+  typeof n8n.permissions?.canManage === 'boolean',
+  'Status n8n sem permissões.',
+)
+assert(Array.isArray(n8n.recentDeliveries), 'Histórico n8n inválido.')
 assert(ai.settings?.provider, 'Configuração de IA ausente.')
 assert(Array.isArray(agents.agents), 'Lista de agentes inválida.')
 assert(Array.isArray(inbox.conversations), 'Inbox inválida.')
@@ -179,6 +188,7 @@ console.log(
     {
       privateApiAuth: 'ok',
       metaStatus: 'ok',
+      n8nStatus: 'ok',
       aiSettings: 'ok',
       agentsCrud: 'ok',
       knowledgeCrud: 'ok',

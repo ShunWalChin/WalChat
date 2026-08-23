@@ -20,6 +20,7 @@ const htmlRoutes = [
   '/auto-like',
   '/insights',
   '/configuracoes',
+  '/integracoes',
   '/manual',
   '/privacidade',
   '/termos',

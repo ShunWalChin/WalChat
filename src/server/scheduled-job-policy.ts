@@ -4,6 +4,7 @@ import { OutboundDeliveryError } from './outbound-delivery.server'
 export const IMPLEMENTED_SCHEDULED_JOB_KINDS = [
   'sequence_step',
   'automation_step',
+  'integration_event',
 ] as const
 export type ImplementedScheduledJobKind =
   (typeof IMPLEMENTED_SCHEDULED_JOB_KINDS)[number]

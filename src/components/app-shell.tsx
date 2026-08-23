@@ -4,6 +4,7 @@ import {
   BarChart3,
   BookOpenCheck,
   Bot,
+  Cable,
   CalendarDays,
   ChevronDown,
   ContactRound,
@@ -62,6 +63,10 @@ const groups = [
       { to: '/insights', label: 'Insights', icon: BarChart3 },
     ],
   },
+  {
+    label: 'SISTEMA',
+    items: [{ to: '/integracoes', label: 'Integrações', icon: Cable }],
+  },
 ] as const
 
 const titles: Record<string, { eyebrow: string; title: string }> = {
@@ -81,6 +86,10 @@ const titles: Record<string, { eyebrow: string; title: string }> = {
   '/calendario': { eyebrow: 'PLANEJAMENTO EDITORIAL', title: 'Calendário' },
   '/publicar': { eyebrow: 'ESTÚDIO DE CONTEÚDO', title: 'Publicar' },
   '/insights': { eyebrow: 'PERFORMANCE DO INSTAGRAM', title: 'Insights' },
+  '/integracoes': {
+    eyebrow: 'ECOSSISTEMA E AUTOMAÇÕES',
+    title: 'Integrações',
+  },
   '/configuracoes': { eyebrow: 'CONTA E INTEGRAÇÕES', title: 'Configurações' },
   '/manual': { eyebrow: 'ACESSOS, OPERAÇÃO E CONFIGURAÇÃO', title: 'Manual' },
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { OutboundDeliveryError } from './outbound-delivery.server'
 import {
+  IMPLEMENTED_SCHEDULED_JOB_KINDS,
   UnsupportedScheduledJobError,
   isTerminalScheduledJobError,
   operationalErrorCode,
@@ -8,6 +9,10 @@ import {
 } from './scheduled-job-policy'
 
 describe('scheduled job policy', () => {
+  it('mantém eventos de integração dentro do runtime implementado', () => {
+    expect(IMPLEMENTED_SCHEDULED_JOB_KINDS).toContain('integration_event')
+  })
+
   it('falha terminalmente para kind não implementado', () => {
     const error = new UnsupportedScheduledJobError('campaign_message')
     expect(isTerminalScheduledJobError(error)).toBe(true)

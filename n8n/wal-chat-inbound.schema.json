@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://walchat.com.br/schemas/n8n-inbound-v1.json",
+  "title": "Wal Chat n8n inbound event v1",
+  "oneOf": [
+    { "$ref": "#/$defs/contactUpsert" },
+    { "$ref": "#/$defs/contactTagApply" },
+    { "$ref": "#/$defs/automationExecute" }
+  ],
+  "$defs": {
+    "base": {
+      "type": "object",
+      "properties": { "schemaVersion": { "const": 1 } },
+      "required": ["schemaVersion"]
+    },
+    "contactUpsert": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "properties": {
+            "schemaVersion": { "const": 1 },
+            "eventType": { "const": "contact.upsert" },
+            "data": {
+              "type": "object",
+              "properties": {
+                "externalId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "fullName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "email": {
+                  "type": "string",
+                  "format": "email",
+                  "maxLength": 254
+                },
+                "phone": { "type": "string", "minLength": 7, "maxLength": 32 },
+                "company": { "type": "string", "maxLength": 120 },
+                "jobTitle": { "type": "string", "maxLength": 120 },
+                "lifecycleStage": {
+                  "enum": ["lead", "engaged", "customer", "vip", "inactive"]
+                },
+                "leadScore": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "marketingConsent": {
+                  "enum": ["unknown", "granted", "revoked"]
+                },
+                "customFields": { "type": "object" }
+              },
+              "required": ["externalId"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["schemaVersion", "eventType", "data"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "contactTagApply": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "properties": {
+            "schemaVersion": { "const": 1 },
+            "eventType": { "const": "contact.tag.apply" },
+            "data": {
+              "type": "object",
+              "properties": {
+                "externalId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "tagName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "tagColor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+              },
+              "required": ["externalId", "tagName"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["schemaVersion", "eventType", "data"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "automationExecute": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "properties": {
+            "schemaVersion": { "const": 1 },
+            "eventType": { "const": "automation.execute" },
+            "data": {
+              "type": "object",
+              "properties": {
+                "contactId": { "type": "string", "format": "uuid" },
+                "flowId": { "type": "string", "format": "uuid" },
+                "platform": { "enum": ["instagram", "whatsapp"] },
+                "context": { "type": "object" }
+              },
+              "required": ["contactId", "flowId", "platform"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["schemaVersion", "eventType", "data"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
