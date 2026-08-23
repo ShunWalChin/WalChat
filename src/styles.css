@@ -14,6 +14,14 @@
   --green: #1d7a55;
   --red: #c93c35;
   --yellow: #f1b942;
+  --glass-surface: rgba(251, 250, 247, 0.82);
+  --glass-surface-strong: rgba(255, 254, 250, 0.92);
+  --glass-surface-dark: rgba(21, 21, 19, 0.92);
+  --glass-border: rgba(255, 255, 255, 0.72);
+  --glass-line: rgba(174, 167, 153, 0.42);
+  --glass-blur: blur(16px) saturate(118%);
+  --glass-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.74) inset, 0 14px 36px rgba(35, 30, 24, 0.075);
   --shadow:
     0 1px 1px rgba(17, 17, 15, 0.04), 0 12px 30px rgba(17, 17, 15, 0.045);
   font-family: 'Inter', sans-serif;
@@ -31,7 +39,18 @@ body,
 }
 body {
   margin: 0;
-  background: var(--paper);
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(
+      circle at 12% 9%,
+      rgba(240, 90, 40, 0.09),
+      transparent 31rem
+    ),
+    radial-gradient(
+      circle at 92% 14%,
+      rgba(47, 102, 208, 0.065),
+      transparent 34rem
+    );
   color: var(--ink);
   font-size: 14px;
 }
@@ -186,10 +205,12 @@ select:focus-visible {
   font-size: 12px;
 }
 .card {
-  background: var(--card);
-  border: 1px solid var(--line);
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-line);
   border-radius: 14px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
 }
 .stack-xl,
 .stack-lg,
@@ -251,7 +272,9 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   border-right: 1px solid #252521;
-  background: #151513;
+  background: var(--glass-surface-dark);
+  -webkit-backdrop-filter: blur(18px) saturate(112%);
+  backdrop-filter: blur(18px) saturate(112%);
   color: #f4f2ed;
   padding: 20px 14px 14px;
   overflow-y: auto;
@@ -430,9 +453,11 @@ select:focus-visible {
   align-items: center;
   gap: 14px;
   padding: 0 28px;
-  border-bottom: 1px solid var(--line);
-  background: rgba(242, 240, 234, 0.92);
-  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.66);
+  background: rgba(242, 240, 234, 0.74);
+  box-shadow: 0 8px 24px rgba(35, 30, 24, 0.035);
+  -webkit-backdrop-filter: blur(18px) saturate(122%);
+  backdrop-filter: blur(18px) saturate(122%);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -8417,4 +8442,170 @@ select:focus {
   color: #795f27;
   font-size: 10px;
   line-height: 1.55;
+}
+
+/* Glass urbano: profundidade sutil sem competir com dados ou reduzir contraste. */
+.main-panel,
+.page-content {
+  background: transparent;
+}
+.account-picker,
+.usage-card,
+.nav-item.active {
+  border-color: rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.065);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.055) inset;
+}
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.085);
+}
+.connection-pill,
+.button-light,
+.button-outline:hover {
+  border-color: var(--glass-border);
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.stat-card,
+.mini-stats > div,
+.quick-card,
+.landing-feature-grid article,
+.review-grid article,
+.not-found-page > section,
+.thank-you-card {
+  border-color: var(--glass-line);
+  background: var(--glass-surface);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.stat-card {
+  border-top-color: var(--ink);
+}
+.stat-card.tone-orange {
+  border-top-color: var(--orange);
+}
+.stat-card.tone-blue {
+  border-top-color: var(--blue);
+}
+.stat-card.tone-green {
+  border-top-color: var(--green);
+}
+.quick-card:hover {
+  background: var(--glass-surface-strong);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.84) inset,
+    0 18px 38px rgba(35, 30, 24, 0.11);
+}
+.auth-form-side,
+.landing-content,
+.not-found-page,
+.thank-you-page {
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(
+      circle at 82% 12%,
+      rgba(47, 102, 208, 0.065),
+      transparent 25rem
+    ),
+    radial-gradient(
+      circle at 16% 80%,
+      rgba(240, 90, 40, 0.075),
+      transparent 28rem
+    );
+}
+.auth-form-wrap {
+  width: min(100%, 430px);
+  padding: 28px;
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  background: var(--glass-surface);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+input,
+textarea,
+select,
+.search-field,
+.composer-box,
+.prompt-box {
+  background-color: rgba(255, 255, 255, 0.82);
+}
+.compliance-banner {
+  background: rgba(237, 247, 241, 0.82);
+  box-shadow: 0 12px 30px rgba(29, 122, 85, 0.06);
+  -webkit-backdrop-filter: blur(12px) saturate(112%);
+  backdrop-filter: blur(12px) saturate(112%);
+}
+.prototype-notice {
+  background: rgba(255, 247, 223, 0.86);
+  box-shadow: 0 12px 30px rgba(101, 73, 12, 0.055);
+  -webkit-backdrop-filter: blur(12px) saturate(110%);
+  backdrop-filter: blur(12px) saturate(110%);
+}
+.analytics-consent {
+  border-color: var(--glass-border);
+  background: var(--glass-surface-strong);
+  -webkit-backdrop-filter: blur(18px) saturate(118%);
+  backdrop-filter: blur(18px) saturate(118%);
+}
+
+@supports not (
+  (-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))
+) {
+  .card,
+  .stat-card,
+  .mini-stats > div,
+  .quick-card,
+  .landing-feature-grid article,
+  .review-grid article,
+  .auth-form-wrap,
+  .analytics-consent,
+  .not-found-page > section,
+  .thank-you-card {
+    background: var(--card);
+  }
+  .topbar {
+    background: rgba(242, 240, 234, 0.97);
+  }
+  .sidebar {
+    background: #151513;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-surface: #fbfaf7;
+    --glass-surface-strong: #fffefa;
+  }
+  .card,
+  .topbar,
+  .sidebar,
+  .stat-card,
+  .mini-stats > div,
+  .quick-card,
+  .auth-form-wrap,
+  .analytics-consent,
+  .compliance-banner,
+  .prototype-notice {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (max-width: 650px) {
+  .auth-form-wrap {
+    padding: 24px 20px;
+    border-radius: 16px;
+  }
+  .card,
+  .stat-card,
+  .mini-stats > div,
+  .quick-card {
+    -webkit-backdrop-filter: blur(10px) saturate(112%);
+    backdrop-filter: blur(10px) saturate(112%);
+  }
 }
