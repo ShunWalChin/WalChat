@@ -2,7 +2,11 @@
 import '@tanstack/react-start/server-only'
 import IORedis from 'ioredis'
 import { hasValidCredentialEncryptionKey } from './credentials-crypto.server'
-import { getServerEnv } from './env.server'
+import {
+  getInstagramAppConfig,
+  getServerEnv,
+  getWhatsAppAppConfig,
+} from './env.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
 
 export type DependencyStatus = 'up' | 'down' | 'not_configured'
@@ -68,6 +72,8 @@ export async function checkRuntimeReadiness(input?: {
   redisProbe?: () => Promise<void>
 }) {
   const env = getServerEnv()
+  const instagram = getInstagramAppConfig(env)
+  const whatsapp = getWhatsAppAppConfig(env)
   const live = env.DEMO_MODE === 'false'
   const timeoutMs = input?.timeoutMs ?? 2_000
   const supabaseConfigured = Boolean(
@@ -104,15 +110,16 @@ export async function checkRuntimeReadiness(input?: {
     checks,
     capabilities: {
       metaConfigured: Boolean(
-        env.META_APP_ID && env.META_APP_SECRET && env.META_VERIFY_TOKEN,
+        (instagram.appId && instagram.appSecret && instagram.verifyToken) ||
+        (whatsapp.appId && whatsapp.appSecret && whatsapp.verifyToken),
       ),
       instagramConfigured: Boolean(
-        env.META_APP_ID && env.META_APP_SECRET && env.META_VERIFY_TOKEN,
+        instagram.appId && instagram.appSecret && instagram.verifyToken,
       ),
       whatsappEmbeddedSignupConfigured: Boolean(
-        env.META_APP_ID &&
-        env.META_APP_SECRET &&
-        env.META_VERIFY_TOKEN &&
+        whatsapp.appId &&
+        whatsapp.appSecret &&
+        whatsapp.verifyToken &&
         env.META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID,
       ),
       credentialEncryptionConfigured: hasValidCredentialEncryptionKey(),

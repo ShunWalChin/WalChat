@@ -6,7 +6,10 @@ import {
   assertTrustedOrigin,
   requireWorkspaceContext,
 } from '../../../../../server/api-auth.server'
-import { getServerEnv } from '../../../../../server/env.server'
+import {
+  getServerEnv,
+  getWhatsAppAppConfig,
+} from '../../../../../server/env.server'
 import {
   getWhatsAppAccountAccess,
   writeIntegrationAudit,
@@ -45,13 +48,14 @@ export const Route = createFileRoute(
           })
           const debug = await debugWhatsAppAccessToken(account.accessToken)
           const env = getServerEnv()
+          const whatsappApp = getWhatsAppAppConfig(env)
           const scopes = debug.data.scopes ?? []
           const missingScopes = WHATSAPP_REQUIRED_SCOPES.filter(
             (scope) => !scopes.includes(scope),
           )
           const identityValid = Boolean(
             debug.data.is_valid &&
-            debug.data.app_id === env.META_APP_ID &&
+            debug.data.app_id === whatsappApp.appId &&
             whatsappTokenTargetsWaba(
               debug.data.granular_scopes,
               account.wabaId,
@@ -72,10 +76,10 @@ export const Route = createFileRoute(
           })
           const subscribed = Boolean(
             subscription.success &&
-            env.META_APP_ID &&
+            whatsappApp.appId &&
             whatsappSubscriptionsIncludeApp(
               subscriptions.data,
-              env.META_APP_ID,
+              whatsappApp.appId,
             ),
           )
           const ok = identityValid && missingScopes.length === 0 && subscribed

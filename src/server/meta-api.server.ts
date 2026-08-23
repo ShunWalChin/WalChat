@@ -1,7 +1,7 @@
 /** Cliente oficial da Instagram Graph API with Instagram Login. */
 import '@tanstack/react-start/server-only'
 import { createHash, randomBytes } from 'node:crypto'
-import { getServerEnv } from './env.server'
+import { getInstagramAppConfig, getServerEnv } from './env.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
 
 export const META_REQUIRED_SCOPES = [
@@ -88,10 +88,13 @@ async function parseMetaResponse<T>(response: Response): Promise<T> {
 
 export function buildMetaAuthorizationUrl(state: string) {
   const env = getServerEnv()
-  if (!env.META_APP_ID || !env.META_APP_SECRET)
-    throw new Error('META_APP_ID e META_APP_SECRET são obrigatórios.')
+  const app = getInstagramAppConfig(env)
+  if (!app.appId || !app.appSecret)
+    throw new Error(
+      'META_INSTAGRAM_APP_ID e META_INSTAGRAM_APP_SECRET são obrigatórios.',
+    )
   const url = new URL('https://www.instagram.com/oauth/authorize')
-  url.searchParams.set('client_id', env.META_APP_ID)
+  url.searchParams.set('client_id', app.appId)
   url.searchParams.set('redirect_uri', oauthRedirectUri())
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('scope', META_REQUIRED_SCOPES.join(','))
@@ -160,11 +163,12 @@ export async function consumeMetaOAuthState(state: string) {
 
 export async function exchangeMetaAuthorizationCode(code: string) {
   const env = getServerEnv()
-  if (!env.META_APP_ID || !env.META_APP_SECRET)
-    throw new Error('Credenciais do aplicativo Meta ausentes.')
+  const app = getInstagramAppConfig(env)
+  if (!app.appId || !app.appSecret)
+    throw new Error('Credenciais do aplicativo Instagram ausentes.')
   const form = new FormData()
-  form.set('client_id', env.META_APP_ID)
-  form.set('client_secret', env.META_APP_SECRET)
+  form.set('client_id', app.appId)
+  form.set('client_secret', app.appSecret)
   form.set('grant_type', 'authorization_code')
   form.set('redirect_uri', oauthRedirectUri())
   form.set('code', code.replace(/#_$/, ''))
@@ -180,7 +184,7 @@ export async function exchangeMetaAuthorizationCode(code: string) {
 
   const longUrl = new URL('https://graph.instagram.com/access_token')
   longUrl.searchParams.set('grant_type', 'ig_exchange_token')
-  longUrl.searchParams.set('client_secret', env.META_APP_SECRET)
+  longUrl.searchParams.set('client_secret', app.appSecret)
   longUrl.searchParams.set('access_token', shortToken.access_token)
   const longResponse = await fetchMeta(longUrl)
   const longToken = await parseMetaResponse<{

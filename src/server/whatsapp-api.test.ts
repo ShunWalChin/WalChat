@@ -8,13 +8,13 @@ import {
 } from './whatsapp-api.server'
 
 const originalEnv = {
-  META_APP_SECRET: process.env.META_APP_SECRET,
+  META_WHATSAPP_APP_SECRET: process.env.META_WHATSAPP_APP_SECRET,
   META_GRAPH_VERSION: process.env.META_GRAPH_VERSION,
 }
 
 describe('WhatsApp Cloud API client', () => {
   beforeEach(() => {
-    process.env.META_APP_SECRET = 'whatsapp-app-secret'
+    process.env.META_WHATSAPP_APP_SECRET = 'whatsapp-app-secret'
     process.env.META_GRAPH_VERSION = 'v25.0'
   })
 

@@ -2,7 +2,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { apiErrorResponse } from '../../../../server/api-auth.server'
-import { getServerEnv } from '../../../../server/env.server'
+import {
+  getInstagramAppConfig,
+  getServerEnv,
+} from '../../../../server/env.server'
 import { enqueueInstagramWebhook } from '../../../../server/queue.server'
 import {
   INSTAGRAM_WEBHOOK_BODY_LIMIT,
@@ -43,11 +46,12 @@ export const Route = createFileRoute('/api/public/webhooks/instagram')({
         const token = url.searchParams.get('hub.verify_token')
         const challenge = url.searchParams.get('hub.challenge')
         const env = getServerEnv()
+        const app = getInstagramAppConfig(env)
         if (
           mode === 'subscribe' &&
           challenge &&
-          env.META_VERIFY_TOKEN &&
-          token === env.META_VERIFY_TOKEN
+          app.verifyToken &&
+          token === app.verifyToken
         ) {
           return new Response(challenge, {
             status: 200,
@@ -71,7 +75,8 @@ export const Route = createFileRoute('/api/public/webhooks/instagram')({
             'application/json',
           )
           const env = getServerEnv()
-          if (!env.META_APP_SECRET)
+          const app = getInstagramAppConfig(env)
+          if (!app.appSecret)
             return Response.json(
               { error: 'Webhook não configurado.' },
               { status: 503 },
@@ -79,7 +84,7 @@ export const Route = createFileRoute('/api/public/webhooks/instagram')({
           const valid = verifyMetaSignature(
             rawBody,
             request.headers.get('x-hub-signature-256'),
-            env.META_APP_SECRET,
+            app.appSecret,
           )
           if (!valid)
             return Response.json(

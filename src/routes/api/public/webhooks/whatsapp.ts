@@ -2,7 +2,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { apiErrorResponse } from '../../../../server/api-auth.server'
-import { getServerEnv } from '../../../../server/env.server'
+import {
+  getServerEnv,
+  getWhatsAppAppConfig,
+} from '../../../../server/env.server'
 import { enqueueWhatsAppWebhook } from '../../../../server/queue.server'
 import {
   INSTAGRAM_WEBHOOK_BODY_LIMIT,
@@ -23,11 +26,12 @@ export const Route = createFileRoute('/api/public/webhooks/whatsapp')({
       GET: async ({ request }) => {
         const url = new URL(request.url)
         const env = getServerEnv()
+        const app = getWhatsAppAppConfig(env)
         if (
           url.searchParams.get('hub.mode') === 'subscribe' &&
           url.searchParams.get('hub.challenge') &&
-          env.META_VERIFY_TOKEN &&
-          url.searchParams.get('hub.verify_token') === env.META_VERIFY_TOKEN
+          app.verifyToken &&
+          url.searchParams.get('hub.verify_token') === app.verifyToken
         )
           return new Response(url.searchParams.get('hub.challenge'), {
             status: 200,
@@ -48,7 +52,7 @@ export const Route = createFileRoute('/api/public/webhooks/whatsapp')({
             INSTAGRAM_WEBHOOK_BODY_LIMIT,
             'application/json',
           )
-          const secret = getServerEnv().META_APP_SECRET
+          const secret = getWhatsAppAppConfig().appSecret
           if (!secret)
             return Response.json(
               { error: 'Webhook não configurado.' },

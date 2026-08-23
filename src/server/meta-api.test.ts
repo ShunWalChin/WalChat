@@ -11,16 +11,16 @@ import {
 } from './meta-api.server'
 
 const originalEnv = {
-  META_APP_ID: process.env.META_APP_ID,
-  META_APP_SECRET: process.env.META_APP_SECRET,
+  META_INSTAGRAM_APP_ID: process.env.META_INSTAGRAM_APP_ID,
+  META_INSTAGRAM_APP_SECRET: process.env.META_INSTAGRAM_APP_SECRET,
   META_OAUTH_REDIRECT_URI: process.env.META_OAUTH_REDIRECT_URI,
   META_GRAPH_VERSION: process.env.META_GRAPH_VERSION,
 }
 
 describe('Meta Instagram Login client', () => {
   beforeEach(() => {
-    process.env.META_APP_ID = '123456789'
-    process.env.META_APP_SECRET = 'app-secret-teste'
+    process.env.META_INSTAGRAM_APP_ID = '123456789'
+    process.env.META_INSTAGRAM_APP_SECRET = 'app-secret-teste'
     process.env.META_OAUTH_REDIRECT_URI =
       'https://wal.example/api/integrations/meta/callback'
     process.env.META_GRAPH_VERSION = 'v25.0'
@@ -37,6 +37,7 @@ describe('Meta Instagram Login client', () => {
   it('gera OAuth com state, redirect exato e todos os scopes atuais', () => {
     const url = new URL(buildMetaAuthorizationUrl('state-anti-csrf'))
     expect(url.origin).toBe('https://www.instagram.com')
+    expect(url.searchParams.get('client_id')).toBe('123456789')
     expect(url.searchParams.get('state')).toBe('state-anti-csrf')
     expect(url.searchParams.get('redirect_uri')).toBe(
       process.env.META_OAUTH_REDIRECT_URI,
@@ -76,6 +77,8 @@ describe('Meta Instagram Login client', () => {
       ],
     })
     const firstBody = fetchMock.mock.calls[0]?.[1]?.body as FormData
+    expect(firstBody.get('client_id')).toBe('123456789')
+    expect(firstBody.get('client_secret')).toBe('app-secret-teste')
     expect(firstBody.get('code')).toBe('oauth-code')
   })
 

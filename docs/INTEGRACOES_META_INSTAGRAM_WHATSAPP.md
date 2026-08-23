@@ -70,19 +70,29 @@ Termos:                 https://wal-chat.64.181.178.125.nip.io/termos
 Instruções de exclusão: https://wal-chat.64.181.178.125.nip.io/exclusao-de-dados
 ```
 
-O mesmo `META_VERIFY_TOKEN` deve ser cadastrado nas duas assinaturas. Ele e o App Secret são secrets e nunca devem aparecer no frontend.
+Use um verify token por canal. A Meta cria um App ID/Secret próprio para
+Instagram Login e outro para o app principal do WhatsApp; o Wal Chat mantém
+esses pares isolados para validar OAuth e HMAC com o segredo correto. Nenhum
+desses valores pode aparecer no frontend, logs ou repositório.
 
 ## 4. Secrets do backend
 
 ```dotenv
-META_APP_ID=
-META_APP_SECRET=
-META_VERIFY_TOKEN=
+META_INSTAGRAM_APP_ID=
+META_INSTAGRAM_APP_SECRET=
+META_INSTAGRAM_VERIFY_TOKEN=
+META_WHATSAPP_APP_ID=
+META_WHATSAPP_APP_SECRET=
+META_WHATSAPP_VERIFY_TOKEN=
 META_GRAPH_VERSION=v25.0
 META_OAUTH_REDIRECT_URI=https://wal-chat.64.181.178.125.nip.io/api/integrations/meta/callback
 META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID=
 CREDENTIALS_ENCRYPTION_KEY=
 ```
+
+`META_APP_ID`, `META_APP_SECRET` e `META_VERIFY_TOKEN` permanecem apenas como
+fallback de compatibilidade para instalações anteriores. Novas instalações
+devem usar sempre as variáveis específicas por canal.
 
 `META_ACCESS_TOKEN` e `META_PUBLISH_TOKEN` são fallbacks restritos ao modo demo/legado. Em operação multi-tenant, cada token vem do fluxo oficial e é cifrado em `integration_credentials` com AES-256-GCM.
 

@@ -216,11 +216,17 @@ Essa credencial existe apenas para desenvolvimento. Nunca reutilize a senha loca
 | `SUPABASE_SERVICE_ROLE_KEY`               | Secreta   | Acesso administrativo dos workers         |
 | `SUPABASE_PUBLISHABLE_KEY`                | Backend   | Cliente server-side sujeito a RLS         |
 | `REDIS_URL`                               | Backend   | Conexão BullMQ                            |
-| `META_APP_ID`                             | Secreta   | Identificador do aplicativo Meta          |
-| `META_APP_SECRET`                         | Secreta   | HMAC do webhook e signed requests         |
+| `META_INSTAGRAM_APP_ID`                   | Backend   | App ID próprio do Instagram Login         |
+| `META_INSTAGRAM_APP_SECRET`               | Secreta   | OAuth e HMAC dos webhooks do Instagram    |
+| `META_INSTAGRAM_VERIFY_TOKEN`             | Secreta   | Challenge do webhook Instagram            |
+| `META_WHATSAPP_APP_ID`                    | Backend   | App ID principal do WhatsApp/Facebook     |
+| `META_WHATSAPP_APP_SECRET`                | Secreta   | OAuth, proof e HMAC do WhatsApp           |
+| `META_WHATSAPP_VERIFY_TOKEN`              | Secreta   | Challenge do webhook WhatsApp             |
+| `META_APP_ID`                             | Legada    | Fallback durante migração                 |
+| `META_APP_SECRET`                         | Legada    | Fallback durante migração                 |
 | `META_ACCESS_TOKEN`                       | Secreta   | Mensageria e leitura da Graph API         |
 | `META_PUBLISH_TOKEN`                      | Secreta   | Publicação de conteúdo                    |
-| `META_VERIFY_TOKEN`                       | Secreta   | Challenge inicial do webhook              |
+| `META_VERIFY_TOKEN`                       | Legada    | Fallback de challenge                     |
 | `META_OAUTH_REDIRECT_URI`                 | Backend   | Redirect exato do Instagram Login         |
 | `META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID` | Backend   | Configuração publicada do Embedded Signup |
 | `META_GRAPH_VERSION`                      | Backend   | Versão da Graph API, como `v25.0`         |

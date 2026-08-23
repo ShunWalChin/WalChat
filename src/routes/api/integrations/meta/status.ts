@@ -4,7 +4,11 @@ import {
   apiErrorResponse,
   requireWorkspaceContext,
 } from '../../../../server/api-auth.server'
-import { getServerEnv } from '../../../../server/env.server'
+import {
+  getInstagramAppConfig,
+  getServerEnv,
+  getWhatsAppAppConfig,
+} from '../../../../server/env.server'
 import { hasValidCredentialEncryptionKey } from '../../../../server/credentials-crypto.server'
 import {
   META_REQUIRED_SCOPES,
@@ -53,12 +57,14 @@ export const Route = createFileRoute('/api/integrations/meta/status')({
             credentials.map((item) => [item.scope_key, item.expires_at]),
           )
           const env = getServerEnv()
+          const instagramApp = getInstagramAppConfig(env)
+          const whatsappApp = getWhatsAppAppConfig(env)
           return Response.json(
             {
               platformConfigured: Boolean(
-                env.META_APP_ID &&
-                env.META_APP_SECRET &&
-                env.META_VERIFY_TOKEN &&
+                instagramApp.appId &&
+                instagramApp.appSecret &&
+                instagramApp.verifyToken &&
                 hasValidCredentialEncryptionKey(),
               ),
               liveMode: env.DEMO_MODE === 'false',
@@ -77,13 +83,13 @@ export const Route = createFileRoute('/api/integrations/meta/status')({
               })),
               whatsapp: {
                 embeddedSignupConfigured: Boolean(
-                  env.META_APP_ID &&
-                  env.META_APP_SECRET &&
-                  env.META_VERIFY_TOKEN &&
+                  whatsappApp.appId &&
+                  whatsappApp.appSecret &&
+                  whatsappApp.verifyToken &&
                   env.META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID &&
                   hasValidCredentialEncryptionKey(),
                 ),
-                appId: env.META_APP_ID ?? null,
+                appId: whatsappApp.appId ?? null,
                 configurationId:
                   env.META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID ?? null,
                 callbackUrl: `${env.APP_ORIGIN}/api/public/webhooks/whatsapp`,

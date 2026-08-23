@@ -657,8 +657,9 @@ function SettingsPage() {
             </div>
             {!meta?.platformConfigured && (
               <p className="settings-warning">
-                Configure META_APP_ID, META_APP_SECRET, META_VERIFY_TOKEN e
-                CREDENTIALS_ENCRYPTION_KEY no backend.
+                Configure META_INSTAGRAM_APP_ID, META_INSTAGRAM_APP_SECRET,
+                META_INSTAGRAM_VERIFY_TOKEN e CREDENTIALS_ENCRYPTION_KEY no
+                backend.
               </p>
             )}
             {activeAccount && (

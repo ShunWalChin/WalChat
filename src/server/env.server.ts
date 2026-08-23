@@ -7,6 +7,14 @@ const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
   SUPABASE_PUBLISHABLE_KEY: z.string().min(20).optional(),
   REDIS_URL: z.string().optional(),
+  // Instagram Login e WhatsApp/Facebook Login possuem App IDs e secrets distintos.
+  META_INSTAGRAM_APP_ID: z.string().optional(),
+  META_INSTAGRAM_APP_SECRET: z.string().min(8).optional(),
+  META_INSTAGRAM_VERIFY_TOKEN: z.string().min(8).optional(),
+  META_WHATSAPP_APP_ID: z.string().optional(),
+  META_WHATSAPP_APP_SECRET: z.string().min(8).optional(),
+  META_WHATSAPP_VERIFY_TOKEN: z.string().min(8).optional(),
+  // Variáveis legadas preservadas como fallback durante a migração.
   META_APP_ID: z.string().optional(),
   META_APP_SECRET: z.string().min(8).optional(),
   META_ACCESS_TOKEN: z.string().optional(),
@@ -44,6 +52,12 @@ export function getServerEnv() {
       process.env.SUPABASE_PUBLISHABLE_KEY ??
       process.env.VITE_SUPABASE_ANON_KEY,
     REDIS_URL: process.env.REDIS_URL,
+    META_INSTAGRAM_APP_ID: process.env.META_INSTAGRAM_APP_ID,
+    META_INSTAGRAM_APP_SECRET: process.env.META_INSTAGRAM_APP_SECRET,
+    META_INSTAGRAM_VERIFY_TOKEN: process.env.META_INSTAGRAM_VERIFY_TOKEN,
+    META_WHATSAPP_APP_ID: process.env.META_WHATSAPP_APP_ID,
+    META_WHATSAPP_APP_SECRET: process.env.META_WHATSAPP_APP_SECRET,
+    META_WHATSAPP_VERIFY_TOKEN: process.env.META_WHATSAPP_VERIFY_TOKEN,
     META_APP_ID: process.env.META_APP_ID,
     META_APP_SECRET: process.env.META_APP_SECRET,
     META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN,
@@ -69,4 +83,34 @@ export function getServerEnv() {
     APP_ORIGIN: process.env.APP_ORIGIN,
     DEMO_MODE: process.env.DEMO_MODE,
   })
+}
+
+type ServerEnv = ReturnType<typeof getServerEnv>
+
+/** Resolve o aplicativo específico do Instagram, com fallback legado sem expor secrets. */
+export function getInstagramAppConfig(env: ServerEnv = getServerEnv()) {
+  return {
+    appId: env.META_INSTAGRAM_APP_ID ?? env.META_APP_ID,
+    appSecret: env.META_INSTAGRAM_APP_SECRET ?? env.META_APP_SECRET,
+    verifyToken: env.META_INSTAGRAM_VERIFY_TOKEN ?? env.META_VERIFY_TOKEN,
+  }
+}
+
+/** Resolve o aplicativo principal usado pelo WhatsApp Embedded Signup. */
+export function getWhatsAppAppConfig(env: ServerEnv = getServerEnv()) {
+  return {
+    appId: env.META_WHATSAPP_APP_ID ?? env.META_APP_ID,
+    appSecret: env.META_WHATSAPP_APP_SECRET ?? env.META_APP_SECRET,
+    verifyToken: env.META_WHATSAPP_VERIFY_TOKEN ?? env.META_VERIFY_TOKEN,
+  }
+}
+
+/** Lista secrets Meta únicos para callbacks que podem ser emitidos por ambos os apps. */
+export function getMetaAppSecrets(env: ServerEnv = getServerEnv()) {
+  return [
+    getInstagramAppConfig(env).appSecret,
+    getWhatsAppAppConfig(env).appSecret,
+  ].filter((secret, index, secrets): secret is string =>
+    Boolean(secret && secrets.indexOf(secret) === index),
+  )
 }

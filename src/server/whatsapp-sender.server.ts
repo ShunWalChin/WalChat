@@ -3,7 +3,7 @@ import '@tanstack/react-start/server-only'
 import { createHmac } from 'node:crypto'
 import { evaluateWhatsAppCompliance } from './compliance'
 import type { WhatsAppComplianceInput } from './compliance'
-import { getServerEnv } from './env.server'
+import { getServerEnv, getWhatsAppAppConfig } from './env.server'
 import { assertWorkspaceExternalSendsEnabled } from './go-live.server'
 import { getWhatsAppAccountAccess } from './integration-credentials.server'
 import {
@@ -102,13 +102,15 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
     workspaceId: input.workspaceId,
     whatsappAccountId: input.whatsappAccountId,
   })
-  if (!env.META_APP_SECRET) throw new Error('META_APP_SECRET não configurado.')
+  const whatsappApp = getWhatsAppAppConfig(env)
+  if (!whatsappApp.appSecret)
+    throw new Error('META_WHATSAPP_APP_SECRET não configurado.')
   const url = new URL(
     `https://graph.facebook.com/${env.META_GRAPH_VERSION}/${encodeURIComponent(account.phoneNumberId)}/messages`,
   )
   url.searchParams.set(
     'appsecret_proof',
-    appSecretProof(account.accessToken, env.META_APP_SECRET),
+    appSecretProof(account.accessToken, whatsappApp.appSecret),
   )
   const payload = input.template
     ? {

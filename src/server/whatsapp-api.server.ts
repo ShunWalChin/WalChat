@@ -1,7 +1,7 @@
 /** Cliente server-only da WhatsApp Cloud API e do Embedded Signup oficial. */
 import '@tanstack/react-start/server-only'
 import { createHmac } from 'node:crypto'
-import { getServerEnv } from './env.server'
+import { getServerEnv, getWhatsAppAppConfig } from './env.server'
 
 export const WHATSAPP_REQUIRED_SCOPES = [
   'business_management',
@@ -41,8 +41,8 @@ function graphBase() {
 }
 
 function appSecretProof(accessToken: string) {
-  const secret = getServerEnv().META_APP_SECRET
-  if (!secret) throw new Error('META_APP_SECRET não configurado.')
+  const secret = getWhatsAppAppConfig().appSecret
+  if (!secret) throw new Error('META_WHATSAPP_APP_SECRET não configurado.')
   return createHmac('sha256', secret).update(accessToken).digest('hex')
 }
 
@@ -87,11 +87,12 @@ function bearer(accessToken: string, json = false) {
 /** Troca o código efêmero retornado pelo Facebook Login for Business. */
 export async function exchangeWhatsAppEmbeddedSignupCode(code: string) {
   const env = getServerEnv()
-  if (!env.META_APP_ID || !env.META_APP_SECRET)
-    throw new Error('Credenciais do aplicativo Meta ausentes.')
+  const app = getWhatsAppAppConfig(env)
+  if (!app.appId || !app.appSecret)
+    throw new Error('Credenciais do aplicativo WhatsApp ausentes.')
   const url = new URL(`${graphBase()}/oauth/access_token`)
-  url.searchParams.set('client_id', env.META_APP_ID)
-  url.searchParams.set('client_secret', env.META_APP_SECRET)
+  url.searchParams.set('client_id', app.appId)
+  url.searchParams.set('client_secret', app.appSecret)
   url.searchParams.set('code', code.replace(/#_$/, ''))
   const response = await fetchGraph(url)
   return parseGraphResponse<{
@@ -104,13 +105,14 @@ export async function exchangeWhatsAppEmbeddedSignupCode(code: string) {
 /** Confirma app, validade, expiração, scopes e WABAs concedidas ao token. */
 export async function debugWhatsAppAccessToken(accessToken: string) {
   const env = getServerEnv()
-  if (!env.META_APP_ID || !env.META_APP_SECRET)
-    throw new Error('Credenciais do aplicativo Meta ausentes.')
+  const app = getWhatsAppAppConfig(env)
+  if (!app.appId || !app.appSecret)
+    throw new Error('Credenciais do aplicativo WhatsApp ausentes.')
   const url = new URL(`${graphBase()}/debug_token`)
   url.searchParams.set('input_token', accessToken)
   const response = await fetchGraph(url, {
     headers: {
-      Authorization: `Bearer ${env.META_APP_ID}|${env.META_APP_SECRET}`,
+      Authorization: `Bearer ${app.appId}|${app.appSecret}`,
     },
   })
   return parseGraphResponse<{

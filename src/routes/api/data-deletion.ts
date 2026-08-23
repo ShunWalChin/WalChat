@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto'
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { apiErrorResponse } from '../../server/api-auth.server'
-import { getServerEnv } from '../../server/env.server'
+import { getMetaAppSecrets, getServerEnv } from '../../server/env.server'
 import { verifyMetaSignedRequest } from '../../server/meta-signed-request.server'
 import { readLimitedText } from '../../server/request-body.server'
 import { getSupabaseAdmin } from '../../server/supabase-admin.server'
@@ -47,7 +47,8 @@ export const Route = createFileRoute('/api/data-deletion')({
       POST: async ({ request }) => {
         try {
           const env = getServerEnv()
-          if (!env.META_APP_SECRET)
+          const appSecrets = getMetaAppSecrets(env)
+          if (appSecrets.length === 0)
             return Response.json(
               { error: 'Meta não configurada.' },
               { status: 503 },
@@ -61,7 +62,9 @@ export const Route = createFileRoute('/api/data-deletion')({
             'signed_request',
           )
           const payload = signedRequest
-            ? verifyMetaSignedRequest(signedRequest, env.META_APP_SECRET)
+            ? appSecrets
+                .map((secret) => verifyMetaSignedRequest(signedRequest, secret))
+                .find(Boolean)
             : null
           if (!payload)
             return Response.json(

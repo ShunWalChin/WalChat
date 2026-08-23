@@ -247,7 +247,7 @@ export async function getWorkspaceGoLiveStatus(workspaceId: string) {
       'meta_platform',
       'meta',
       'Aplicativo Meta configurado',
-      Boolean(env.META_APP_ID && env.META_APP_SECRET && env.META_VERIFY_TOKEN),
+      readiness.capabilities.metaConfigured,
       'App ID, App Secret e Verify Token estão presentes.',
       'Faltam secrets do aplicativo Meta no backend.',
       { actionHref: '/configuracoes' },

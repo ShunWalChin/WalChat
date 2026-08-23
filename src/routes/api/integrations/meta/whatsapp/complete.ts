@@ -7,7 +7,10 @@ import {
   requireWorkspaceContext,
 } from '../../../../../server/api-auth.server'
 import { hasValidCredentialEncryptionKey } from '../../../../../server/credentials-crypto.server'
-import { getServerEnv } from '../../../../../server/env.server'
+import {
+  getServerEnv,
+  getWhatsAppAppConfig,
+} from '../../../../../server/env.server'
 import {
   deleteIntegrationCredential,
   saveIntegrationCredential,
@@ -58,9 +61,10 @@ export const Route = createFileRoute(
             windowSeconds: 600,
           })
           const env = getServerEnv()
+          const whatsappApp = getWhatsAppAppConfig(env)
           if (
-            !env.META_APP_ID ||
-            !env.META_APP_SECRET ||
+            !whatsappApp.appId ||
+            !whatsappApp.appSecret ||
             !env.META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID
           )
             return Response.json(
@@ -76,7 +80,7 @@ export const Route = createFileRoute(
           const body = schema.parse(await readJsonBody(request))
           const token = await exchangeWhatsAppEmbeddedSignupCode(body.code)
           const debug = await debugWhatsAppAccessToken(token.access_token)
-          if (!debug.data.is_valid || debug.data.app_id !== env.META_APP_ID)
+          if (!debug.data.is_valid || debug.data.app_id !== whatsappApp.appId)
             return Response.json(
               { error: 'O token retornado não pertence a este aplicativo.' },
               { status: 422 },
@@ -173,7 +177,7 @@ export const Route = createFileRoute(
           if (
             !whatsappSubscriptionsIncludeApp(
               subscriptions.data,
-              env.META_APP_ID,
+              whatsappApp.appId,
             )
           )
             throw new Error('Assinatura de webhook da WABA não foi confirmada.')
