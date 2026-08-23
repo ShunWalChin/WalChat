@@ -310,6 +310,8 @@ Contratos, respostas e códigos HTTP: [API e webhooks](docs/API_E_WEBHOOKS.md).
 Configuração, payloads e operação do n8n: [Integração n8n](docs/INTEGRACAO_N8N.md).
 O escopo comparado com o produto de referência está em
 [Paridade Wal Chat × ManyChat](docs/PARIDADE_MANYCHAT_2026-08-22.md).
+As evidências desta release estão no
+[Relatório de validação do n8n](docs/RELATORIO_VALIDACAO_N8N_2026-08-23.md).
 
 ## Banco e multi-tenancy
 
@@ -387,6 +389,7 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 | [Manual operacional](docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md)                   | Implantação e contas reais                       |
 | [Manual completo de acessos](docs/MANUAL_COMPLETO_ACESSOS_OPERACAO_CONFIGURACAO.md)     | URLs, usuários, módulos e configuração           |
 | [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)                     | Evidências da validação publicada                |
+| [Validação do wizard e n8n](docs/RELATORIO_VALIDACAO_N8N_2026-08-23.md)                 | Testes, migration dry-run e gate de deploy       |
 
 ## Limites conhecidos do MVP
 
