@@ -14,6 +14,7 @@ import {
   getMetaOwnProfile,
   getMetaWebhookSubscriptions,
   META_WEBHOOK_FIELDS,
+  normalizeMetaAccountType,
   subscribeMetaWebhooks,
 } from '../../../../server/meta-api.server'
 import { readJsonBody } from '../../../../server/request-body.server'
@@ -68,7 +69,7 @@ export const Route = createFileRoute('/api/integrations/meta/validate')({
               username: profile.username,
               display_name: profile.name ?? profile.username,
               profile_picture_url: profile.profile_picture_url ?? null,
-              account_type: profile.account_type ?? null,
+              account_type: normalizeMetaAccountType(profile.account_type),
               status: 'connected',
               subscribed_fields: subscribedFields,
               permissions_validated_at: now,

@@ -7,6 +7,7 @@ import {
   META_API_TIMEOUT_MS,
   META_REQUIRED_SCOPES,
   META_WEBHOOK_FIELDS,
+  normalizeMetaAccountType,
   subscribeMetaWebhooks,
 } from './meta-api.server'
 
@@ -80,6 +81,14 @@ describe('Meta Instagram Login client', () => {
     expect(firstBody.get('client_id')).toBe('123456789')
     expect(firstBody.get('client_secret')).toBe('app-secret-teste')
     expect(firstBody.get('code')).toBe('oauth-code')
+  })
+
+  it('normaliza o tipo MEDIA_CREATOR sem enfraquecer a constraint do banco', () => {
+    expect(normalizeMetaAccountType('BUSINESS')).toBe('BUSINESS')
+    expect(normalizeMetaAccountType('MEDIA_CREATOR')).toBe('CREATOR')
+    expect(normalizeMetaAccountType('CREATOR')).toBe('CREATOR')
+    expect(normalizeMetaAccountType('UNKNOWN')).toBeNull()
+    expect(normalizeMetaAccountType()).toBeNull()
   })
 
   it('assina todos os campos de webhook no endpoint da conta profissional', async () => {

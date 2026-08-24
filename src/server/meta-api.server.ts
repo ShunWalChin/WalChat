@@ -25,6 +25,18 @@ export const META_WEBHOOK_FIELDS = [
 
 export const META_API_TIMEOUT_MS = 15_000
 
+/**
+ * A API do Instagram usa MEDIA_CREATOR para contas Creator, enquanto o banco
+ * mantém o valor canônico CREATOR. Valores futuros/desconhecidos ficam nulos
+ * para não romper a conexão por causa de uma classificação opcional.
+ */
+export function normalizeMetaAccountType(accountType?: string | null) {
+  if (accountType === 'BUSINESS') return 'BUSINESS' as const
+  if (accountType === 'CREATOR' || accountType === 'MEDIA_CREATOR')
+    return 'CREATOR' as const
+  return null
+}
+
 type MetaErrorPayload = {
   error?: {
     message?: string
@@ -220,7 +232,7 @@ export async function getMetaOwnProfile(accessToken: string) {
     username: string
     name?: string
     profile_picture_url?: string
-    account_type?: 'BUSINESS' | 'CREATOR'
+    account_type?: 'BUSINESS' | 'CREATOR' | 'MEDIA_CREATOR'
   }>(response)
 }
 

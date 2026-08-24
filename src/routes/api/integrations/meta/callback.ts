@@ -10,6 +10,7 @@ import {
   MetaApiError,
   META_REQUIRED_SCOPES,
   META_WEBHOOK_FIELDS,
+  normalizeMetaAccountType,
   subscribeMetaWebhooks,
 } from '../../../../server/meta-api.server'
 import {
@@ -134,7 +135,7 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
                 username: profile.username,
                 display_name: profile.name ?? profile.username,
                 profile_picture_url: profile.profile_picture_url ?? null,
-                account_type: profile.account_type ?? null,
+                account_type: normalizeMetaAccountType(profile.account_type),
                 connected_by: oauth.user_id,
                 status: 'disconnected',
                 scopes: token.scopes,
