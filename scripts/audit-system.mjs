@@ -104,21 +104,20 @@ for (const route of ['/', '/privacidade', '/termos', '/exclusao-de-dados'])
     })
 
 const productionOnlyPlaceholders = []
+const productionModuleGaps = []
 for (const file of await filesBelow(path.join(root, 'src/routes/_app'))) {
   if (!file.endsWith('.tsx')) continue
   const source = await readFile(file, 'utf8')
   if (source.includes("from '../../lib/demo-data'"))
     productionOnlyPlaceholders.push(relative(file))
+  if (source.includes('PrototypeNotice'))
+    productionModuleGaps.push({
+      file: relative(file),
+      code: 'prototype_notice_present',
+    })
 }
 
 const errors = findings.filter((finding) => finding.severity === 'error')
-const intentionallyBlockedModules = [
-  'sequencias',
-  'reengajamento',
-  'publicar',
-  'auto-like',
-  'insights',
-]
 console.log(
   JSON.stringify(
     {
@@ -126,7 +125,7 @@ console.log(
       apiFiles: apiFiles.length,
       findings,
       modulesStillUsingDemoData: productionOnlyPlaceholders,
-      intentionallyBlockedModules,
+      productionModuleGaps,
     },
     null,
     2,

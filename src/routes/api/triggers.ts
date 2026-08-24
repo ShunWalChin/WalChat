@@ -82,6 +82,26 @@ async function destinationBelongs(
   return true
 }
 
+/** Private Reply aceita somente texto; mídia pode entrar após um inbound em DM. */
+async function commentDestinationCompatible(
+  context: Awaited<ReturnType<typeof requireWorkspaceContext>>,
+  source: string,
+  destination: { sequenceId?: string | null },
+) {
+  if (source !== 'comment' || !destination.sequenceId) return true
+  const { data, error } = await context.supabase
+    .from('sequence_steps')
+    .select('kind')
+    .eq('workspace_id', context.workspaceId)
+    .eq('sequence_id', destination.sequenceId)
+    .in('kind', ['text', 'media'])
+    .order('position')
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data?.kind === 'text'
+}
+
 export const Route = createFileRoute('/api/triggers')({
   server: {
     handlers: {
@@ -194,6 +214,14 @@ export const Route = createFileRoute('/api/triggers')({
               { error: 'Destino não pertence ao workspace ou não está ativo.' },
               { status: 422 },
             )
+          if (!(await commentDestinationCompatible(context, body.source, body)))
+            return Response.json(
+              {
+                error:
+                  'Gatilho de comentário exige texto como primeiro envio da sequência; a Private Reply oficial não aceita bloco de mídia.',
+              },
+              { status: 422 },
+            )
           if (body.postId) {
             const { data: post, error: postError } = await context.supabase
               .from('posts_cache')
@@ -247,7 +275,7 @@ export const Route = createFileRoute('/api/triggers')({
             )
           const { data: current, error: currentError } = await context.supabase
             .from('triggers')
-            .select('response_text,sequence_id,flow_id')
+            .select('source,response_text,sequence_id,flow_id')
             .eq('workspace_id', context.workspaceId)
             .eq('id', body.id)
             .maybeSingle()
@@ -285,6 +313,17 @@ export const Route = createFileRoute('/api/triggers')({
           if (!(await destinationBelongs(context, destination)))
             return Response.json(
               { error: 'Destino não pertence ao workspace ou não está ativo.' },
+              { status: 422 },
+            )
+          const source = body.source ?? current.source
+          if (
+            !(await commentDestinationCompatible(context, source, destination))
+          )
+            return Response.json(
+              {
+                error:
+                  'Gatilho de comentário exige texto como primeiro envio da sequência; a Private Reply oficial não aceita bloco de mídia.',
+              },
               { status: 422 },
             )
           if (body.postId) {

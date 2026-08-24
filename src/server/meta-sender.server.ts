@@ -24,6 +24,8 @@ export type MetaSendInput = ComplianceInput & {
   scheduledJobId?: string
   accessToken?: string
   instagramUserId?: string
+  mediaUrl?: string | null
+  mediaType?: 'image' | 'video'
 }
 
 export const META_SEND_TIMEOUT_MS = 15_000
@@ -135,7 +137,14 @@ export async function sendInstagramMessage(input: MetaSendInput) {
 
   const payload: Record<string, unknown> = {
     recipient: { id: input.recipientId },
-    message: { text: decision.body },
+    message: input.mediaUrl
+      ? {
+          attachment: {
+            type: input.mediaType ?? 'image',
+            payload: { url: input.mediaUrl },
+          },
+        }
+      : { text: decision.body },
   }
   if (decision.tag) payload.tag = decision.tag
 

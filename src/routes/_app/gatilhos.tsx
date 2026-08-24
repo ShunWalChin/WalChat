@@ -25,7 +25,9 @@ type Trigger = {
   source: Source
   keyword: string
   matchMode: 'exact' | 'contains'
-  responseText: string
+  responseText: string | null
+  sequenceId: string | null
+  flowId: string | null
   cooldownHours: number
   isActive: boolean
   bookingPageId: string | null
@@ -33,6 +35,8 @@ type Trigger = {
 }
 
 type BookingPageOption = { id: string; title: string; slug: string }
+type DestinationOption = { id: string; name: string }
+type DestinationKind = 'text' | 'sequence' | 'flow'
 
 const initialForm: Omit<Trigger, 'id' | 'fired'> = {
   name: '',
@@ -40,6 +44,8 @@ const initialForm: Omit<Trigger, 'id' | 'fired'> = {
   keyword: '',
   matchMode: 'contains',
   responseText: '',
+  sequenceId: null,
+  flowId: null,
   cooldownHours: 24,
   isActive: true,
   bookingPageId: null,
@@ -63,6 +69,10 @@ function TriggersPage() {
   const [busy, setBusy] = useState<string | null>('load')
   const [error, setError] = useState('')
   const [bookingPages, setBookingPages] = useState<BookingPageOption[]>([])
+  const [sequences, setSequences] = useState<DestinationOption[]>([])
+  const [flows, setFlows] = useState<DestinationOption[]>([])
+  const [destinationKind, setDestinationKind] =
+    useState<DestinationKind>('text')
 
   const loadTriggers = useCallback(async () => {
     setBusy('load')
@@ -70,9 +80,13 @@ function TriggersPage() {
       const result = await apiFetch<{
         triggers: Trigger[]
         bookingPages: BookingPageOption[]
+        sequences: DestinationOption[]
+        flows: DestinationOption[]
       }>('/api/triggers')
       setItems(result.triggers)
       setBookingPages(result.bookingPages)
+      setSequences(result.sequences)
+      setFlows(result.flows)
       setError('')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Falha ao carregar.')
@@ -93,11 +107,19 @@ function TriggersPage() {
   async function createTrigger() {
     setBusy('create')
     try {
+      const payload = {
+        ...form,
+        responseText: destinationKind === 'text' ? form.responseText : null,
+        sequenceId:
+          destinationKind === 'sequence' ? form.sequenceId : null,
+        flowId: destinationKind === 'flow' ? form.flowId : null,
+      }
       await apiFetch('/api/triggers', {
         method: 'POST',
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
       setForm(initialForm)
+      setDestinationKind('text')
       setShowForm(false)
       await loadTriggers()
     } catch (caught) {
@@ -130,6 +152,14 @@ function TriggersPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Falha ao excluir.')
     }
+  }
+
+  function destinationLabel(trigger: Trigger) {
+    if (trigger.sequenceId)
+      return `Sequência: ${sequences.find((item) => item.id === trigger.sequenceId)?.name ?? 'ativa'}`
+    if (trigger.flowId)
+      return `Automação: ${flows.find((item) => item.id === trigger.flowId)?.name ?? 'publicada'}`
+    return `DM: ${trigger.responseText ?? ''}`
   }
 
   return (
@@ -203,16 +233,75 @@ function TriggersPage() {
               </select>
             </label>
           </div>
-          <label>
-            Resposta automática
-            <textarea
-              value={form.responseText}
-              onChange={(event) =>
-                setForm({ ...form, responseText: event.target.value })
-              }
-              placeholder="Mensagem que será validada e enviada uma única vez."
-            />
-          </label>
+          <div className="two-fields">
+            <label>
+              Destino
+              <select
+                value={destinationKind}
+                onChange={(event) =>
+                  setDestinationKind(event.target.value as DestinationKind)
+                }
+              >
+                <option value="text">DM única</option>
+                <option value="sequence">Sequência ativa</option>
+                <option value="flow">Automação publicada</option>
+              </select>
+            </label>
+            {destinationKind === 'sequence' && (
+              <label>
+                Sequência
+                <select
+                  value={form.sequenceId ?? ''}
+                  onChange={(event) =>
+                    setForm({ ...form, sequenceId: event.target.value || null })
+                  }
+                >
+                  <option value="">Selecione…</option>
+                  {sequences.map((sequence) => (
+                    <option key={sequence.id} value={sequence.id}>
+                      {sequence.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {destinationKind === 'flow' && (
+              <label>
+                Automação
+                <select
+                  value={form.flowId ?? ''}
+                  onChange={(event) =>
+                    setForm({ ...form, flowId: event.target.value || null })
+                  }
+                >
+                  <option value="">Selecione…</option>
+                  {flows.map((flow) => (
+                    <option key={flow.id} value={flow.id}>
+                      {flow.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+          {destinationKind === 'text' && (
+            <label>
+              Resposta automática
+              <textarea
+                value={form.responseText ?? ''}
+                onChange={(event) =>
+                  setForm({ ...form, responseText: event.target.value })
+                }
+                placeholder="Mensagem que será validada e enviada uma única vez."
+              />
+            </label>
+          )}
+          {destinationKind === 'sequence' && form.source === 'comment' && (
+            <small className="form-helper">
+              Para comentários, o primeiro envio da sequência deve ser texto;
+              a API oficial permite uma única Private Reply.
+            </small>
+          )}
           <label>
             Levar para agendamento (opcional)
             <select
@@ -248,7 +337,11 @@ function TriggersPage() {
                 busy === 'create' ||
                 !form.name.trim() ||
                 !form.keyword.trim() ||
-                !form.responseText.trim()
+                (destinationKind === 'text'
+                  ? !form.responseText?.trim()
+                  : destinationKind === 'sequence'
+                    ? !form.sequenceId
+                    : !form.flowId)
               }
             >
               {busy === 'create' ? (
@@ -307,7 +400,7 @@ function TriggersPage() {
               </p>
               <div className="flow-line">
                 <Zap size={14} />
-                <span>DM: {trigger.responseText}</span>
+                <span>{destinationLabel(trigger)}</span>
                 <ArrowRight size={14} />
               </div>
               {trigger.bookingPageId && (

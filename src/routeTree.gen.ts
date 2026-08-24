@@ -32,15 +32,20 @@ import { Route as AppPublicarRouteImport } from './routes/_app/publicar'
 import { Route as AppReengajamentoRouteImport } from './routes/_app/reengajamento'
 import { Route as AppSequenciasRouteImport } from './routes/_app/sequencias'
 import { Route as AgendarSlugRouteImport } from './routes/agendar/$slug'
+import { Route as ApiAutoLikeRouteImport } from './routes/api/auto-like'
 import { Route as ApiAutomationsRouteImport } from './routes/api/automations'
 import { Route as ApiCalendarRouteImport } from './routes/api/calendar'
+import { Route as ApiCampaignsRouteImport } from './routes/api/campaigns'
 import { Route as ApiContactTagsRouteImport } from './routes/api/contact-tags'
 import { Route as ApiContactsRouteImport } from './routes/api/contacts'
+import { Route as ApiContentRouteImport } from './routes/api/content'
 import { Route as ApiDashboardRouteImport } from './routes/api/dashboard'
 import { Route as ApiDataDeletionRouteImport } from './routes/api/data-deletion'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiInboxRouteImport } from './routes/api/inbox'
+import { Route as ApiInsightsRouteImport } from './routes/api/insights'
 import { Route as ApiReadyRouteImport } from './routes/api/ready'
+import { Route as ApiSequencesRouteImport } from './routes/api/sequences'
 import { Route as ApiTriggersRouteImport } from './routes/api/triggers'
 import { Route as ApiAiAgentsRouteImport } from './routes/api/ai/agents'
 import { Route as ApiAiKnowledgeRouteImport } from './routes/api/ai/knowledge'
@@ -201,6 +206,11 @@ const AgendarSlugRoute = AgendarSlugRouteImport.update({
   path: '/agendar/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAutoLikeRoute = ApiAutoLikeRouteImport.update({
+  id: '/api/auto-like',
+  path: '/api/auto-like',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAutomationsRoute = ApiAutomationsRouteImport.update({
   id: '/api/automations',
   path: '/api/automations',
@@ -211,6 +221,11 @@ const ApiCalendarRoute = ApiCalendarRouteImport.update({
   path: '/api/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCampaignsRoute = ApiCampaignsRouteImport.update({
+  id: '/api/campaigns',
+  path: '/api/campaigns',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiContactTagsRoute = ApiContactTagsRouteImport.update({
   id: '/api/contact-tags',
   path: '/api/contact-tags',
@@ -219,6 +234,11 @@ const ApiContactTagsRoute = ApiContactTagsRouteImport.update({
 const ApiContactsRoute = ApiContactsRouteImport.update({
   id: '/api/contacts',
   path: '/api/contacts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiContentRoute = ApiContentRouteImport.update({
+  id: '/api/content',
+  path: '/api/content',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiDashboardRoute = ApiDashboardRouteImport.update({
@@ -241,9 +261,19 @@ const ApiInboxRoute = ApiInboxRouteImport.update({
   path: '/api/inbox',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInsightsRoute = ApiInsightsRouteImport.update({
+  id: '/api/insights',
+  path: '/api/insights',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiReadyRoute = ApiReadyRouteImport.update({
   id: '/api/ready',
   path: '/api/ready',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSequencesRoute = ApiSequencesRouteImport.update({
+  id: '/api/sequences',
+  path: '/api/sequences',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTriggersRoute = ApiTriggersRouteImport.update({
@@ -522,15 +552,20 @@ export interface FileRoutesByFullPath {
   '/reengajamento': typeof AppReengajamentoRoute
   '/sequencias': typeof AppSequenciasRoute
   '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/auto-like': typeof ApiAutoLikeRoute
   '/api/automations': typeof ApiAutomationsRouteWithChildren
   '/api/calendar': typeof ApiCalendarRouteWithChildren
+  '/api/campaigns': typeof ApiCampaignsRoute
   '/api/contact-tags': typeof ApiContactTagsRoute
   '/api/contacts': typeof ApiContactsRouteWithChildren
+  '/api/content': typeof ApiContentRoute
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/health': typeof ApiHealthRoute
   '/api/inbox': typeof ApiInboxRoute
+  '/api/insights': typeof ApiInsightsRoute
   '/api/ready': typeof ApiReadyRoute
+  '/api/sequences': typeof ApiSequencesRoute
   '/api/triggers': typeof ApiTriggersRoute
   '/api/ai/agents': typeof ApiAiAgentsRoute
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
@@ -600,15 +635,20 @@ export interface FileRoutesByTo {
   '/reengajamento': typeof AppReengajamentoRoute
   '/sequencias': typeof AppSequenciasRoute
   '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/auto-like': typeof ApiAutoLikeRoute
   '/api/automations': typeof ApiAutomationsRouteWithChildren
   '/api/calendar': typeof ApiCalendarRouteWithChildren
+  '/api/campaigns': typeof ApiCampaignsRoute
   '/api/contact-tags': typeof ApiContactTagsRoute
   '/api/contacts': typeof ApiContactsRouteWithChildren
+  '/api/content': typeof ApiContentRoute
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/health': typeof ApiHealthRoute
   '/api/inbox': typeof ApiInboxRoute
+  '/api/insights': typeof ApiInsightsRoute
   '/api/ready': typeof ApiReadyRoute
+  '/api/sequences': typeof ApiSequencesRoute
   '/api/triggers': typeof ApiTriggersRoute
   '/api/ai/agents': typeof ApiAiAgentsRoute
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
@@ -680,15 +720,20 @@ export interface FileRoutesById {
   '/_app/reengajamento': typeof AppReengajamentoRoute
   '/_app/sequencias': typeof AppSequenciasRoute
   '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/auto-like': typeof ApiAutoLikeRoute
   '/api/automations': typeof ApiAutomationsRouteWithChildren
   '/api/calendar': typeof ApiCalendarRouteWithChildren
+  '/api/campaigns': typeof ApiCampaignsRoute
   '/api/contact-tags': typeof ApiContactTagsRoute
   '/api/contacts': typeof ApiContactsRouteWithChildren
+  '/api/content': typeof ApiContentRoute
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/health': typeof ApiHealthRoute
   '/api/inbox': typeof ApiInboxRoute
+  '/api/insights': typeof ApiInsightsRoute
   '/api/ready': typeof ApiReadyRoute
+  '/api/sequences': typeof ApiSequencesRoute
   '/api/triggers': typeof ApiTriggersRoute
   '/api/ai/agents': typeof ApiAiAgentsRoute
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
@@ -760,15 +805,20 @@ export interface FileRouteTypes {
     | '/reengajamento'
     | '/sequencias'
     | '/agendar/$slug'
+    | '/api/auto-like'
     | '/api/automations'
     | '/api/calendar'
+    | '/api/campaigns'
     | '/api/contact-tags'
     | '/api/contacts'
+    | '/api/content'
     | '/api/dashboard'
     | '/api/data-deletion'
     | '/api/health'
     | '/api/inbox'
+    | '/api/insights'
     | '/api/ready'
+    | '/api/sequences'
     | '/api/triggers'
     | '/api/ai/agents'
     | '/api/ai/knowledge'
@@ -838,15 +888,20 @@ export interface FileRouteTypes {
     | '/reengajamento'
     | '/sequencias'
     | '/agendar/$slug'
+    | '/api/auto-like'
     | '/api/automations'
     | '/api/calendar'
+    | '/api/campaigns'
     | '/api/contact-tags'
     | '/api/contacts'
+    | '/api/content'
     | '/api/dashboard'
     | '/api/data-deletion'
     | '/api/health'
     | '/api/inbox'
+    | '/api/insights'
     | '/api/ready'
+    | '/api/sequences'
     | '/api/triggers'
     | '/api/ai/agents'
     | '/api/ai/knowledge'
@@ -917,15 +972,20 @@ export interface FileRouteTypes {
     | '/_app/reengajamento'
     | '/_app/sequencias'
     | '/agendar/$slug'
+    | '/api/auto-like'
     | '/api/automations'
     | '/api/calendar'
+    | '/api/campaigns'
     | '/api/contact-tags'
     | '/api/contacts'
+    | '/api/content'
     | '/api/dashboard'
     | '/api/data-deletion'
     | '/api/health'
     | '/api/inbox'
+    | '/api/insights'
     | '/api/ready'
+    | '/api/sequences'
     | '/api/triggers'
     | '/api/ai/agents'
     | '/api/ai/knowledge'
@@ -981,15 +1041,20 @@ export interface RootRouteChildren {
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
   AgendarSlugRoute: typeof AgendarSlugRoute
+  ApiAutoLikeRoute: typeof ApiAutoLikeRoute
   ApiAutomationsRoute: typeof ApiAutomationsRouteWithChildren
   ApiCalendarRoute: typeof ApiCalendarRouteWithChildren
+  ApiCampaignsRoute: typeof ApiCampaignsRoute
   ApiContactTagsRoute: typeof ApiContactTagsRoute
   ApiContactsRoute: typeof ApiContactsRouteWithChildren
+  ApiContentRoute: typeof ApiContentRoute
   ApiDashboardRoute: typeof ApiDashboardRoute
   ApiDataDeletionRoute: typeof ApiDataDeletionRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiInboxRoute: typeof ApiInboxRoute
+  ApiInsightsRoute: typeof ApiInsightsRoute
   ApiReadyRoute: typeof ApiReadyRoute
+  ApiSequencesRoute: typeof ApiSequencesRoute
   ApiTriggersRoute: typeof ApiTriggersRoute
   ApiAiAgentsRoute: typeof ApiAiAgentsRoute
   ApiAiKnowledgeRoute: typeof ApiAiKnowledgeRoute
@@ -1192,6 +1257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgendarSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auto-like': {
+      id: '/api/auto-like'
+      path: '/api/auto-like'
+      fullPath: '/api/auto-like'
+      preLoaderRoute: typeof ApiAutoLikeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/automations': {
       id: '/api/automations'
       path: '/api/automations'
@@ -1206,6 +1278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/campaigns': {
+      id: '/api/campaigns'
+      path: '/api/campaigns'
+      fullPath: '/api/campaigns'
+      preLoaderRoute: typeof ApiCampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/contact-tags': {
       id: '/api/contact-tags'
       path: '/api/contact-tags'
@@ -1218,6 +1297,13 @@ declare module '@tanstack/react-router' {
       path: '/api/contacts'
       fullPath: '/api/contacts'
       preLoaderRoute: typeof ApiContactsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/content': {
+      id: '/api/content'
+      path: '/api/content'
+      fullPath: '/api/content'
+      preLoaderRoute: typeof ApiContentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/dashboard': {
@@ -1248,11 +1334,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInboxRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/insights': {
+      id: '/api/insights'
+      path: '/api/insights'
+      fullPath: '/api/insights'
+      preLoaderRoute: typeof ApiInsightsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/ready': {
       id: '/api/ready'
       path: '/api/ready'
       fullPath: '/api/ready'
       preLoaderRoute: typeof ApiReadyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sequences': {
+      id: '/api/sequences'
+      path: '/api/sequences'
+      fullPath: '/api/sequences'
+      preLoaderRoute: typeof ApiSequencesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/triggers': {
@@ -1685,15 +1785,20 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
   AgendarSlugRoute: AgendarSlugRoute,
+  ApiAutoLikeRoute: ApiAutoLikeRoute,
   ApiAutomationsRoute: ApiAutomationsRouteWithChildren,
   ApiCalendarRoute: ApiCalendarRouteWithChildren,
+  ApiCampaignsRoute: ApiCampaignsRoute,
   ApiContactTagsRoute: ApiContactTagsRoute,
   ApiContactsRoute: ApiContactsRouteWithChildren,
+  ApiContentRoute: ApiContentRoute,
   ApiDashboardRoute: ApiDashboardRoute,
   ApiDataDeletionRoute: ApiDataDeletionRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiInboxRoute: ApiInboxRoute,
+  ApiInsightsRoute: ApiInsightsRoute,
   ApiReadyRoute: ApiReadyRoute,
+  ApiSequencesRoute: ApiSequencesRoute,
   ApiTriggersRoute: ApiTriggersRoute,
   ApiAiAgentsRoute: ApiAiAgentsRoute,
   ApiAiKnowledgeRoute: ApiAiKnowledgeRoute,

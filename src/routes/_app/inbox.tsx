@@ -83,6 +83,7 @@ type WhatsAppTemplate = {
   status: string
   components: unknown[]
 }
+type ContactTag = { id: string; name: string; color: string }
 type InboxResponse = {
   conversations: Conversation[]
   selectedId: string | null
@@ -141,6 +142,13 @@ function InboxPage() {
   const [humanAgent, setHumanAgent] = useState(false)
   const [templateId, setTemplateId] = useState('')
   const [templateComponents, setTemplateComponents] = useState('[]')
+  const [mediaOpen, setMediaOpen] = useState(false)
+  const [mediaUrl, setMediaUrl] = useState('')
+  const [mediaType, setMediaType] = useState<'image' | 'video'>('image')
+  const [tagOpen, setTagOpen] = useState(false)
+  const [catalogTags, setCatalogTags] = useState<ContactTag[]>([])
+  const [contactTagIds, setContactTagIds] = useState<string[]>([])
+  const [tagsBusy, setTagsBusy] = useState(false)
   const [busy, setBusy] = useState<string | null>('load')
   const [error, setError] = useState('')
   const pendingSendKey = useRef<string | null>(null)
@@ -194,6 +202,10 @@ function InboxPage() {
     setAiSources([])
     setTemplateId('')
     setTemplateComponents('[]')
+    setMediaOpen(false)
+    setMediaUrl('')
+    setTagOpen(false)
+    setContactTagIds([])
     pendingSendKey.current = null
     void loadInbox(tab)
   }, [loadInbox, tab])
@@ -238,6 +250,10 @@ function InboxPage() {
     setAiSources([])
     setTemplateId('')
     setTemplateComponents('[]')
+    setMediaOpen(false)
+    setMediaUrl('')
+    setTagOpen(false)
+    setContactTagIds([])
     pendingSendKey.current = null
     try {
       await apiFetch('/api/inbox', {
@@ -281,7 +297,7 @@ function InboxPage() {
     if (
       !selected ||
       !canCompose ||
-      (!draft.trim() && !requiresWhatsAppTemplate)
+      (!draft.trim() && !mediaUrl.trim() && !requiresWhatsAppTemplate)
     )
       return
     if (humanAgent && draftFromAi) {
@@ -306,6 +322,14 @@ function InboxPage() {
         body: JSON.stringify({
           contactId: selected.contactId,
           message: requiresWhatsAppTemplate ? undefined : draft,
+          mediaUrl:
+            !requiresWhatsAppTemplate && mediaUrl.trim()
+              ? mediaUrl.trim()
+              : undefined,
+          mediaType:
+            !requiresWhatsAppTemplate && mediaUrl.trim()
+              ? mediaType
+              : undefined,
           humanAgent,
           aiGenerated: draftFromAi,
           template:
@@ -321,6 +345,8 @@ function InboxPage() {
       setDraft('')
       setDraftFromAi(false)
       setAiSources([])
+      setMediaOpen(false)
+      setMediaUrl('')
       pendingSendKey.current = null
       await loadInbox(tab, selected.id)
     } catch (caught) {
@@ -400,6 +426,57 @@ function InboxPage() {
       setError(
         caught instanceof Error ? caught.message : 'Falha ao excluir nota.',
       )
+    }
+  }
+
+  async function openTags() {
+    if (!selected) return
+    if (tagOpen) {
+      setTagOpen(false)
+      return
+    }
+    setTagsBusy(true)
+    try {
+      const [catalog, detail] = await Promise.all([
+        apiFetch<{ tags: ContactTag[] }>('/api/contact-tags'),
+        apiFetch<{ contact: { tags: ContactTag[] } }>(
+          `/api/contacts/${selected.contactId}`,
+        ),
+      ])
+      setCatalogTags(catalog.tags)
+      setContactTagIds(detail.contact.tags.map((tag) => tag.id))
+      setTagOpen(true)
+      setError('')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Falha nas tags.')
+    } finally {
+      setTagsBusy(false)
+    }
+  }
+
+  async function toggleContactTag(tagId: string) {
+    if (!selected) return
+    const hasTag = contactTagIds.includes(tagId)
+    setTagsBusy(true)
+    try {
+      await apiFetch('/api/contacts/bulk', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          contactIds: [selected.contactId],
+          action: hasTag ? 'remove_tag' : 'add_tag',
+          tagId,
+        }),
+      })
+      setContactTagIds((current) =>
+        hasTag
+          ? current.filter((id) => id !== tagId)
+          : [...current, tagId],
+      )
+      setError('')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Falha na tag.')
+    } finally {
+      setTagsBusy(false)
     }
   }
 
@@ -649,6 +726,61 @@ function InboxPage() {
                   </label>
                 </div>
               )}
+              {mediaOpen && !requiresWhatsAppTemplate && (
+                <div className="inbox-tool-panel">
+                  <label>
+                    Tipo de mídia
+                    <select
+                      value={mediaType}
+                      onChange={(event) =>
+                        setMediaType(event.target.value as 'image' | 'video')
+                      }
+                    >
+                      <option value="image">Imagem</option>
+                      <option value="video">Vídeo</option>
+                    </select>
+                  </label>
+                  <label>
+                    URL HTTPS pública
+                    <input
+                      type="url"
+                      value={mediaUrl}
+                      onChange={(event) => {
+                        setMediaUrl(event.target.value)
+                        pendingSendKey.current = null
+                      }}
+                      placeholder="https://cdn.exemplo.com/midia.jpg"
+                    />
+                  </label>
+                  <small>
+                    {selected.platform === 'instagram'
+                      ? 'O Instagram envia a mídia sem legenda; envie o texto separadamente se necessário.'
+                      : 'No WhatsApp, o texto digitado será usado como legenda.'}
+                  </small>
+                </div>
+              )}
+              {tagOpen && (
+                <div className="inbox-tool-panel inbox-tag-panel">
+                  <strong>Tags deste contato</strong>
+                  {catalogTags.length ? (
+                    <div>
+                      {catalogTags.map((tag) => (
+                        <label key={tag.id}>
+                          <input
+                            type="checkbox"
+                            checked={contactTagIds.includes(tag.id)}
+                            disabled={tagsBusy}
+                            onChange={() => void toggleContactTag(tag.id)}
+                          />
+                          <i style={{ background: tag.color }} /> {tag.name}
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <small>Crie tags em Contatos &amp; tags.</small>
+                  )}
+                </div>
+              )}
               <div className="composer-box">
                 <textarea
                   value={draft}
@@ -670,15 +802,25 @@ function InboxPage() {
                 <div>
                   <button
                     className="icon-button"
-                    disabled
-                    title="Mídia entra na próxima etapa"
+                    onClick={() => {
+                      setMediaOpen((current) => !current)
+                      setTagOpen(false)
+                    }}
+                    disabled={!canCompose || requiresWhatsAppTemplate}
+                    title="Anexar mídia por URL HTTPS"
+                    aria-label="Anexar mídia"
                   >
                     <Paperclip size={18} />
                   </button>
                   <button
                     className="icon-button"
-                    disabled
-                    title="Tags entram na próxima etapa"
+                    onClick={() => {
+                      setMediaOpen(false)
+                      void openTags()
+                    }}
+                    disabled={tagsBusy}
+                    title="Gerenciar tags do contato"
+                    aria-label="Gerenciar tags do contato"
                   >
                     <Tag size={18} />
                   </button>
@@ -687,7 +829,9 @@ function InboxPage() {
                     onClick={() => void sendMessage()}
                     disabled={
                       !canCompose ||
-                      (!requiresWhatsAppTemplate && !draft.trim()) ||
+                      (!requiresWhatsAppTemplate &&
+                        !draft.trim() &&
+                        !mediaUrl.trim()) ||
                       (requiresWhatsAppTemplate && !selectedTemplate) ||
                       busy === 'send'
                     }

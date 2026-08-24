@@ -37,6 +37,8 @@ export type WhatsAppSendInput = WhatsAppComplianceInput & {
   deliverySource?: OutboundDeliverySource
   scheduledJobId?: string
   template?: WhatsAppTemplateSend | null
+  mediaUrl?: string | null
+  mediaType?: 'image' | 'video'
 }
 
 function appSecretProof(accessToken: string, appSecret: string) {
@@ -63,7 +65,11 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
       400,
     )
 
-  const messageType = input.template ? 'template' : 'text'
+  const messageType = input.template
+    ? 'template'
+    : input.mediaUrl
+      ? (input.mediaType ?? 'image')
+      : 'text'
   const delivery = await claimOutboundDelivery({
     workspaceId: input.workspaceId,
     platform: 'whatsapp',
@@ -126,13 +132,24 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
             : {}),
         },
       }
-    : {
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to: input.recipientId,
-        type: 'text',
-        text: { preview_url: false, body: decision.body },
-      }
+    : input.mediaUrl
+      ? {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: input.recipientId,
+          type: input.mediaType ?? 'image',
+          [input.mediaType ?? 'image']: {
+            link: input.mediaUrl,
+            caption: decision.body,
+          },
+        }
+      : {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: input.recipientId,
+          type: 'text',
+          text: { preview_url: false, body: decision.body },
+        }
 
   try {
     const response = await fetch(url, {

@@ -23,12 +23,31 @@ const schema = z
   .object({
     contactId: z.string().uuid(),
     message: z.string().trim().max(4_096).optional(),
+    mediaUrl: z
+      .url()
+      .max(2_000)
+      .refine((value) => value.startsWith('https://'), {
+        message: 'A mídia precisa usar uma URL HTTPS pública.',
+      })
+      .optional(),
+    mediaType: z.enum(['image', 'video']).optional(),
     humanAgent: z.boolean().default(false),
     aiGenerated: z.boolean().default(false),
     template: templateSchema.optional(),
   })
-  .refine((value) => Boolean(value.message?.trim() || value.template), {
-    message: 'Informe uma mensagem ou template.',
+  .superRefine((value, context) => {
+    if (!value.message?.trim() && !value.template && !value.mediaUrl)
+      context.addIssue({
+        code: 'custom',
+        path: ['message'],
+        message: 'Informe uma mensagem, mídia ou template.',
+      })
+    if (value.template && value.mediaUrl)
+      context.addIssue({
+        code: 'custom',
+        path: ['mediaUrl'],
+        message: 'Template e mídia livre não podem sair no mesmo envio.',
+      })
   })
 
 function templateHasOptOut(components: unknown) {
@@ -81,7 +100,7 @@ export const Route = createFileRoute('/api/messages/send')({
 
           let result
           let accountPayload: Record<string, unknown>
-          let messageType = 'text'
+          let messageType = body.mediaUrl ? (body.mediaType ?? 'image') : 'text'
           if (contact.platform === 'whatsapp') {
             if (!contact.whatsapp_account_id || !contact.whatsapp_user_id)
               return Response.json(
@@ -140,8 +159,13 @@ export const Route = createFileRoute('/api/messages/send')({
               lastInboundAt: contact.last_inbound_at,
               optedOutAt: contact.opted_out_at,
               isAutomated: false,
-              message: body.message ?? body.template?.name ?? '',
+              message:
+                body.message ??
+                body.template?.name ??
+                'Mídia enviada manualmente.',
               template,
+              mediaUrl: body.mediaUrl,
+              mediaType: body.mediaType,
               blocklist: blockedTerms,
             })
             accountPayload = {
@@ -171,7 +195,9 @@ export const Route = createFileRoute('/api/messages/send')({
               optedOutAt: contact.opted_out_at,
               isAutomated: false,
               requestedTag: body.humanAgent ? 'HUMAN_AGENT' : null,
-              message: body.message ?? '',
+              message: body.message ?? 'Mídia enviada manualmente.',
+              mediaUrl: body.mediaUrl,
+              mediaType: body.mediaType,
               blocklist: blockedTerms,
             })
             accountPayload = {
@@ -215,6 +241,7 @@ export const Route = createFileRoute('/api/messages/send')({
             channel: 'dm',
             direction: 'outbound',
             message_text: result.decision.body,
+            media_url: body.mediaUrl ?? null,
             status: result.sent ? 'sent' : 'blocked',
             is_automated: false,
             policy_used: result.decision.policy,
@@ -242,6 +269,7 @@ export const Route = createFileRoute('/api/messages/send')({
                 provider_message_id: providerMessageId ?? null,
                 direction: 'outbound',
                 body: result.decision.body,
+                media_url: body.mediaUrl ?? null,
                 message_type: messageType,
                 status: result.sent ? 'sent' : 'blocked',
                 is_ai_generated: body.aiGenerated,

@@ -10,7 +10,14 @@ import {
   saveIntegrationCredential,
   writeIntegrationAudit,
 } from '../server/integration-credentials.server'
-import { refreshMetaAccessToken } from '../server/meta-api.server'
+import {
+  MetaApiError,
+  createMetaPublishContainer,
+  getMetaContainerStatus,
+  getMetaPublishingLimit,
+  publishMetaContainer,
+  refreshMetaAccessToken,
+} from '../server/meta-api.server'
 import {
   UnsupportedScheduledJobError,
   isTerminalScheduledJobError,
@@ -27,6 +34,7 @@ import {
 } from '../server/automation-engine.server'
 import { n8nDispatchSchema } from '../server/n8n-contract'
 import { sendN8nEvent } from '../server/n8n-integration.server'
+import { syncWorkspaceInstagramInsights } from '../server/insights-sync.server'
 
 /** Falha cedo: um scheduler sem service role não pode operar com segurança. */
 function requireSupabase() {
@@ -220,6 +228,10 @@ async function processDueJobs() {
       else if (job.kind === 'automation_step') await processAutomationStep(job)
       else if (job.kind === 'integration_event')
         await processIntegrationEventJob(job)
+      else if (job.kind === 'campaign_message') await processCampaignJob(job)
+      else if (job.kind === 'content_publish')
+        await processContentPublishJob(job)
+      else if (job.kind === 'insights_sync') await processInsightsSyncJob(job)
       else throw new UnsupportedScheduledJobError(job.kind)
       const { error: completedError } = await supabase
         .from('scheduled_jobs')
@@ -269,6 +281,208 @@ async function processDueJobs() {
   }
 }
 
+async function processInsightsSyncJob(job: {
+  workspace_id: string
+  payload: Record<string, unknown>
+}) {
+  const instagramAccountId = String(job.payload.instagramAccountId ?? '')
+  if (!instagramAccountId)
+    throw new UnsupportedScheduledJobError('insights_account_missing')
+  await syncWorkspaceInstagramInsights({
+    workspaceId: job.workspace_id,
+    instagramAccountId,
+  })
+}
+
+/** Publica um rascunho por container reutilizável e tolerante a retries. */
+async function processContentPublishJob(job: {
+  id: string
+  workspace_id: string
+  payload: Record<string, unknown>
+}) {
+  const contentItemId = String(job.payload.contentItemId ?? '')
+  if (!contentItemId) throw new Error('content_job_payload_invalid')
+  const { data: item, error } = await supabase
+    .from('content_items')
+    .select(
+      'id,instagram_account_id,kind,caption,media,status,meta_container_id,provider_media_id',
+    )
+    .eq('workspace_id', job.workspace_id)
+    .eq('id', contentItemId)
+    .maybeSingle()
+  if (error) throw error
+  if (!item || item.status === 'published') return
+  if (!['scheduled', 'publishing'].includes(item.status)) return
+  if (!item.instagram_account_id)
+    throw new UnsupportedScheduledJobError('content_account_missing')
+  try {
+    const access = await getMetaAccountAccess({
+      workspaceId: job.workspace_id,
+      instagramAccountId: item.instagram_account_id,
+    })
+    let containerId = item.meta_container_id as string | null
+    if (!containerId) {
+      const limit = await getMetaPublishingLimit({
+        instagramUserId: access.instagramUserId,
+        accessToken: access.accessToken,
+      })
+      const usage = limit.data?.[0]?.quota_usage ?? 0
+      const total = limit.data?.[0]?.config?.quota_total ?? 100
+      if (usage >= total) {
+        await failContentItem(contentItemId, 'meta_publishing_limit')
+        throw new UnsupportedScheduledJobError('content_publishing_limit')
+      }
+      const container = await createMetaPublishContainer({
+        instagramUserId: access.instagramUserId,
+        accessToken: access.accessToken,
+        kind: item.kind,
+        caption: item.caption,
+        media: item.media,
+      })
+      containerId = container.id
+      const { error: containerError } = await supabase
+        .from('content_items')
+        .update({
+          status: 'publishing',
+          meta_container_id: containerId,
+          last_publish_attempt_at: new Date().toISOString(),
+          publish_error_code: null,
+        })
+        .eq('workspace_id', job.workspace_id)
+        .eq('id', item.id)
+      if (containerError) throw containerError
+    }
+    const status = await getMetaContainerStatus({
+      containerId,
+      accessToken: access.accessToken,
+    })
+    if (status.status_code === 'ERROR' || status.status_code === 'EXPIRED') {
+      await failContentItem(
+        item.id,
+        `meta_container_${status.status_code.toLowerCase()}`,
+      )
+      throw new UnsupportedScheduledJobError(
+        `content_container_${status.status_code.toLowerCase()}`,
+      )
+    }
+    if (status.status_code === 'IN_PROGRESS')
+      throw new Error('content_container_processing')
+    if (status.status_code === 'PUBLISHED') {
+      const { error: publishedError } = await supabase
+        .from('content_items')
+        .update({
+          status: 'published',
+          published_at: new Date().toISOString(),
+          publish_error_code: null,
+        })
+        .eq('workspace_id', job.workspace_id)
+        .eq('id', item.id)
+      if (publishedError) throw publishedError
+      return
+    }
+    const published = await publishMetaContainer({
+      instagramUserId: access.instagramUserId,
+      containerId,
+      accessToken: access.accessToken,
+    })
+    const { error: publishedError } = await supabase
+      .from('content_items')
+      .update({
+        status: 'published',
+        provider_media_id: published.id,
+        published_at: new Date().toISOString(),
+        publish_error_code: null,
+      })
+      .eq('workspace_id', job.workspace_id)
+      .eq('id', item.id)
+    if (publishedError) throw publishedError
+  } catch (caught) {
+    if (caught instanceof MetaApiError && caught.status < 500) {
+      await failContentItem(item.id, `meta_http_${caught.status}`)
+      throw new UnsupportedScheduledJobError(
+        `content_meta_http_${caught.status}`,
+      )
+    }
+    throw caught
+  }
+}
+
+async function failContentItem(contentItemId: string, code: string) {
+  const { error } = await supabase
+    .from('content_items')
+    .update({ status: 'failed', publish_error_code: code.slice(0, 120) })
+    .eq('id', contentItemId)
+  if (error) throw error
+}
+
+/**
+ * Revalida cada destinatário no instante do envio. A prévia da campanha nunca
+ * é tratada como autorização, porque a janela de 24h pode fechar na fila.
+ */
+async function processCampaignJob(job: {
+  id: string
+  workspace_id: string
+  payload: Record<string, unknown>
+}) {
+  const campaignId = String(job.payload.campaignId ?? '')
+  const recipientId = String(job.payload.recipientId ?? '')
+  if (!campaignId || !recipientId)
+    throw new Error('campaign_job_payload_invalid')
+  const { data: recipient, error } = await supabase
+    .from('campaign_recipients')
+    .select('id,contact_id,status,campaigns!inner(id,message,status)')
+    .eq('workspace_id', job.workspace_id)
+    .eq('campaign_id', campaignId)
+    .eq('id', recipientId)
+    .maybeSingle()
+  if (error) throw error
+  if (!recipient || recipient.status !== 'queued') return
+  const campaign = Array.isArray(recipient.campaigns)
+    ? recipient.campaigns[0]
+    : recipient.campaigns
+  if (!['scheduled', 'running'].includes(campaign.status)) return
+
+  const result = await processSequenceJob({
+    ...job,
+    payload: {
+      contactId: recipient.contact_id,
+      responseText: campaign.message,
+      campaignId,
+      campaignRecipientId: recipient.id,
+    },
+  })
+  const status = result?.sent ? 'sent' : 'blocked'
+  const { error: recipientError } = await supabase
+    .from('campaign_recipients')
+    .update({
+      status,
+      reason: result?.reason ?? null,
+      sent_at: result?.sent ? new Date().toISOString() : null,
+    })
+    .eq('id', recipient.id)
+    .eq('workspace_id', job.workspace_id)
+  if (recipientError) throw recipientError
+  const { count: pending, error: pendingError } = await supabase
+    .from('campaign_recipients')
+    .select('id', { count: 'exact', head: true })
+    .eq('workspace_id', job.workspace_id)
+    .eq('campaign_id', campaignId)
+    .eq('status', 'queued')
+  if (pendingError) throw pendingError
+  if (!pending) {
+    const { error: completeError } = await supabase
+      .from('campaigns')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', campaignId)
+      .eq('workspace_id', job.workspace_id)
+      .in('status', ['scheduled', 'running'])
+    if (completeError) throw completeError
+  }
+}
+
 /** Entrega a outbox de integrações com o mesmo delivery ID nos retries. */
 async function processIntegrationEventJob(job: {
   id: string
@@ -293,10 +507,11 @@ async function processSequenceJob(job: {
   id: string
   workspace_id: string
   payload: Record<string, unknown>
-}) {
+}): Promise<{ sent: boolean; reason?: string } | undefined> {
   const payload = job.payload
   let contactId = payload.contactId as string | undefined
   let message = payload.responseText as string | undefined
+  let mediaUrl: string | null = null
   const senderId = String(payload.senderId ?? '')
   const commentId = payload.instagramCommentId
     ? String(payload.instagramCommentId)
@@ -351,7 +566,12 @@ async function processSequenceJob(job: {
         .eq('id', enrollment.id)
       return
     }
-    if (step.kind !== 'typing') message = step.content ?? undefined
+    if (step.kind === 'media') {
+      mediaUrl = step.media_url
+      message = step.content ?? 'Mídia automática'
+    } else if (step.kind !== 'typing' && step.kind !== 'delay') {
+      message = step.content ?? undefined
+    }
   }
   if (message && bookingPageId)
     message = await applyBookingLink({
@@ -404,6 +624,11 @@ async function processSequenceJob(job: {
       message,
       commentCreatedAt,
       blocklist: blocklistResult.data.map((entry) => entry.term),
+      mediaUrl,
+      mediaType:
+        mediaUrl && /\.(mp4|mov)(\?|$)/i.test(mediaUrl)
+          ? ('video' as const)
+          : ('image' as const),
     }
     let result
     if (platform === 'whatsapp') {
@@ -502,6 +727,7 @@ async function processSequenceJob(job: {
       channel: commentId ? 'comment' : 'dm',
       direction: 'outbound',
       message_text: result.decision.body,
+      media_url: mediaUrl,
       status: result.sent ? 'sent' : 'blocked',
       is_automated: true,
       policy_used: result.decision.policy,
@@ -530,6 +756,7 @@ async function processSequenceJob(job: {
         provider_message_id: providerMessageId ?? null,
         direction: 'outbound',
         body: result.decision.body,
+        media_url: mediaUrl,
         status: result.sent ? 'sent' : 'blocked',
         is_ai_generated: aiGenerated,
         is_automated: true,
@@ -565,7 +792,10 @@ async function processSequenceJob(job: {
         reason: result.sent ? null : result.decision.reason,
         policy: result.decision.policy,
       })
-      return
+      return {
+        sent: result.sent,
+        ...(result.sent ? {} : { reason: result.decision.reason }),
+      }
     }
     if (!result.sent) {
       if (enrollmentId)
@@ -573,7 +803,7 @@ async function processSequenceJob(job: {
           .from('sequence_enrollments')
           .update({ status: 'blocked', blocked_reason: result.decision.reason })
           .eq('id', enrollmentId)
-      return
+      return { sent: false, reason: result.decision.reason }
     }
     // A Meta permite uma única Private Reply; uma sequência só continua após
     // uma nova mensagem inbound do contato abrir a janela padrão de 24h.
@@ -586,7 +816,7 @@ async function processSequenceJob(job: {
           next_run_at: null,
         })
         .eq('id', enrollmentId)
-      return
+      return { sent: true }
     }
   }
 
@@ -648,6 +878,7 @@ async function processSequenceJob(job: {
         .eq('id', enrollmentId)
     }
   }
+  return { sent: true }
 }
 
 function extractScheduledProviderMessageId(result: Record<string, unknown>) {

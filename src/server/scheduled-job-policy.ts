@@ -5,6 +5,9 @@ export const IMPLEMENTED_SCHEDULED_JOB_KINDS = [
   'sequence_step',
   'automation_step',
   'integration_event',
+  'campaign_message',
+  'content_publish',
+  'insights_sync',
 ] as const
 export type ImplementedScheduledJobKind =
   (typeof IMPLEMENTED_SCHEDULED_JOB_KINDS)[number]

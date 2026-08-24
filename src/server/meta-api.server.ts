@@ -270,6 +270,174 @@ export async function getMetaMedia(input: {
   }>(response)
 }
 
+export type MetaPublishMedia = {
+  url: string
+  type: 'image' | 'video'
+}
+
+async function postMetaForm<T>(
+  path: string,
+  accessToken: string,
+  values: Record<string, string>,
+) {
+  const body = new URLSearchParams(values)
+  const response = await fetchMeta(`${graphBase()}${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body,
+  })
+  return parseMetaResponse<T>(response)
+}
+
+/**
+ * Cria containers a partir de arquivos HTTPS públicos. A Meta busca esses
+ * arquivos diretamente; o Wal Chat nunca recebe bytes nem tokens no browser.
+ */
+export async function createMetaPublishContainer(input: {
+  instagramUserId: string
+  accessToken: string
+  kind: 'feed' | 'reel' | 'story' | 'carousel'
+  caption?: string | null
+  media: MetaPublishMedia[]
+}) {
+  const basePath = `/${encodeURIComponent(input.instagramUserId)}/media`
+  if (input.kind === 'feed') {
+    const media = input.media[0]
+    if (input.media.length !== 1 || media.type !== 'image')
+      throw new Error('Feed exige exatamente uma imagem pública.')
+    return postMetaForm<{ id: string }>(basePath, input.accessToken, {
+      image_url: media.url,
+      caption: input.caption ?? '',
+    })
+  }
+  if (input.kind === 'reel' || input.kind === 'story') {
+    const media = input.media[0]
+    if (input.media.length !== 1 || media.type !== 'video')
+      throw new Error(
+        `${input.kind === 'reel' ? 'Reel' : 'Story'} exige exatamente um vídeo público.`,
+      )
+    return postMetaForm<{ id: string }>(basePath, input.accessToken, {
+      video_url: media.url,
+      media_type: input.kind === 'reel' ? 'REELS' : 'STORIES',
+      ...(input.kind === 'reel' ? { caption: input.caption ?? '' } : {}),
+    })
+  }
+  if (input.media.length < 2 || input.media.length > 10)
+    throw new Error('Carrossel exige de 2 a 10 mídias públicas.')
+  const children: string[] = []
+  for (const media of input.media) {
+    const child = await postMetaForm<{ id: string }>(
+      basePath,
+      input.accessToken,
+      media.type === 'video'
+        ? {
+            video_url: media.url,
+            media_type: 'VIDEO',
+            is_carousel_item: 'true',
+          }
+        : { image_url: media.url, is_carousel_item: 'true' },
+    )
+    children.push(child.id)
+  }
+  return postMetaForm<{ id: string }>(basePath, input.accessToken, {
+    media_type: 'CAROUSEL',
+    children: children.join(','),
+    caption: input.caption ?? '',
+  })
+}
+
+export async function getMetaContainerStatus(input: {
+  containerId: string
+  accessToken: string
+}) {
+  const url = new URL(`${graphBase()}/${encodeURIComponent(input.containerId)}`)
+  url.searchParams.set('fields', 'status_code,status')
+  const response = await fetchMeta(url, {
+    headers: { Authorization: `Bearer ${input.accessToken}` },
+  })
+  return parseMetaResponse<{
+    id: string
+    status_code: 'EXPIRED' | 'ERROR' | 'FINISHED' | 'IN_PROGRESS' | 'PUBLISHED'
+    status?: string
+  }>(response)
+}
+
+export async function publishMetaContainer(input: {
+  instagramUserId: string
+  containerId: string
+  accessToken: string
+}) {
+  return postMetaForm<{ id: string }>(
+    `/${encodeURIComponent(input.instagramUserId)}/media_publish`,
+    input.accessToken,
+    { creation_id: input.containerId },
+  )
+}
+
+export async function getMetaPublishingLimit(input: {
+  instagramUserId: string
+  accessToken: string
+}) {
+  const url = new URL(
+    `${graphBase()}/${encodeURIComponent(input.instagramUserId)}/content_publishing_limit`,
+  )
+  url.searchParams.set('fields', 'quota_usage,config')
+  const response = await fetchMeta(url, {
+    headers: { Authorization: `Bearer ${input.accessToken}` },
+  })
+  return parseMetaResponse<{
+    data?: Array<{
+      quota_usage?: number
+      config?: { quota_total?: number; quota_duration?: number }
+    }>
+  }>(response)
+}
+
+export type MetaInsightMetric = {
+  name: string
+  period?: string
+  values?: Array<{ value: number | Record<string, unknown>; end_time?: string }>
+  total_value?: { value?: number | Record<string, unknown> }
+}
+
+export async function getMetaAccountInsights(input: {
+  instagramUserId: string
+  accessToken: string
+  metrics: string[]
+  since?: string
+  until?: string
+}) {
+  const url = new URL(
+    `${graphBase()}/${encodeURIComponent(input.instagramUserId)}/insights`,
+  )
+  url.searchParams.set('metric', input.metrics.join(','))
+  url.searchParams.set('period', 'day')
+  if (input.since) url.searchParams.set('since', input.since)
+  if (input.until) url.searchParams.set('until', input.until)
+  const response = await fetchMeta(url, {
+    headers: { Authorization: `Bearer ${input.accessToken}` },
+  })
+  return parseMetaResponse<{ data?: MetaInsightMetric[] }>(response)
+}
+
+export async function getMetaMediaInsights(input: {
+  mediaId: string
+  accessToken: string
+  metrics: string[]
+}) {
+  const url = new URL(
+    `${graphBase()}/${encodeURIComponent(input.mediaId)}/insights`,
+  )
+  url.searchParams.set('metric', input.metrics.join(','))
+  const response = await fetchMeta(url, {
+    headers: { Authorization: `Bearer ${input.accessToken}` },
+  })
+  return parseMetaResponse<{ data?: MetaInsightMetric[] }>(response)
+}
+
 export async function subscribeMetaWebhooks(input: {
   instagramUserId: string
   accessToken: string
