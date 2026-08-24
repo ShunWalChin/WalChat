@@ -6,30 +6,30 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 
 ## Estado do projeto
 
-| Item                      | Estado                                                                      |
-| ------------------------- | --------------------------------------------------------------------------- |
-| MVP navegável             | Disponível                                                                  |
-| Homologação HTTPS         | [wal-chat.64.181.178.125.nip.io](https://wal-chat.64.181.178.125.nip.io)    |
-| Auth, Postgres e RLS      | Supabase isolado                                                            |
-| Filas e workers           | Redis + BullMQ                                                              |
-| Webhooks Meta             | Instagram + WhatsApp com HMAC, idempotência, Inbox e worker                 |
-| Segurança de entrega      | Claim persistente; resposta ambígua não é reenviada automaticamente         |
-| Hardening do backend      | JWT + RLS, ingestão transacional, SKIP LOCKED e limites distribuídos        |
-| Motor de automações       | DAG versionado, campos tipados, auditoria, delay, condição e A/B            |
-| Reconciliação da fila     | Postgres/BullMQ por `jobId` canônico                                        |
-| OAuth Instagram           | Login, token cifrado por tenant, assinatura e validação implementados       |
-| WhatsApp Cloud API        | Embedded Signup, WABA, telefone, templates e receipts implementados         |
-| OpenAI / Gemini           | Responses API + Gemini opcional, configuráveis por workspace                |
-| Google Workspace          | OAuth PKCE, Calendar, Meet, Tasks, Free/Busy e links públicos implementados |
-| Integração n8n            | API key, HMAC, inbox/outbox idempotente e wizard por workspace              |
-| Site público e SEO        | 404, CTA, FAQ, provas técnicas, sitemap, robots, OG e JSON-LD               |
-| LGPD e Analytics          | Pedido de exclusão persistido e GA4 bloqueado até consentimento             |
-| Modo atual da homologação | `DEMO_MODE=true`                                                            |
-| Live Mode Meta            | Depende de app, tokens, permissões e revisão da Meta                        |
+| Item                   | Estado                                                                      |
+| ---------------------- | --------------------------------------------------------------------------- |
+| MVP navegável          | Disponível                                                                  |
+| Homologação HTTPS      | [wal-chat.64.181.178.125.nip.io](https://wal-chat.64.181.178.125.nip.io)    |
+| Auth, Postgres e RLS   | Supabase isolado                                                            |
+| Filas e workers        | Redis + BullMQ                                                              |
+| Webhooks Meta          | Instagram + WhatsApp com HMAC, idempotência, Inbox e worker                 |
+| Segurança de entrega   | Claim persistente; resposta ambígua não é reenviada automaticamente         |
+| Hardening do backend   | JWT + RLS, ingestão transacional, SKIP LOCKED e limites distribuídos        |
+| Motor de automações    | DAG versionado, campos tipados, auditoria, delay, condição e A/B            |
+| Reconciliação da fila  | Postgres/BullMQ por `jobId` canônico                                        |
+| OAuth Instagram        | Login, token cifrado por tenant, assinatura e validação implementados       |
+| WhatsApp Cloud API     | Embedded Signup, WABA, telefone, templates e receipts implementados         |
+| OpenAI / Gemini        | Responses API + Gemini opcional, configuráveis por workspace                |
+| Google Workspace       | OAuth PKCE, Calendar, Meet, Tasks, Free/Busy e links públicos implementados |
+| Integração n8n         | API key, HMAC, inbox/outbox idempotente e wizard por workspace              |
+| Site público e SEO     | 404, CTA, FAQ, provas técnicas, sitemap, robots, OG e JSON-LD               |
+| LGPD e Analytics       | Pedido de exclusão persistido e GA4 bloqueado até consentimento             |
+| Modo atual da produção | `DEMO_MODE=false`; kill switches do workspace desligados                    |
+| Live Mode Meta         | API real validada; envio canário depende da conta remetente correta         |
 
-> A release de módulos de produção está implantada e apta para testes internos.
-> A entrega externa real continua protegida por `DEMO_MODE=true` até a aprovação
-> das credenciais, ativos e permissões da Meta, Google e provedor de IA.
+> A release live está implantada e as leituras reais da Instagram API foram
+> aprovadas. A entrega externa continua protegida pelos kill switches do
+> workspace até conectar `_fat.tech` e definir o destinatário do canário.
 
 ## O que o sistema entrega
 
@@ -381,6 +381,7 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 - [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)
 - [Validação Meta em produção — 24/08/2026](docs/VALIDACAO_META_PRODUCAO_2026-08-24.md)
 - [Validação dos módulos de produção — 24/08/2026](docs/VALIDACAO_MODULOS_PRODUCAO_2026-08-24.md)
+- [Backup completo e ativação live — 24/08/2026](docs/ATIVACAO_LIVE_E_BACKUP_2026-08-24.md)
 
 ## Documentação
 
@@ -407,12 +408,15 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 | [Validação do wizard e n8n](docs/RELATORIO_VALIDACAO_N8N_2026-08-23.md)                 | Testes, migration dry-run e gate de deploy       |
 | [Validação Meta em produção](docs/VALIDACAO_META_PRODUCAO_2026-08-24.md)                | Instagram real, WhatsApp e gates de live mode    |
 | [Validação dos módulos de produção](docs/VALIDACAO_MODULOS_PRODUCAO_2026-08-24.md)      | Release, testes, botões, integrações e decisão   |
+| [Backup e ativação live](docs/ATIVACAO_LIVE_E_BACKUP_2026-08-24.md)                     | Backup, promoção, testes reais e rollback        |
 
 ## Limites conhecidos do MVP
 
 - Alcance editorial e publicação dependem do ativo e das permissões concedidas
   pela Instagram API; o backend de sincronização e publicação está implementado.
-- O Instagram `@walfredonetto` está conectado e validado. O WhatsApp Embedded Signup está configurado, mas o live mode ainda depende do WABA/número reais, verificação empresarial, App Review e Advanced Access.
+- A credencial Instagram ativa ainda pertence a `@walfredonetto`; `_fat.tech`
+  precisa concluir OAuth antes do canário pretendido. O WhatsApp Embedded
+  Signup está configurado, mas ainda não há WABA/número real conectado.
 - Calendar/Meet/Tasks funcionam localmente; efeitos no Google dependem do OAuth
   Client, APIs habilitadas e consentimento do usuário. Sem credenciais, a UI
   informa a pendência e mantém a agenda local.
