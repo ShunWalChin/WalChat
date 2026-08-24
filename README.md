@@ -27,7 +27,9 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | Modo atual da homologação | `DEMO_MODE=true`                                                            |
 | Live Mode Meta            | Depende de app, tokens, permissões e revisão da Meta                        |
 
-> As integrações Instagram/WhatsApp e IA estão preparadas para teste integrado. A entrega real depende das credenciais, ativos de teste e permissões concedidas pela Meta; publicação e sincronização completa de Insights ainda mantêm partes demonstrativas.
+> A release de módulos de produção está implantada e apta para testes internos.
+> A entrega externa real continua protegida por `DEMO_MODE=true` até a aprovação
+> das credenciais, ativos e permissões da Meta, Google e provedor de IA.
 
 ## O que o sistema entrega
 
@@ -42,12 +44,17 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
   mensagem, ação, condição, delay e randomização A/B; o editor visual ainda
   será conectado ao novo contrato.
 - Agentes de IA em modo copiloto ou autônomo.
-- Reengajamento: preview bloqueado; campanha persistida e disparo em massa ainda não estão liberados.
+- Reengajamento com preview de elegibilidade, persistência, início,
+  pausa/cancelamento e vazão configurável de 30–45/min, protegido pelo gate de
+  produção.
 - Calendário operacional com mês/semana/agenda, CRUD, Google Calendar/Tasks,
   Meet, Free/Busy, links públicos e atividade dos demais módulos.
-- Estúdio de Feed, Reels, Story e Carrossel em modo de prévia; publicação externa permanece desabilitada.
-- Auto-like em modo de prévia; o sistema não apresenta mais o recurso como ativo.
-- Insights aguardam ingestão oficial; nenhuma métrica demonstrativa é exibida como real.
+- Estúdio persistente de Feed, Reels, Story e Carrossel, com agendamento,
+  containers oficiais e publicação pelo scheduler, protegido pelo gate externo.
+- Preferências de auto-like são configuráveis, mas a execução permanece
+  explicitamente indisponível porque a API oficial não oferece curtida de
+  comentários.
+- Insights com sincronização oficial resiliente, métricas diárias e por post.
 - Política de Privacidade, Termos e Exclusão de Dados.
 - Central de Go-Live com diagnóstico, kill switches e observabilidade de webhooks.
 - Comment-to-DM por publicação real e Inbox com atribuição, prioridade e notas.
@@ -373,6 +380,7 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 - [Manual em PDF](output/pdf/manual-interno-wal-chat.pdf)
 - [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)
 - [Validação Meta em produção — 24/08/2026](docs/VALIDACAO_META_PRODUCAO_2026-08-24.md)
+- [Validação dos módulos de produção — 24/08/2026](docs/VALIDACAO_MODULOS_PRODUCAO_2026-08-24.md)
 
 ## Documentação
 
@@ -397,11 +405,13 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 | [Manual completo de acessos](docs/MANUAL_COMPLETO_ACESSOS_OPERACAO_CONFIGURACAO.md)     | URLs, usuários, módulos e configuração           |
 | [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)                     | Evidências da validação publicada                |
 | [Validação do wizard e n8n](docs/RELATORIO_VALIDACAO_N8N_2026-08-23.md)                 | Testes, migration dry-run e gate de deploy       |
-| [Validação Meta em produção](docs/VALIDACAO_META_PRODUCAO_2026-08-24.md)               | Instagram real, WhatsApp e gates de live mode    |
+| [Validação Meta em produção](docs/VALIDACAO_META_PRODUCAO_2026-08-24.md)                | Instagram real, WhatsApp e gates de live mode    |
+| [Validação dos módulos de produção](docs/VALIDACAO_MODULOS_PRODUCAO_2026-08-24.md)      | Release, testes, botões, integrações e decisão   |
 
 ## Limites conhecidos do MVP
 
-- Alcance editorial e publicação ainda dependem dos serviços de sincronização/publicação da Instagram API; mensagens, CRM, Inbox e conexões já usam o backend real.
+- Alcance editorial e publicação dependem do ativo e das permissões concedidas
+  pela Instagram API; o backend de sincronização e publicação está implementado.
 - O Instagram `@walfredonetto` está conectado e validado. O WhatsApp Embedded Signup está configurado, mas o live mode ainda depende do WABA/número reais, verificação empresarial, App Review e Advanced Access.
 - Calendar/Meet/Tasks funcionam localmente; efeitos no Google dependem do OAuth
   Client, APIs habilitadas e consentimento do usuário. Sem credenciais, a UI
