@@ -77,6 +77,10 @@ export const Route = createFileRoute('/api/automations')({
                 completed: 0,
               },
             })),
+            permissions: {
+              canManage: context.role === 'owner' || context.role === 'admin',
+              canExecute: context.role !== 'viewer',
+            },
           })
         } catch (error) {
           return apiErrorResponse(error, 'Falha ao consultar automações.')
@@ -113,6 +117,11 @@ export const Route = createFileRoute('/api/automations')({
             })
             .select('id,revision')
             .single()
+          if (error?.code === '23505')
+            return Response.json(
+              { error: 'Já existe uma automação com este nome.' },
+              { status: 409 },
+            )
           if (error) throw error
           return Response.json(data, { status: 201 })
         } catch (error) {

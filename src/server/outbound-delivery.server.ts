@@ -64,7 +64,7 @@ export function fingerprintOutboundDelivery(input: {
   whatsappAccountId?: string
   recipientId: string
   decision: ComplianceDecision
-  messageType?: 'text' | 'template'
+  messageType?: 'text' | 'image' | 'video' | 'template'
   templateName?: string
   templateLanguage?: string
 }) {
@@ -144,7 +144,7 @@ export async function claimOutboundDelivery(input: {
   source: OutboundDeliverySource
   scheduledJobId?: string
   decision: ComplianceDecision
-  messageType?: 'text' | 'template'
+  messageType?: 'text' | 'image' | 'video' | 'template'
   templateName?: string
   templateLanguage?: string
 }) {

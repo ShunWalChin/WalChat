@@ -15,7 +15,7 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | Webhooks Meta          | Instagram + WhatsApp com HMAC, idempotência, Inbox e worker                 |
 | Segurança de entrega   | Claim persistente; resposta ambígua não é reenviada automaticamente         |
 | Hardening do backend   | JWT + RLS, ingestão transacional, SKIP LOCKED e limites distribuídos        |
-| Motor de automações    | DAG versionado, campos tipados, auditoria, delay, condição e A/B            |
+| Motor de automações    | Automation Studio v2: DAG visual, IA, CRM, n8n, handoff e subfluxos         |
 | Reconciliação da fila  | Postgres/BullMQ por `jobId` canônico                                        |
 | OAuth Instagram        | Login, token cifrado por tenant, assinatura e validação implementados       |
 | WhatsApp Cloud API     | Embedded Signup, WABA, telefone, templates e receipts implementados         |
@@ -40,9 +40,9 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
   em lote, elegibilidade e CSV.
 - Gatilhos por comentário, DM, resposta de story ou mensagem do WhatsApp.
 - Embedded Signup do WhatsApp, registro do telefone, sincronização de templates e mídia autenticada.
-- Automações: resposta simples, sequência legada e motor DAG versionado com
-  mensagem, ação, condição, delay e randomização A/B; o editor visual ainda
-  será conectado ao novo contrato.
+- Automation Studio v2: editor visual ligado ao DAG versionado com mensagem e
+  mídia, agente de IA, ação de CRM, condição, delay, A/B determinístico,
+  handoff humano, evento n8n confirmado, subfluxo e trilha de execução.
 - Agentes de IA em modo copiloto ou autônomo.
 - Reengajamento com preview de elegibilidade, persistência, início,
   pausa/cancelamento e vazão configurável de 30–45/min, protegido pelo gate de
@@ -99,6 +99,9 @@ A revisão de segurança mais recente está documentada em [Auditoria do backend
 
 O desenho e o runbook do novo motor estão em
 [Arquitetura do backend e automações DAG — 22/08/2026](docs/ARQUITETURA_BACKEND_AUTOMACOES_DAG_2026-08-22.md).
+
+O manual operacional da interface e dos blocos v2 está em
+[Automation Studio v2 — 24/08/2026](docs/AUTOMATION_STUDIO_V2_2026-08-24.md).
 
 A auditoria transversal desta release está em
 [Auditoria de pré-produção, segurança, funções e SEO — 20/08/2026](docs/AUDITORIA_PRE_PRODUCAO_SEGURANCA_SEO_2026-08-20.md).
@@ -302,6 +305,11 @@ chaves administrativas ou credenciais de IA.
 | `GET`       | `/api/contacts`                              | CRM multicanal e elegibilidade                |
 | `GET`       | `/api/dashboard`                             | Métricas operacionais reais                   |
 | `GET/*`     | `/api/triggers`                              | CRUD de gatilhos simples persistidos          |
+| `GET/POST`  | `/api/automations`                           | Catálogo e criação de jornadas DAG            |
+| `GET/PATCH` | `/api/automations/:flowId`                   | Rascunho, revisão otimista e observabilidade  |
+| `POST`      | `/api/automations/:flowId`                   | Publicação atômica de versão imutável         |
+| `POST`      | `/api/automations/:flowId/execute`           | Execução manual idempotente e Meta-safe       |
+| `GET/*`     | `/api/automations/fields`                    | Campos de contato e globais tipados           |
 | `GET/*`     | `/api/calendar`                              | Agenda unificada e CRUD de eventos/tarefas    |
 | `GET/*`     | `/api/calendar/booking-pages`                | Tipos e links públicos de agendamento         |
 | `GET/POST`  | `/api/public/bookings/:slug`                 | Free/Busy e reserva pública transacional      |

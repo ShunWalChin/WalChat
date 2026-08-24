@@ -5,6 +5,7 @@ import {
   evaluateAutomationCondition,
   isAutomationFieldValue,
   renderAutomationTemplate,
+  renderAutomationFields,
   selectAutomationBranch,
   validateAutomationGraph,
 } from './automation-graph'
@@ -174,6 +175,67 @@ describe('automation graph', () => {
         },
       ),
     ).toBe('Oi Ana, score 91 {{process.env.SECRET}}')
+  })
+
+  it('monta campos externos declarativos sem avaliar código', () => {
+    expect(
+      renderAutomationFields(
+        [
+          { key: 'lead.name', value: '{{contact.display_name}}' },
+          { key: 'lead.score', value: '{{custom.score}}' },
+        ],
+        {
+          contact: { display_name: 'Ana' },
+          custom: { score: 91 },
+          bot: {},
+          context: {},
+        },
+      ),
+    ).toEqual({ 'lead.name': 'Ana', 'lead.score': '91' })
+  })
+
+  it('aceita os blocos operacionais do Automation Studio v2', () => {
+    expect(() =>
+      validateAutomationGraph({
+        schemaVersion: 2,
+        entryNodeId: 'start',
+        nodes: [
+          { id: 'start', type: 'start' },
+          {
+            id: 'ai',
+            type: 'ai_reply',
+            config: {
+              agentId: '11111111-1111-4111-8111-111111111111',
+              prompt: 'Atenda {{contact.display_name}}',
+            },
+          },
+          {
+            id: 'export',
+            type: 'n8n_event',
+            config: {
+              eventName: 'lead.qualified',
+              fields: [{ key: 'score', value: '{{custom.score}}' }],
+            },
+          },
+          {
+            id: 'human',
+            type: 'handoff',
+            config: {
+              category: 'pedidos',
+              priority: 'high',
+              note: 'Lead qualificado pelo fluxo.',
+            },
+          },
+          { id: 'end', type: 'end' },
+        ],
+        edges: [
+          { from: 'start', to: 'ai' },
+          { from: 'ai', to: 'export' },
+          { from: 'export', to: 'human' },
+          { from: 'human', to: 'end' },
+        ],
+      }),
+    ).not.toThrow()
   })
 
   it('valida valores de campos com a mesma semântica do banco', () => {

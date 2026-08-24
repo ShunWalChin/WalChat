@@ -59,28 +59,32 @@ export const Route = createFileRoute('/api/sequences')({
           ])
             if (result.error) throw result.error
 
-          const stepsBySequence = new Map<string, typeof stepsResult.data>()
-          for (const step of stepsResult.data) {
+          const sequences = sequencesResult.data ?? []
+          const steps = stepsResult.data ?? []
+          const enrollments = enrollmentsResult.data ?? []
+          const triggers = triggersResult.data ?? []
+          const stepsBySequence = new Map<string, typeof steps>()
+          for (const step of steps) {
             const current = stepsBySequence.get(step.sequence_id) ?? []
             current.push(step)
             stepsBySequence.set(step.sequence_id, current)
           }
           return Response.json({
-            sequences: sequencesResult.data.map((sequence) => ({
+            sequences: sequences.map((sequence) => ({
               id: sequence.id,
               name: sequence.name,
               description: sequence.description,
               isActive: sequence.is_active,
               createdAt: sequence.created_at,
               updatedAt: sequence.updated_at,
-              contacts: enrollmentsResult.data.filter(
+              contacts: enrollments.filter(
                 (item) => item.sequence_id === sequence.id,
               ).length,
-              activeContacts: enrollmentsResult.data.filter(
+              activeContacts: enrollments.filter(
                 (item) =>
                   item.sequence_id === sequence.id && item.status === 'active',
               ).length,
-              activeTriggers: triggersResult.data.filter(
+              activeTriggers: triggers.filter(
                 (item) =>
                   item.sequence_id === sequence.id && item.is_active === true,
               ).length,

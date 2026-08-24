@@ -222,19 +222,19 @@ adiciona `Responda PARAR` a mensagens automáticas quando necessário.
 
 ## Matriz atual do backend
 
-| Domínio                     | Estado técnico         | Observação                                      |
-| --------------------------- | ---------------------- | ----------------------------------------------- |
-| Auth + multi-tenant         | Implementado           | JWT, RLS, papéis e isolamento por workspace.    |
-| Webhooks Instagram/WhatsApp | Implementado           | HMAC, outbox, dedupe, worker e telemetria.      |
-| Inbox e CRM                 | Implementado           | Contatos 360º, tags, auditoria e ações.         |
-| Gateway/compliance          | Implementado           | Janela, opt-out, blocklist, templates e claims. |
-| Automação DAG v1            | Implementado no código | Requer aplicar migração e publicar workers.     |
-| IA copiloto/autônoma        | Implementado           | Produção depende de chave e política.           |
-| Google Calendar/Meet/Tasks  | Implementado           | Produção depende de OAuth.                      |
-| Campanhas em massa          | Parcial/bloqueado      | Dispatcher persistente dedicado ainda falta.    |
-| Publicação de conteúdo      | Parcial                | Efeitos externos ainda não liberados.           |
-| Auto-like                   | Demonstrativo          | Não deve ser anunciado como ativo.              |
-| Insights                    | Parcial                | Ingestão oficial completa ainda falta.          |
+| Domínio                     | Estado técnico          | Observação                                      |
+| --------------------------- | ----------------------- | ----------------------------------------------- |
+| Auth + multi-tenant         | Implementado            | JWT, RLS, papéis e isolamento por workspace.    |
+| Webhooks Instagram/WhatsApp | Implementado            | HMAC, outbox, dedupe, worker e telemetria.      |
+| Inbox e CRM                 | Implementado            | Contatos 360º, tags, auditoria e ações.         |
+| Gateway/compliance          | Implementado            | Janela, opt-out, blocklist, templates e claims. |
+| Automation Studio v2        | Implementado e validado | Canvas, versões, IA, n8n, handoff e subfluxo.   |
+| IA copiloto/autônoma        | Implementado            | Produção depende de chave e política.           |
+| Google Calendar/Meet/Tasks  | Implementado            | Produção depende de OAuth.                      |
+| Campanhas em massa          | Parcial/bloqueado       | Dispatcher persistente dedicado ainda falta.    |
+| Publicação de conteúdo      | Parcial                 | Efeitos externos ainda não liberados.           |
+| Auto-like                   | Demonstrativo           | Não deve ser anunciado como ativo.              |
+| Insights                    | Parcial                 | Ingestão oficial completa ainda falta.          |
 
 ## Lacunas deliberadamente não mascaradas
 
@@ -243,17 +243,16 @@ fases posteriores:
 
 - nó de captura de resposta com correlação e timeout;
 - espera por evento/tag/campo, além de espera temporal;
-- nó de mídia e templates interativos por canal;
-- nó de IA nativo no DAG com orçamento e guardrails;
+- templates interativos por canal e captura de resposta correlacionada;
 - HTTP Request com allowlist, proteção SSRF, cofre e circuit breaker;
 - Dynamic Block com contrato JSON versionado;
 - API pública com chaves por escopo, quotas e logs;
-- live chat em tempo real e handover explícito bot/humano;
-- campanhas persistidas com recipient ledger e rate shaper;
-- editor visual da interface para o novo contrato DAG.
+- Dynamic Block remoto com contrato JSON versionado;
+- aprovação em quatro olhos para jornadas de alto volume.
 
-Essas lacunas não impedem validar o DAG v1 com mensagem, condição, ação, A/B e
-delay, mas impedem declarar paridade total com ManyChat.
+O DAG v2 já cobre mensagem/mídia, IA, condição, ação, A/B, delay, handoff,
+n8n e subfluxo. As lacunas restantes impedem declarar paridade total com
+ManyChat e estão mantidas de forma explícita no roadmap.
 
 ## Procedimento de homologação
 

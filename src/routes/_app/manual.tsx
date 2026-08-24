@@ -687,8 +687,11 @@ function ManualPage() {
                   </article>
                   <article>
                     <Radio />
-                    <strong>Sequências</strong>
-                    <p>Passos agendados e revalidação antes de cada envio.</p>
+                    <strong>Automation Studio</strong>
+                    <p>
+                      Canvas DAG com mensagens, IA, decisões, A/B, CRM, handoff,
+                      n8n e subfluxos versionados.
+                    </p>
                     <Link to="/sequencias">Abrir sequências</Link>
                   </article>
                 </div>
@@ -724,6 +727,29 @@ function ManualPage() {
                   </li>
                   <li>
                     <span>5</span> Responda PARAR e confirme bloqueio posterior.
+                  </li>
+                </ol>
+                <h4 className="manual-subtitle">Publicar uma jornada visual</h4>
+                <ol className="manual-compact-steps">
+                  <li>
+                    <span>1</span> Monte os blocos e configure cada rota no
+                    Inspetor.
+                  </li>
+                  <li>
+                    <span>2</span> Valide ciclos, nós órfãos, condições e pesos
+                    do teste A/B.
+                  </li>
+                  <li>
+                    <span>3</span> Salve o rascunho e publique uma versão
+                    imutável.
+                  </li>
+                  <li>
+                    <span>4</span> Execute primeiro com um contato controlado e
+                    acompanhe a trilha.
+                  </li>
+                  <li>
+                    <span>5</span> Só então vincule a jornada publicada a um
+                    gatilho ativo.
                   </li>
                 </ol>
               </ManualSection>

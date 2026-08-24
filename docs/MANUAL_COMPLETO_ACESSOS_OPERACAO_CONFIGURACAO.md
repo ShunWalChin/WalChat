@@ -204,7 +204,7 @@ o login Supabase e não deve ser usado para configurar Meta ou IA.
 | Compliance        | Funcional                                     | 24h, 7d humano, opt-out, blocklist, cooldown e Private Reply             |
 | Dashboard         | Demonstrativo                                 | Métricas e gráfico usam dados de demonstração no frontend                |
 | Contatos          | Demonstrativo                                 | Lista e CSV atuais usam dados de demonstração                            |
-| Sequências        | Parcial                                       | Tabelas e scheduler existem; editor visual ainda usa estado/demo local   |
+| Sequências        | Operacional                                   | Automation Studio v2 usa o DAG versionado executado pelo scheduler       |
 | Reengajamento     | Protótipo                                     | Preview e taxa são visuais; não liberar campanha real                    |
 | Calendário        | Funcional                                     | CRUD, Google Calendar/Tasks, Meet, Free/Busy, links e trilha operacional |
 | Publicar          | Protótipo                                     | Preview/roteiro visual; não publica Feed, Reel, Story ou carrossel       |
@@ -487,6 +487,23 @@ tela ainda precisa ser ligada ao backend antes de uso operacional.
 O worker processa inbound, evita duplicidade, registra cooldown e agenda o job.
 
 ### 9.5 Sequências
+
+O **Automation Studio v2** permite montar chatbots em um canvas DAG com blocos
+de mensagem/mídia, IA, espera, condição, teste A/B, ações de CRM, handoff
+humano, evento n8n, subfluxo e encerramento.
+
+1. Crie a jornada e selecione o ponto do canvas onde o bloco deve entrar.
+2. Configure o bloco e suas rotas no Inspetor.
+3. Valide o grafo; ciclos, nós órfãos, ramos ausentes e A/B diferente de 100%
+   são recusados.
+4. Salve o rascunho e publique uma versão imutável.
+5. Escolha um contato controlado e execute. O scheduler ainda revalida 24h,
+   opt-out, cooldown, blocklist, kill switches e idempotência.
+6. Acompanhe a trilha de execução e o motivo exato de falha ou bloqueio.
+
+Agente de IA precisa estar ativo e em modo **autônomo**; evento n8n exige a
+assinatura `automation.node`; subfluxo precisa estar publicado. O servidor
+valida essas referências novamente ao publicar.
 
 O banco e o scheduler suportam passos, delays, enrollment e jobs. O editor
 visual implantado ainda não persiste todo o fluxo. Não montar automações de

@@ -67,7 +67,6 @@ type InsightsData = {
 }
 
 const heatHours = [8, 12, 16, 20, 23]
-const dayLabels = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
 
 function percent(numerator: number, denominator: number) {
   return denominator ? Math.round((numerator / denominator) * 100) : 0

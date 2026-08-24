@@ -131,9 +131,11 @@ export const Route = createFileRoute('/api/campaigns')({
             ])
           for (const result of [campaignsResult, recipientsResult, tagsResult])
             if (result.error) throw result.error
+          const campaigns = campaignsResult.data ?? []
+          const recipientsData = recipientsResult.data ?? []
           return Response.json({
-            campaigns: campaignsResult.data.map((campaign) => {
-              const recipients = recipientsResult.data.filter(
+            campaigns: campaigns.map((campaign) => {
+              const recipients = recipientsData.filter(
                 (item) => item.campaign_id === campaign.id,
               )
               return {

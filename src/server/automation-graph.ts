@@ -4,6 +4,18 @@ import { z } from 'zod'
 const nodeId = z.string().regex(/^[A-Za-z][A-Za-z0-9_-]{0,63}$/)
 const fieldKey = z.string().regex(/^[a-z][a-z0-9_]{1,62}$/)
 const scalarValue = z.union([z.string(), z.number(), z.boolean(), z.null()])
+const externalField = z
+  .object({
+    key: z
+      .string()
+      .regex(/^[A-Za-z][A-Za-z0-9_.-]{0,79}$/)
+      .refine(
+        (value) => !['__proto__', 'prototype', 'constructor'].includes(value),
+        'Chave reservada.',
+      ),
+    value: z.string().max(2_000),
+  })
+  .strict()
 
 const actionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('add_tag'), tagId: z.uuid() }).strict(),
@@ -55,6 +67,25 @@ const automationNodeSchema = z.discriminatedUnion('type', [
         .object({
           text: z.string().trim().min(1).max(1_000),
           bookingPageId: z.uuid().nullable().optional(),
+          mediaUrl: z
+            .url()
+            .max(2_048)
+            .refine((value) => value.startsWith('https://'), 'Use HTTPS.')
+            .nullable()
+            .optional(),
+          mediaType: z.enum(['image', 'video']).nullable().optional(),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: nodeId,
+      type: z.literal('ai_reply'),
+      config: z
+        .object({
+          agentId: z.uuid(),
+          prompt: z.string().trim().min(1).max(2_000),
         })
         .strict(),
     })
@@ -108,6 +139,38 @@ const automationNodeSchema = z.discriminatedUnion('type', [
   z
     .object({
       id: nodeId,
+      type: z.literal('handoff'),
+      config: z
+        .object({
+          category: z.enum(['principal', 'geral', 'pedidos', 'ia_off']),
+          priority: z.enum(['low', 'normal', 'high', 'urgent']),
+          note: z.string().trim().max(500).nullable().optional(),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: nodeId,
+      type: z.literal('n8n_event'),
+      config: z
+        .object({
+          eventName: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{1,79}$/),
+          fields: z.array(externalField).max(30),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: nodeId,
+      type: z.literal('subflow'),
+      config: z.object({ flowId: z.uuid() }).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: nodeId,
       type: z.literal('end'),
       config: z
         .object({ outcome: z.string().trim().min(1).max(80).optional() })
@@ -130,7 +193,7 @@ const automationEdgeSchema = z
 
 export const automationGraphSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.union([z.literal(1), z.literal(2)]),
     entryNodeId: nodeId,
     nodes: z.array(automationNodeSchema).min(2).max(100),
     edges: z.array(automationEdgeSchema).min(1).max(200),
@@ -319,9 +382,22 @@ export function renderAutomationTemplate(
     .slice(0, 1_000)
 }
 
+/** Renderiza um payload flat para integrações sem permitir código ou chaves perigosas. */
+export function renderAutomationFields(
+  fields: Array<{ key: string; value: string }>,
+  variables: AutomationVariables,
+) {
+  return Object.fromEntries(
+    fields.map((field) => [
+      field.key,
+      renderAutomationTemplate(field.value, variables),
+    ]),
+  )
+}
+
 export function defaultAutomationGraph(): AutomationGraph {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     entryNodeId: 'start',
     nodes: [
       { id: 'start', type: 'start' },

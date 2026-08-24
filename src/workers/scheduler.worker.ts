@@ -30,6 +30,7 @@ import { syncGoogleConnection } from '../server/google-calendar.server'
 import {
   markAutomationExecutionFailure,
   processAutomationStep,
+  resumeAutomationAfterIntegration,
   resumeAutomationAfterMessage,
 } from '../server/automation-engine.server'
 import { n8nDispatchSchema } from '../server/n8n-contract'
@@ -494,12 +495,24 @@ async function processIntegrationEventJob(job: {
     payload: job.payload.eventData,
     deliveryId: job.payload.deliveryId,
   })
-  await sendN8nEvent({
+  const delivery = await sendN8nEvent({
     workspaceId: job.workspace_id,
     eventType: input.eventType,
     payload: input.payload,
     deliveryId: input.deliveryId,
   })
+  if (delivery.skipped && delivery.reason === 'event_not_subscribed')
+    throw new UnsupportedScheduledJobError('n8n_event_not_subscribed')
+  const flowExecutionId = String(job.payload.flowExecutionId ?? '')
+  const flowNodeId = String(job.payload.flowNodeId ?? '')
+  const flowNextNodeId = String(job.payload.flowNextNodeId ?? '')
+  if (flowExecutionId && flowNodeId && flowNextNodeId)
+    await resumeAutomationAfterIntegration({
+      workspaceId: job.workspace_id,
+      executionId: flowExecutionId,
+      nodeId: flowNodeId,
+      nextNodeId: flowNextNodeId,
+    })
 }
 
 /** Resolve o passo atual, revalida o contato, envia e agenda o passo seguinte. */
@@ -511,7 +524,9 @@ async function processSequenceJob(job: {
   const payload = job.payload
   let contactId = payload.contactId as string | undefined
   let message = payload.responseText as string | undefined
-  let mediaUrl: string | null = null
+  let mediaUrl: string | null = payload.mediaUrl
+    ? String(payload.mediaUrl)
+    : null
   const senderId = String(payload.senderId ?? '')
   const commentId = payload.instagramCommentId
     ? String(payload.instagramCommentId)

@@ -73,6 +73,7 @@ const events = [
   ['message.received', 'Mensagem recebida'],
   ['booking.created', 'Agendamento criado'],
   ['automation.completed', 'Automação concluída'],
+  ['automation.node', 'Etapa de automação'],
 ] as const
 
 type N8nEventSubscription = (typeof events)[number][0]

@@ -7,6 +7,7 @@ export const N8N_OUTBOUND_EVENT_TYPES = [
   'message.received',
   'booking.created',
   'automation.completed',
+  'automation.node',
   'integration.test',
 ] as const
 
@@ -14,13 +15,14 @@ export const n8nOutboundEventTypeSchema = z.enum(N8N_OUTBOUND_EVENT_TYPES)
 
 const eventSubscriptionsSchema = z
   .array(n8nOutboundEventTypeSchema.exclude(['integration.test']))
-  .max(5)
+  .max(6)
   .default([
     'contact.created',
     'contact.updated',
     'message.received',
     'booking.created',
     'automation.completed',
+    'automation.node',
   ])
 
 export const n8nConfigureSchema = z

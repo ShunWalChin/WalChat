@@ -10,10 +10,13 @@ import {
   automationNextNode,
   automationNode,
   evaluateAutomationCondition,
+  renderAutomationFields,
   renderAutomationTemplate,
   selectAutomationBranch,
   validateAutomationGraph,
 } from './automation-graph'
+import { suggestInstagramReply } from './ai.server'
+import { getServerEnv } from './env.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
 
 type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdmin>>
@@ -192,38 +195,61 @@ export async function processAutomationStep(
         variables,
       ).trim()
       if (!message) throw new Error('automation_rendered_message_empty')
-      const context = execution.context as Record<string, unknown>
-      const { data: messageJob, error: messageJobError } = await client
-        .from('scheduled_jobs')
-        .upsert(
-          {
-            workspace_id: job.workspace_id,
-            kind: 'sequence_step',
-            dedupe_key: `flow:${execution.id}:message:${node.id}`,
-            payload: {
-              platform: execution.platform,
-              contactId: execution.contact_id,
-              responseText: message,
-              bookingPageId: node.config.bookingPageId ?? null,
-              senderId: context.senderId ?? null,
-              instagramCommentId: context.instagramCommentId ?? null,
-              commentCreatedAt: context.commentCreatedAt ?? null,
-              automationRunId: context.automationRunId ?? null,
-              flowExecutionId: execution.id,
-              flowNodeId: node.id,
-              flowNextNodeId: nextNodeId,
-            },
-            run_at: new Date().toISOString(),
-          },
-          { onConflict: 'workspace_id,dedupe_key' },
-        )
-        .select('id')
-        .single()
-      if (messageJobError) throw messageJobError
+      const messageJob = await scheduleFlowMessage(client, execution, {
+        nodeId: node.id,
+        nextNodeId,
+        message,
+        bookingPageId: node.config.bookingPageId ?? null,
+        mediaUrl: node.config.mediaUrl ?? null,
+        mediaType: node.config.mediaType ?? null,
+        aiGenerated: false,
+      })
       stepsCount++
       await recordStep(client, execution, node.id, node.type, 'scheduled', {
         scheduledJobId: messageJob.id,
         characters: message.length,
+        mediaType: node.config.mediaType ?? undefined,
+      })
+      await updateExecution(client, execution.id, job.workspace_id, {
+        status: 'scheduled',
+        current_node_id: node.id,
+        steps_count: stepsCount,
+      })
+      return { status: 'scheduled', nodeId: node.id, jobId: messageJob.id }
+    }
+
+    if (node.type === 'ai_reply') {
+      await assertAutonomousAiEnabled(client, job.workspace_id)
+      const nextNodeId = automationNextNode(graph, node.id)
+      const prompt = renderAutomationTemplate(node.config.prompt, variables)
+      const history = await loadAutomationHistory(
+        client,
+        job.workspace_id,
+        execution.contact_id,
+      )
+      const generated = await suggestInstagramReply({
+        workspaceId: job.workspace_id,
+        agentId: node.config.agentId,
+        history: [...history, { role: 'user', content: prompt }],
+        safetyIdentifier: `${job.workspace_id}:${execution.contact_id}`,
+      })
+      if (generated.agent.mode !== 'autonomous')
+        throw new Error('automation_ai_agent_requires_autonomous_mode')
+      const messageJob = await scheduleFlowMessage(client, execution, {
+        nodeId: node.id,
+        nextNodeId,
+        message: generated.suggestion,
+        bookingPageId: null,
+        mediaUrl: null,
+        mediaType: null,
+        aiGenerated: true,
+      })
+      stepsCount++
+      await recordStep(client, execution, node.id, node.type, 'scheduled', {
+        scheduledJobId: messageJob.id,
+        provider: generated.provider,
+        model: generated.model,
+        characters: generated.suggestion.length,
       })
       await updateExecution(client, execution.id, job.workspace_id, {
         status: 'scheduled',
@@ -259,6 +285,54 @@ export async function processAutomationStep(
       return { status: 'waiting', nodeId: node.id, jobId: nextJob.id }
     }
 
+    if (node.type === 'n8n_event') {
+      const nextNodeId = automationNextNode(graph, node.id)
+      const { data: integrationJob, error: integrationError } = await client
+        .from('scheduled_jobs')
+        .upsert(
+          {
+            workspace_id: job.workspace_id,
+            kind: 'integration_event',
+            dedupe_key: `flow:${execution.id}:n8n:${node.id}`,
+            payload: {
+              eventType: 'automation.node',
+              deliveryId: `flow:${execution.id}:${node.id}`,
+              eventData: {
+                eventName: node.config.eventName,
+                flowId: execution.flow_id,
+                executionId: execution.id,
+                contactId: execution.contact_id,
+                nodeId: node.id,
+                data: renderAutomationFields(node.config.fields, variables),
+              },
+              flowExecutionId: execution.id,
+              flowNodeId: node.id,
+              flowNextNodeId: nextNodeId,
+            },
+            run_at: new Date().toISOString(),
+          },
+          { onConflict: 'workspace_id,dedupe_key' },
+        )
+        .select('id')
+        .single()
+      if (integrationError) throw integrationError
+      stepsCount++
+      await recordStep(client, execution, node.id, node.type, 'scheduled', {
+        scheduledJobId: integrationJob.id,
+        eventName: node.config.eventName,
+      })
+      await updateExecution(client, execution.id, job.workspace_id, {
+        status: 'scheduled',
+        current_node_id: node.id,
+        steps_count: stepsCount,
+      })
+      return {
+        status: 'scheduled',
+        nodeId: node.id,
+        jobId: integrationJob.id,
+      }
+    }
+
     let branch = 'default'
     if (node.type === 'condition')
       branch = evaluateAutomationCondition(node.config, variables)
@@ -276,6 +350,73 @@ export async function processAutomationStep(
       if (error) throw error
       applyActionsLocally(variables, node.config.actions)
     }
+    if (node.type === 'handoff') {
+      const now = new Date().toISOString()
+      const [
+        { error: contactError },
+        { data: conversations, error: inboxError },
+      ] = await Promise.all([
+        client
+          .from('contacts')
+          .update({
+            ai_enabled: false,
+            inbox_category: node.config.category,
+          })
+          .eq('workspace_id', job.workspace_id)
+          .eq('id', execution.contact_id),
+        client
+          .from('conversations')
+          .update({
+            category: node.config.category,
+            priority: node.config.priority,
+            status: 'pending',
+            last_assigned_at: now,
+          })
+          .eq('workspace_id', job.workspace_id)
+          .eq('contact_id', execution.contact_id)
+          .select('id'),
+      ])
+      if (contactError) throw contactError
+      if (inboxError) throw inboxError
+      if (node.config.note && conversations.length) {
+        const { error: noteError } = await client
+          .from('conversation_notes')
+          .upsert(
+            conversations.map((conversation) => ({
+              workspace_id: job.workspace_id,
+              conversation_id: conversation.id,
+              body: node.config.note,
+              automation_execution_id: execution.id,
+              automation_node_id: node.id,
+            })),
+            { onConflict: 'automation_execution_id,automation_node_id' },
+          )
+        if (noteError) throw noteError
+      }
+    }
+    if (node.type === 'subflow') {
+      const context = execution.context as Record<string, unknown>
+      const depth = Number(context.flowDepth ?? 0)
+      if (depth >= 5) throw new Error('automation_subflow_depth_reached')
+      if (node.config.flowId === execution.flow_id)
+        throw new Error('automation_subflow_self_reference')
+      await startAutomationExecution(
+        {
+          workspaceId: job.workspace_id,
+          flowId: node.config.flowId,
+          contactId: execution.contact_id,
+          platform: execution.platform,
+          idempotencyKey: `subflow:${execution.id}:${node.id}`,
+          context: {
+            ...context,
+            source: 'subflow',
+            parentExecutionId: execution.id,
+            flowDepth: depth + 1,
+          },
+        },
+        client,
+      )
+    }
 
     const nextNodeId = automationNextNode(graph, node.id, branch)
     stepsCount++
@@ -283,6 +424,9 @@ export async function processAutomationStep(
       branch,
       actionCount:
         node.type === 'action' ? node.config.actions.length : undefined,
+      handoffCategory:
+        node.type === 'handoff' ? node.config.category : undefined,
+      childFlowId: node.type === 'subflow' ? node.config.flowId : undefined,
     })
     await updateExecution(client, execution.id, job.workspace_id, {
       status: 'running',
@@ -366,6 +510,43 @@ export async function resumeAutomationAfterMessage(
   return { status: 'scheduled', jobId: job.id }
 }
 
+/** Retoma o fluxo somente depois que a entrega assinada ao n8n foi confirmada. */
+export async function resumeAutomationAfterIntegration(
+  input: {
+    workspaceId: string
+    executionId: string
+    nodeId: string
+    nextNodeId: string
+  },
+  client = getSupabaseAdmin(),
+) {
+  if (!client) throw new Error('automation_supabase_unavailable')
+  const { error: stepError } = await client
+    .from('automation_execution_steps')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+    })
+    .eq('workspace_id', input.workspaceId)
+    .eq('execution_id', input.executionId)
+    .eq('node_id', input.nodeId)
+    .eq('attempt', 1)
+  if (stepError) throw stepError
+  const nextJob = await scheduleAutomationJob(client, {
+    workspaceId: input.workspaceId,
+    executionId: input.executionId,
+    nodeId: input.nextNodeId,
+    runAt: new Date().toISOString(),
+    dedupeKey: `flow:${input.executionId}:after-integration:${input.nodeId}`,
+  })
+  await updateExecution(client, input.executionId, input.workspaceId, {
+    status: 'scheduled',
+    current_node_id: input.nextNodeId,
+    last_error_code: null,
+  })
+  return { status: 'scheduled', jobId: nextJob.id }
+}
+
 export async function markAutomationExecutionFailure(
   input: {
     workspaceId: string
@@ -427,6 +608,95 @@ async function scheduleAutomationJob(
     .single()
   if (error) throw error
   return data
+}
+
+async function scheduleFlowMessage(
+  client: AdminClient,
+  execution: {
+    id: string
+    workspace_id: string
+    contact_id: string
+    platform: string
+    context: unknown
+  },
+  input: {
+    nodeId: string
+    nextNodeId: string
+    message: string
+    bookingPageId: string | null
+    mediaUrl: string | null
+    mediaType: 'image' | 'video' | null
+    aiGenerated: boolean
+  },
+) {
+  const context = execution.context as Record<string, unknown>
+  const { data, error } = await client
+    .from('scheduled_jobs')
+    .upsert(
+      {
+        workspace_id: execution.workspace_id,
+        kind: 'sequence_step',
+        dedupe_key: `flow:${execution.id}:message:${input.nodeId}`,
+        payload: {
+          platform: execution.platform,
+          contactId: execution.contact_id,
+          responseText: input.message,
+          bookingPageId: input.bookingPageId,
+          mediaUrl: input.mediaUrl,
+          mediaType: input.mediaType,
+          aiGenerated: input.aiGenerated,
+          senderId: context.senderId ?? null,
+          instagramCommentId: context.instagramCommentId ?? null,
+          commentCreatedAt: context.commentCreatedAt ?? null,
+          automationRunId: context.automationRunId ?? null,
+          flowExecutionId: execution.id,
+          flowNodeId: input.nodeId,
+          flowNextNodeId: input.nextNodeId,
+        },
+        run_at: new Date().toISOString(),
+      },
+      { onConflict: 'workspace_id,dedupe_key' },
+    )
+    .select('id')
+    .single()
+  if (error) throw error
+  return data
+}
+
+async function assertAutonomousAiEnabled(
+  client: AdminClient,
+  workspaceId: string,
+) {
+  if (getServerEnv().DEMO_MODE === 'true') return
+  const { data, error } = await client
+    .from('workspace_runtime_settings')
+    .select('autonomous_ai_enabled')
+    .eq('workspace_id', workspaceId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data?.autonomous_ai_enabled) throw new Error('autonomous_ai_disabled')
+}
+
+async function loadAutomationHistory(
+  client: AdminClient,
+  workspaceId: string,
+  contactId: string,
+) {
+  const { data, error } = await client
+    .from('messages')
+    .select('direction,body')
+    .eq('workspace_id', workspaceId)
+    .eq('contact_id', contactId)
+    .order('created_at', { ascending: false })
+    .limit(9)
+  if (error) throw error
+  return data.reverse().map((message) => ({
+    role:
+      message.direction === 'inbound'
+        ? ('user' as const)
+        : ('assistant' as const),
+    content: String(message.body ?? '').slice(0, 4_000),
+  }))
 }
 
 async function loadAutomationVariables(

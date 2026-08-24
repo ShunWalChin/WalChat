@@ -158,7 +158,7 @@ export const Route = createFileRoute('/api/automations/$flowId')({
               'A automação mudou. Recarregue antes de publicar.',
             )
           const graph = validateAutomationGraph(flow.draft_graph)
-          await validateReferences(context, graph)
+          await validateReferences(context, flowId, graph)
           const { data, error } = await context.admin.rpc(
             'publish_automation_flow',
             {
@@ -228,15 +228,26 @@ export const Route = createFileRoute('/api/automations/$flowId')({
 
 async function validateReferences(
   context: Awaited<ReturnType<typeof requireWorkspaceContext>>,
+  currentFlowId: string,
   graph: AutomationGraph,
 ) {
   const tagIds = new Set<string>()
   const customKeys = new Set<string>()
   const botKeys = new Set<string>()
   const bookingPageIds = new Set<string>()
+  const agentIds = new Set<string>()
+  const subflowIds = new Set<string>()
+  let needsN8n = false
   for (const node of graph.nodes) {
     if (node.type === 'message' && node.config.bookingPageId)
       bookingPageIds.add(node.config.bookingPageId)
+    if (node.type === 'ai_reply') agentIds.add(node.config.agentId)
+    if (node.type === 'subflow') {
+      if (node.config.flowId === currentFlowId)
+        throw new ApiError(422, 'Um fluxo não pode chamar a si próprio.')
+      subflowIds.add(node.config.flowId)
+    }
+    if (node.type === 'n8n_event') needsN8n = true
     if (node.type !== 'action') continue
     for (const action of node.config.actions) {
       if (action.type === 'add_tag' || action.type === 'remove_tag')
@@ -255,12 +266,16 @@ async function validateReferences(
     if (node.config.source === 'bot') botKeys.add(node.config.field)
   }
 
-  const [tags, customFields, botFields, bookingPages] = await Promise.all([
-    fetchIds(context, 'tags', 'id', [...tagIds]),
-    fetchFieldTypes(context, 'custom_field_definitions', [...customKeys]),
-    fetchFieldTypes(context, 'automation_bot_fields', [...botKeys]),
-    fetchIds(context, 'booking_pages', 'id', [...bookingPageIds]),
-  ])
+  const [tags, customFields, botFields, bookingPages, agents, subflows, n8n] =
+    await Promise.all([
+      fetchIds(context, 'tags', 'id', [...tagIds]),
+      fetchFieldTypes(context, 'custom_field_definitions', [...customKeys]),
+      fetchFieldTypes(context, 'automation_bot_fields', [...botKeys]),
+      fetchIds(context, 'booking_pages', 'id', [...bookingPageIds]),
+      fetchIds(context, 'ai_agents', 'id', [...agentIds]),
+      fetchPublishedFlows(context, [...subflowIds]),
+      needsN8n ? fetchConnectedN8n(context) : Promise.resolve(true),
+    ])
   if (tags.size !== tagIds.size)
     throw new ApiError(422, 'Uma tag do fluxo não existe.')
   if (customFields.size !== customKeys.size)
@@ -275,6 +290,18 @@ async function validateReferences(
     )
   if (bookingPages.size !== bookingPageIds.size)
     throw new ApiError(422, 'Uma agenda do fluxo não existe ou está inativa.')
+  if (agents.size !== agentIds.size)
+    throw new ApiError(
+      422,
+      'Um agente de IA do fluxo não existe ou está inativo.',
+    )
+  if (subflows.size !== subflowIds.size)
+    throw new ApiError(422, 'Um subfluxo não existe ou não está publicado.')
+  if (!n8n)
+    throw new ApiError(
+      422,
+      'Conecte e valide o n8n antes de publicar este fluxo.',
+    )
   for (const node of graph.nodes) {
     if (node.type !== 'action') continue
     for (const action of node.config.actions) {
@@ -295,6 +322,35 @@ async function validateReferences(
         )
     }
   }
+}
+
+async function fetchPublishedFlows(
+  context: Awaited<ReturnType<typeof requireWorkspaceContext>>,
+  values: string[],
+) {
+  if (!values.length) return new Set<string>()
+  const { data, error } = await context.admin
+    .from('automation_flows')
+    .select('id')
+    .eq('workspace_id', context.workspaceId)
+    .eq('status', 'published')
+    .in('id', values)
+  if (error) throw error
+  return new Set(data.map((row) => row.id))
+}
+
+async function fetchConnectedN8n(
+  context: Awaited<ReturnType<typeof requireWorkspaceContext>>,
+) {
+  const { count, error } = await context.admin
+    .from('integration_connections')
+    .select('id', { count: 'exact', head: true })
+    .eq('workspace_id', context.workspaceId)
+    .eq('provider', 'n8n')
+    .eq('status', 'connected')
+    .contains('event_subscriptions', ['automation.node'])
+  if (error) throw error
+  return Boolean(count)
 }
 
 async function fetchFieldTypes(
