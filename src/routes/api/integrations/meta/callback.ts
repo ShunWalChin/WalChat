@@ -7,6 +7,7 @@ import {
   consumeMetaOAuthState,
   exchangeMetaAuthorizationCode,
   getMetaWebhookSubscriptions,
+  MetaApiError,
   META_REQUIRED_SCOPES,
   META_WEBHOOK_FIELDS,
   subscribeMetaWebhooks,
@@ -37,13 +38,30 @@ function equalState(left: string | null, right: string) {
   )
 }
 
-function callbackResponse(status: 'connected' | 'denied' | 'error') {
+type MetaOAuthStage =
+  | 'consume_state'
+  | 'exchange_code'
+  | 'fetch_profile'
+  | 'upsert_account'
+  | 'save_credential'
+  | 'subscribe_webhooks'
+  | 'fetch_subscriptions'
+  | 'activate_account'
+  | 'write_audit'
+
+function callbackResponse(
+  status: 'connected' | 'denied' | 'error',
+  stage?: MetaOAuthStage,
+) {
   const secure = getServerEnv().APP_ORIGIN.startsWith('https://')
   const cookieName = secure
     ? '__Host-wal_meta_oauth_state'
     : 'wal_meta_oauth_state'
   const target = new URL('/configuracoes', getServerEnv().APP_ORIGIN)
   target.searchParams.set('meta', status)
+  // O estágio é um código interno fixo e seguro; respostas brutas da Meta nunca
+  // retornam ao navegador nem são persistidas nos parâmetros da URL.
+  if (status === 'error' && stage) target.searchParams.set('meta_stage', stage)
   return new Response(null, {
     status: 303,
     headers: {
@@ -82,9 +100,12 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
         let oauth: Awaited<ReturnType<typeof consumeMetaOAuthState>> | null =
           null
         let accountId: string | null = null
+        let stage: MetaOAuthStage = 'consume_state'
         try {
           oauth = await consumeMetaOAuthState(state)
+          stage = 'exchange_code'
           const token = await exchangeMetaAuthorizationCode(code)
+          stage = 'fetch_profile'
           const profile = await getMetaOwnProfile(token.accessToken)
           const instagramUserId = String(
             profile.user_id ?? profile.id ?? token.userId,
@@ -103,6 +124,7 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
             now.getTime() +
               Math.min(token.expiresIn * 500, 30 * 24 * 60 * 60_000),
           ).toISOString()
+          stage = 'upsert_account'
           const { data: account, error } = await supabase
             .from('instagram_accounts')
             .upsert(
@@ -134,6 +156,7 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
             .single()
           if (error) throw error
           accountId = account.id
+          stage = 'save_credential'
           await saveIntegrationCredential({
             workspaceId: oauth.workspace_id,
             provider: 'meta',
@@ -144,10 +167,12 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
             expiresAt,
             metadata: { tokenType: token.tokenType, scopes: token.scopes },
           })
+          stage = 'subscribe_webhooks'
           await subscribeMetaWebhooks({
             instagramUserId,
             accessToken: token.accessToken,
           })
+          stage = 'fetch_subscriptions'
           const subscriptions = await getMetaWebhookSubscriptions({
             instagramUserId,
             accessToken: token.accessToken,
@@ -170,6 +195,7 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
               ? [`Webhooks não confirmados: ${missingWebhookFields.join(', ')}`]
               : []),
           ]
+          stage = 'activate_account'
           const { error: activateError } = await supabase
             .from('instagram_accounts')
             .update({
@@ -187,6 +213,7 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
             .eq('id', account.id)
             .eq('workspace_id', oauth.workspace_id)
           if (activateError) throw activateError
+          stage = 'write_audit'
           await writeIntegrationAudit({
             workspaceId: oauth.workspace_id,
             actorUserId: oauth.user_id,
@@ -206,6 +233,14 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
             JSON.stringify({
               event: 'meta_oauth_callback_failed',
               error: error instanceof Error ? error.name : 'unknown_error',
+              stage,
+              ...(error instanceof MetaApiError
+                ? {
+                    metaStatus: error.status,
+                    metaCode: error.code,
+                    metaSubcode: error.subcode,
+                  }
+                : {}),
             }),
           )
           if (oauth) {
@@ -231,9 +266,25 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
               provider: 'meta',
               action: 'oauth_connected',
               status: 'failure',
+              details: {
+                stage,
+                errorKind:
+                  error instanceof MetaApiError
+                    ? 'meta_api'
+                    : error instanceof Error
+                      ? error.name
+                      : 'unknown_error',
+                ...(error instanceof MetaApiError
+                  ? {
+                      metaStatus: error.status,
+                      metaCode: error.code ?? null,
+                      metaSubcode: error.subcode ?? null,
+                    }
+                  : {}),
+              },
             })
           }
-          return callbackResponse('error')
+          return callbackResponse('error', stage)
         }
       },
     },

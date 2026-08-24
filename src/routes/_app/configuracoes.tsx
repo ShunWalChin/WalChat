@@ -234,20 +234,33 @@ function SettingsPage() {
 
   useEffect(() => {
     void loadStatus()
-    const result = new URLSearchParams(window.location.search).get('meta')
+    const searchParams = new URLSearchParams(window.location.search)
+    const result = searchParams.get('meta')
     if (result === 'connected')
       setMessage({ tone: 'success', text: 'Instagram conectado com sucesso.' })
     if (result === 'denied')
       setMessage({ tone: 'error', text: 'A conexão foi cancelada na Meta.' })
-    if (result === 'error')
+    if (result === 'error') {
+      const stage = searchParams.get('meta_stage')
+      const stageLabels: Record<string, string> = {
+        consume_state: 'validar a sessão OAuth',
+        exchange_code: 'trocar o código de autorização',
+        fetch_profile: 'consultar o perfil profissional',
+        upsert_account: 'registrar a conta no workspace',
+        save_credential: 'proteger a credencial no cofre',
+        subscribe_webhooks: 'assinar os webhooks da conta',
+        fetch_subscriptions: 'confirmar as assinaturas de webhook',
+        activate_account: 'ativar a conta conectada',
+        write_audit: 'registrar a auditoria da integração',
+      }
       setMessage({
         tone: 'error',
-        text: 'A Meta não concluiu a conexão. Inicie o fluxo novamente.',
+        text: stageLabels[stage ?? '']
+          ? `A conexão foi autorizada, mas falhou ao ${stageLabels[stage ?? '']}. Tente novamente ou consulte a Central de Go-Live.`
+          : 'A Meta não concluiu a conexão. Inicie o fluxo novamente.',
       })
-    if (
-      new URLSearchParams(window.location.search).get('whatsapp') ===
-      'connected'
-    )
+    }
+    if (searchParams.get('whatsapp') === 'connected')
       setMessage({ tone: 'success', text: 'WhatsApp conectado com sucesso.' })
   }, [loadStatus])
 
