@@ -162,7 +162,9 @@ quando o mesmo item puder ser repetido por retry.
 - instância: `https://n8n.fattech.com.br` (`69.6.222.167`);
 - versão observada em `/rest/settings`: `1.119.1` stable;
 - conexão Wal Chat: `412fc7dc-f223-4f15-b062-ac4c8d8249c0`;
-- workflow: `Wal Chat — Event Gateway v1`;
+- suíte: cinco workflows operacionais ativos, documentados em
+  [Workflows n8n operacionais](./WORKFLOWS_N8N_OPERACIONAIS_2026-08-24.md);
+- gateway: `Wal Chat | 00 | Event Gateway v2`;
 - workflow ID: `uCbRdGplYbvWb6HY`;
 - workflow ativo com Webhook `POST /webhook/wal-chat-events-v1`;
 - autenticação: Credential `Wal Chat — Webhook Header Auth v1`;
@@ -175,6 +177,11 @@ quando o mesmo item puder ser repetido por retry.
 - chamada ao webhook sem Credential: recusada com HTTP 403.
 - chamada inbound com Credential válida e payload vazio: autenticada e
   recusada pelo schema com HTTP 400, sem criar dados.
+- comandos ativos para `contact.upsert`, `contact.tag.apply` e
+  `automation.execute`, todos protegidos por Header Auth;
+- health n8n ativo sob demanda e a cada cinco minutos;
+- smoke sintético de contato/tag aprovado, com verificação no banco, limpeza e
+  zero mensagens Meta/WhatsApp.
 
 A API key permanece cifrada no backend e não está presente no workflow, no
 Git ou nesta documentação.

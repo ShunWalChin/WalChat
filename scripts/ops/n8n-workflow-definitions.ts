@@ -422,7 +422,7 @@ return [{
 `,
   )
 
-  return workflow(
+  const definition = workflow(
     N8N_WORKFLOW_NAMES.health,
     [schedule, manual, check, assert],
     {
@@ -437,6 +437,10 @@ return [{
       },
     },
   )
+  // Readiness não contém PII; manter histórico facilita SLO e incidentes.
+  definition.settings.saveDataSuccessExecution = 'all'
+  definition.settings.saveDataErrorExecution = 'all'
+  return definition
 }
 
 function workflow(

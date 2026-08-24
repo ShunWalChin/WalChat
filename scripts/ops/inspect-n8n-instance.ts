@@ -22,6 +22,14 @@ type WorkflowSummary = {
   }>
 }
 
+type ExecutionSummary = {
+  id: string
+  workflowId: string
+  status: string
+  startedAt: string
+  stoppedAt?: string | null
+}
+
 const connection = await resolveConnection()
 const storedApiKey = await getIntegrationCredential({
   workspaceId: connection.workspace_id,
@@ -48,9 +56,21 @@ if (!response.ok)
 
 const payload = (await response.json()) as { data?: WorkflowSummary[] }
 const workflows = payload.data ?? []
+const namePrefix = process.env.N8N_INSPECT_NAME_PREFIX?.trim()
+const selectedWorkflows = namePrefix
+  ? workflows.filter((workflow) => workflow.name.startsWith(namePrefix))
+  : workflows
+const includeExecutions = process.env.N8N_INSPECT_EXECUTIONS === 'true'
+const executions = includeExecutions
+  ? await fetchExecutionSummaries(
+      connection.base_url,
+      storedApiKey.value,
+      new Set(selectedWorkflows.map((workflow) => workflow.id)),
+    )
+  : []
 const nodeCatalog = [
   ...new Map(
-    workflows
+    selectedWorkflows
       .flatMap((workflow) => workflow.nodes ?? [])
       .map((node) => [
         `${node.type}@${node.typeVersion}`,
@@ -70,10 +90,12 @@ console.log(
         detectedVersion: connection.detected_version,
       },
       workflowCount: workflows.length,
+      selectedWorkflowCount: selectedWorkflows.length,
       nodeCatalog,
+      ...(includeExecutions ? { executions } : {}),
       ...(includeWorkflows
         ? {
-            workflows: workflows.map((workflow) => ({
+            workflows: selectedWorkflows.map((workflow) => ({
               id: workflow.id,
               name: workflow.name,
               active: workflow.active,
@@ -115,4 +137,35 @@ async function resolveConnection() {
       'Informe N8N_CONNECTION_ID quando houver zero ou várias conexões n8n.',
     )
   return data[0]
+}
+
+async function fetchExecutionSummaries(
+  baseUrl: string,
+  apiKey: string,
+  selectedIds: Set<string>,
+) {
+  const executionResponse = await fetch(
+    `${baseUrl.replace(/\/+$/, '')}/api/v1/executions?limit=100&includeData=false`,
+    {
+      headers: { Accept: 'application/json', 'X-N8N-API-KEY': apiKey },
+      redirect: 'error',
+      signal: AbortSignal.timeout(15_000),
+    },
+  )
+  if (!executionResponse.ok)
+    throw new Error(
+      `A API de execuções n8n respondeu HTTP ${executionResponse.status}.`,
+    )
+  const executionPayload = (await executionResponse.json()) as {
+    data?: ExecutionSummary[]
+  }
+  return (executionPayload.data ?? [])
+    .filter((execution) => selectedIds.has(execution.workflowId))
+    .map((execution) => ({
+      id: execution.id,
+      workflowId: execution.workflowId,
+      status: execution.status,
+      startedAt: execution.startedAt,
+      stoppedAt: execution.stoppedAt ?? null,
+    }))
 }

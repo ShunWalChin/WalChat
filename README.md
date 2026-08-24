@@ -21,7 +21,7 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | WhatsApp Cloud API     | Embedded Signup, WABA, telefone, templates e receipts implementados         |
 | OpenAI / Gemini        | Responses API + Gemini opcional, configuráveis por workspace                |
 | Google Workspace       | OAuth PKCE, Calendar, Meet, Tasks, Free/Busy e links públicos implementados |
-| Integração n8n         | API key, HMAC, inbox/outbox idempotente e wizard por workspace              |
+| Integração n8n         | Gateway, comandos CRM/automação, health, HMAC e idempotência                |
 | Site público e SEO     | 404, CTA, FAQ, provas técnicas, sitemap, robots, OG e JSON-LD               |
 | LGPD e Analytics       | Pedido de exclusão persistido e GA4 bloqueado até consentimento             |
 | Modo atual da produção | `DEMO_MODE=false`; kill switches do workspace desligados                    |
@@ -329,6 +329,8 @@ chaves administrativas ou credenciais de IA.
 Contratos, respostas e códigos HTTP: [API e webhooks](docs/API_E_WEBHOOKS.md).
 
 Configuração, payloads e operação do n8n: [Integração n8n](docs/INTEGRACAO_N8N.md).
+
+Suíte implantada e runbook: [Workflows n8n operacionais](docs/WORKFLOWS_N8N_OPERACIONAIS_2026-08-24.md).
 O escopo comparado com o produto de referência está em
 [Paridade Wal Chat × ManyChat](docs/PARIDADE_MANYCHAT_2026-08-22.md).
 As evidências desta release estão no

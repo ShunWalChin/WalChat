@@ -55,10 +55,12 @@ describe('Wal Chat n8n workflow definitions', () => {
     }
   })
 
-  it('does not persist successful or failed execution payloads', () => {
+  it('does not persist business payloads and keeps only health history', () => {
     for (const workflow of workflows) {
-      expect(workflow.settings.saveDataSuccessExecution).toBe('none')
-      expect(workflow.settings.saveDataErrorExecution).toBe('none')
+      const expected =
+        workflow.name === N8N_WORKFLOW_NAMES.health ? 'all' : 'none'
+      expect(workflow.settings.saveDataSuccessExecution).toBe(expected)
+      expect(workflow.settings.saveDataErrorExecution).toBe(expected)
     }
   })
 })
