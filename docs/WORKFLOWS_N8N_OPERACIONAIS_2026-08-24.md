@@ -222,6 +222,7 @@ por UUID e confirma zero resíduos. Não inicia automação nem envia mensagem.
 | `npm audit --omit=dev`                          | 0 vulnerabilidades       |
 | Event Gateway `integration.test`                | HTTP 200, 1 tentativa    |
 | Health autenticado                              | HTTP 200                 |
+| Execução health sob demanda                     | `13507`, success         |
 | Gateway/health sem credencial                   | HTTP 403                 |
 | Três comandos sem credencial                    | HTTP 403                 |
 | Três comandos com contrato vazio                | rejeitados, zero writes  |
@@ -234,9 +235,9 @@ por UUID e confirma zero resíduos. Não inicia automação nem envia mensagem.
 Release Wal Chat:
 
 ```text
-/opt/wal-chat/releases/20260824-n8n-workflows-v1
-commit 86f5712
-imagem sha256:b127896ed410147c2cbb2c8179a1800e8f33cd9c50fc237daacc84ec974d1c35
+/opt/wal-chat/releases/20260824-n8n-workflows-v2
+commit bb2b7aa
+imagem sha256:411e3743a60e966b49013ae3f763328428e121c7a222e7e725f84dbede4757df
 ```
 
 ## Operação e incidentes
@@ -248,6 +249,9 @@ imagem sha256:b127896ed410147c2cbb2c8179a1800e8f33cd9c50fc237daacc84ec974d1c35
 - use o workflow `90` para health técnico;
 - verifique `integration_webhook_deliveries` quando houver retry, duplicidade ou
   erro de contrato;
+- execuções de erro criadas no horário do provisionamento dos workflows `10`,
+  `20` e `30` são probes intencionais de contrato vazio; não contêm payload e
+  não representam falha de produção;
 - jamais habilite gravação de payloads nos workflows de negócio sem revisão de
   LGPD e retenção.
 
@@ -267,9 +271,9 @@ imagem sha256:b127896ed410147c2cbb2c8179a1800e8f33cd9c50fc237daacc84ec974d1c35
 - Depois de um provisionamento concluído, o rollback de emergência é desativar
   os workflows `10`, `20` e `30`; o gateway v2 é compatível com o endpoint v1.
 - A imagem anterior está preservada como
-  `wal-chat-app:rollback-20260824-n8n-gateway-v1`.
+  `wal-chat-app:rollback-20260824-n8n-workflows-v1`.
 - A aplicação anterior está em
-  `/opt/wal-chat/releases/20260824-n8n-gateway-v1`.
+  `/opt/wal-chat/releases/20260824-n8n-workflows-v1`.
 - Não apague entregas, vínculos ou auditorias para efetuar rollback.
 
 ## Parecer
