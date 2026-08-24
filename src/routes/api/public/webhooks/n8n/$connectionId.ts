@@ -1,4 +1,4 @@
-/** Entrada pública n8n com HMAC, janela anti-replay e deduplicação persistente. */
+/** Entrada n8n com HMAC ou Header Auth derivado, anti-replay e deduplicação. */
 import { createFileRoute } from '@tanstack/react-router'
 import { ZodError } from 'zod'
 import { ApiError } from '../../../../../server/api-auth.server'
@@ -8,6 +8,7 @@ import {
   processN8nInboundEvent,
   signingSecretForConnection,
   verifyN8nPayload,
+  verifyN8nWebhookAuthToken,
 } from '../../../../../server/n8n-integration.server'
 import { assertRateLimit } from '../../../../../server/rate-limit.server'
 import {
@@ -29,15 +30,20 @@ export const Route = createFileRoute('/api/public/webhooks/n8n/$connectionId')({
             'application/json',
           )
           const secret = await signingSecretForConnection(connection)
-          if (
-            !verifyN8nPayload({
-              rawBody,
-              timestamp: request.headers.get('x-walchat-timestamp'),
-              signature: request.headers.get('x-walchat-signature-256'),
-              secret,
-            })
-          )
-            throw new ApiError(401, 'Assinatura do webhook inválida.')
+          const timestamp = request.headers.get('x-walchat-timestamp')
+          const hmacAuthenticated = verifyN8nPayload({
+            rawBody,
+            timestamp,
+            signature: request.headers.get('x-walchat-signature-256'),
+            secret,
+          })
+          const credentialAuthenticated = verifyN8nWebhookAuthToken({
+            timestamp,
+            token: request.headers.get('x-walchat-webhook-token'),
+            secret,
+          })
+          if (!hmacAuthenticated && !credentialAuthenticated)
+            throw new ApiError(401, 'Autenticação do webhook inválida.')
           await assertRateLimit({
             namespace: 'n8n-inbound',
             identity: connection.id,

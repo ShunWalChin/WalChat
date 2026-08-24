@@ -28,6 +28,7 @@ import { getSupabaseAdmin } from './supabase-admin.server'
 
 const WEBHOOK_CLOCK_SKEW_SECONDS = 300
 const N8N_TIMEOUT_MS = 8_000
+const N8N_WEBHOOK_AUTH_CONTEXT = 'wal-chat-n8n-webhook-auth-v1'
 const credentialScopes = {
   apiKey: (id: string) => `api:${id}`,
   outboundUrl: (id: string) => `outbound:${id}`,
@@ -59,6 +60,17 @@ export function signN8nPayload(
     .digest('hex')}`
 }
 
+/**
+ * Token estático de defesa em profundidade para a Credential Header Auth do
+ * n8n. O n8n recebe apenas o derivado: ele não permite recuperar o segredo
+ * HMAC usado para assinar o corpo e o timestamp de cada entrega.
+ */
+export function deriveN8nWebhookAuthToken(secret: string) {
+  return createHmac('sha256', secret)
+    .update(N8N_WEBHOOK_AUTH_CONTEXT, 'utf8')
+    .digest('base64url')
+}
+
 export function verifyN8nPayload(input: {
   rawBody: string
   timestamp: string | null
@@ -66,20 +78,43 @@ export function verifyN8nPayload(input: {
   secret: string
   now?: number
 }) {
-  if (!input.timestamp || !/^\d{10}$/.test(input.timestamp)) return false
-  const age = Math.abs(
-    (input.now ?? Date.now()) - Number(input.timestamp) * 1_000,
-  )
-  if (age > WEBHOOK_CLOCK_SKEW_SECONDS * 1_000) return false
+  const timestamp = input.timestamp
+  if (!timestamp || !isFreshN8nTimestamp(timestamp, input.now)) return false
   if (!input.signature?.startsWith('sha256=')) return false
   const expected = Buffer.from(
-    signN8nPayload(input.rawBody, input.timestamp, input.secret),
+    signN8nPayload(input.rawBody, timestamp, input.secret),
     'utf8',
   )
   const received = Buffer.from(input.signature, 'utf8')
   return (
     expected.length === received.length && timingSafeEqual(expected, received)
   )
+}
+
+/**
+ * Alternativa para nós HTTP Request do n8n que não têm acesso ao segredo HMAC
+ * da Credential. Continua exigindo TLS, timestamp recente, delivery ID único,
+ * rate limit e comparação em tempo constante no endpoint receptor.
+ */
+export function verifyN8nWebhookAuthToken(input: {
+  timestamp: string | null
+  token: string | null
+  secret: string
+  now?: number
+}) {
+  if (!isFreshN8nTimestamp(input.timestamp, input.now) || !input.token)
+    return false
+  const expected = Buffer.from(deriveN8nWebhookAuthToken(input.secret), 'utf8')
+  const received = Buffer.from(input.token, 'utf8')
+  return (
+    expected.length === received.length && timingSafeEqual(expected, received)
+  )
+}
+
+function isFreshN8nTimestamp(timestamp: string | null, now?: number) {
+  if (!timestamp || !/^\d{10}$/.test(timestamp)) return false
+  const age = Math.abs((now ?? Date.now()) - Number(timestamp) * 1_000)
+  return age <= WEBHOOK_CLOCK_SKEW_SECONDS * 1_000
 }
 
 export function payloadSha256(rawBody: string) {
@@ -565,6 +600,7 @@ export async function sendN8nEvent(input: {
             'X-WalChat-Delivery-Id': deliveryId,
             'X-WalChat-Event': input.eventType,
             'X-WalChat-Timestamp': timestamp,
+            'X-WalChat-Webhook-Token': deriveN8nWebhookAuthToken(signingSecret),
             'X-WalChat-Signature-256': signN8nPayload(
               body,
               timestamp,

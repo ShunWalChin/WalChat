@@ -54,6 +54,7 @@ Content-Type: application/json
 X-WalChat-Delivery-Id: UUID estável
 X-WalChat-Event: booking.created
 X-WalChat-Timestamp: epoch em segundos
+X-WalChat-Webhook-Token: token derivado para Header Auth
 X-WalChat-Signature-256: sha256=<hex>
 ```
 
@@ -79,9 +80,12 @@ Payload:
 }
 ```
 
-O workflow deve deduplicar `X-WalChat-Delivery-Id`. HTTP `408`, `429` e `5xx`
-são retentados com limite. Respostas `4xx` permanentes não são repetidas
-cegamente.
+O workflow provisionado usa uma Credential `httpHeaderAuth` para validar
+`X-WalChat-Webhook-Token` antes de executar qualquer nó. O token é derivado por
+HMAC em contexto separado e não permite recuperar o segredo que assina os
+payloads. O workflow deve deduplicar `X-WalChat-Delivery-Id`. HTTP `408`, `429`
+e `5xx` são retentados com limite. Respostas `4xx` permanentes não são
+repetidas cegamente.
 
 ## Contrato n8n → Wal Chat
 
@@ -97,11 +101,38 @@ Headers obrigatórios:
 Content-Type: application/json
 X-WalChat-Delivery-Id: identificador estável de 8 a 128 caracteres
 X-WalChat-Timestamp: epoch em segundos
-X-WalChat-Signature-256: sha256=<hex>
+X-WalChat-Signature-256: sha256=<hex>, ou
+X-WalChat-Webhook-Token: Credential Header Auth derivada
 ```
 
-O timestamp é aceito por até cinco minutos. A assinatura é calculada sobre os
-bytes exatos antes do JSON ser interpretado.
+O timestamp é aceito por até cinco minutos. O modo preferencial continua sendo
+a assinatura sobre os bytes exatos antes do JSON ser interpretado. Para nós
+HTTP Request que não expõem segredo de Credential a expressões, o token
+derivado é aceito como alternativa sobre HTTPS; rate limit e delivery ID único
+continuam obrigatórios.
+
+## Bootstrap automatizado
+
+O script `scripts/ops/bootstrap-n8n-connection.ts` configura uma instância que
+ainda não possui conexão n8n no workspace:
+
+1. valida a API key na API pública HTTPS;
+2. gera o segredo HMAC dentro do backend;
+3. salva API key e segredo cifrados por workspace;
+4. cria uma Credential Header Auth no n8n com apenas o token derivado;
+5. cria e ativa o workflow `Wal Chat — Event Gateway v1`;
+6. grava a URL do webhook de produção;
+7. envia `integration.test` e desfaz os objetos criados se alguma etapa falhar.
+
+Variáveis operacionais obrigatórias:
+
+```text
+N8N_BOOTSTRAP_BASE_URL
+N8N_BOOTSTRAP_API_KEY
+```
+
+Use `N8N_BOOTSTRAP_WORKSPACE_ID` quando o banco possuir mais de um workspace.
+O script nunca imprime API key, segredo HMAC nem token derivado.
 
 ### Sincronizar contato
 

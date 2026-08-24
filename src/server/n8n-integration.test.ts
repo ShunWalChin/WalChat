@@ -3,13 +3,25 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { n8nInboundEventSchema } from './n8n-contract'
 import {
   assertSafeN8nUrl,
+  deriveN8nWebhookAuthToken,
   normalizeN8nBaseUrl,
   payloadSha256,
   signN8nPayload,
   verifyN8nPayload,
+  verifyN8nWebhookAuthToken,
 } from './n8n-integration.server'
 
 describe('assinatura dos webhooks n8n', () => {
+  it('deriva um token de autenticação sem reutilizar ou revelar o segredo HMAC', () => {
+    const secret = 'segredo-de-teste-com-mais-de-24'
+    const token = deriveN8nWebhookAuthToken(secret)
+
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(token).not.toBe(secret)
+    expect(deriveN8nWebhookAuthToken(secret)).toBe(token)
+    expect(deriveN8nWebhookAuthToken(`${secret}-outro`)).not.toBe(token)
+  })
+
   it('assina os bytes exatos com timestamp e SHA-256', () => {
     const body = '{"schemaVersion":1}'
     const timestamp = '1787356800'
@@ -63,6 +75,37 @@ describe('assinatura dos webhooks n8n', () => {
         timestamp,
         signature,
         secret: 'segredo-de-teste-com-mais-de-24',
+        now: Number(timestamp) * 1_000 + 301_000,
+      }),
+    ).toBe(false)
+  })
+
+  it('aceita Header Auth derivado apenas dentro da janela anti-replay', () => {
+    const timestamp = '1787356800'
+    const secret = 'segredo-de-teste-com-mais-de-24'
+    const token = deriveN8nWebhookAuthToken(secret)
+
+    expect(
+      verifyN8nWebhookAuthToken({
+        timestamp,
+        token,
+        secret,
+        now: Number(timestamp) * 1_000,
+      }),
+    ).toBe(true)
+    expect(
+      verifyN8nWebhookAuthToken({
+        timestamp,
+        token: `${token}x`,
+        secret,
+        now: Number(timestamp) * 1_000,
+      }),
+    ).toBe(false)
+    expect(
+      verifyN8nWebhookAuthToken({
+        timestamp,
+        token,
+        secret,
         now: Number(timestamp) * 1_000 + 301_000,
       }),
     ).toBe(false)
