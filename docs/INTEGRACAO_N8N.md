@@ -134,6 +134,49 @@ N8N_BOOTSTRAP_API_KEY
 Use `N8N_BOOTSTRAP_WORKSPACE_ID` quando o banco possuir mais de um workspace.
 O script nunca imprime API key, segredo HMAC nem token derivado.
 
+## Usar o Wal Chat em outros workflows n8n
+
+Para enviar uma ação n8n → Wal Chat, adicione um nó **HTTP Request**:
+
+```text
+Method: POST
+URL: webhook inbound exibido em Integrações > n8n
+Authentication: Generic Credential Type > Header Auth
+Credential: Wal Chat — Webhook Header Auth v1
+Body Content Type: JSON
+```
+
+Headers adicionais:
+
+```text
+X-WalChat-Timestamp = {{ Math.floor(Date.now() / 1000).toString() }}
+X-WalChat-Delivery-Id = {{ $execution.id + ':' + $itemIndex }}
+```
+
+O corpo deve obedecer a um dos contratos `contact.upsert`,
+`contact.tag.apply` ou `automation.execute`. Use sempre um delivery ID estável
+quando o mesmo item puder ser repetido por retry.
+
+## Estado de produção em 24/08/2026
+
+- instância: `https://n8n.fattech.com.br` (`69.6.222.167`);
+- versão observada em `/rest/settings`: `1.119.1` stable;
+- conexão Wal Chat: `412fc7dc-f223-4f15-b062-ac4c8d8249c0`;
+- workflow: `Wal Chat — Event Gateway v1`;
+- workflow ID: `uCbRdGplYbvWb6HY`;
+- workflow ativo com Webhook `POST /webhook/wal-chat-events-v1`;
+- autenticação: Credential `Wal Chat — Webhook Header Auth v1`;
+- webhook inbound Wal Chat:
+  `https://wal-chat.64.181.178.125.nip.io/api/public/webhooks/n8n/412fc7dc-f223-4f15-b062-ac4c8d8249c0`;
+- eventos inscritos: contato criado/atualizado, mensagem recebida, agendamento,
+  automação concluída e nó do Automation Studio;
+- teste real: `integration.test`, HTTP 200, uma tentativa;
+- execução n8n `13490`: `success`;
+- chamada ao webhook sem Credential: recusada com HTTP 403.
+
+A API key permanece cifrada no backend e não está presente no workflow, no
+Git ou nesta documentação.
+
 ### Sincronizar contato
 
 ```json
