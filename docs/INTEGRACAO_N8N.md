@@ -173,6 +173,8 @@ quando o mesmo item puder ser repetido por retry.
 - teste real: `integration.test`, HTTP 200, uma tentativa;
 - execução n8n `13490`: `success`;
 - chamada ao webhook sem Credential: recusada com HTTP 403.
+- chamada inbound com Credential válida e payload vazio: autenticada e
+  recusada pelo schema com HTTP 400, sem criar dados.
 
 A API key permanece cifrada no backend e não está presente no workflow, no
 Git ou nesta documentação.
