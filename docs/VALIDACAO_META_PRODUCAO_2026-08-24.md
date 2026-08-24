@@ -19,7 +19,7 @@ Ambiente validado:
 | --- | --- | --- |
 | Instagram Professional | Conectado e validado | `@walfredonetto`, token cifrado, permissões e webhooks validados pela aplicação |
 | Webhook do Instagram | Operacional | callback HTTPS, challenge e assinatura HMAC habilitados |
-| WhatsApp Embedded Signup | Configurado | wizard abre com o `config_id` oficial e o domínio de produção autorizado |
+| WhatsApp Embedded Signup | Configurado, bloqueado pela Meta | wizard abre com o `config_id` oficial; a Meta recusa onboarding enquanto o provedor não estiver verificado |
 | Webhook do WhatsApp | Operacional | callback validado, campo `messages` assinado e teste oficial recebido |
 | WABA/número de teste | Criados | ativos de teste disponíveis no painel da Meta |
 | WABA/número real | Pendente de onboarding | exige seleção/criação pelo titular no popup da Meta |
@@ -31,12 +31,18 @@ WhatsApp está tecnicamente integrado, mas só deve enviar para usuários extern
 depois que o titular concluir o Embedded Signup, verificar o número, configurar
 pagamento quando aplicável e obter as permissões necessárias.
 
+No teste real do Embedded Signup, a Meta retornou **“WalOnTheRoad não pode
+integrar clientes no momento”**. O painel confirmou a causa: o portfólio
+`WalOnTheRoad` está **Não verificado**, e a Verificação do Acesso como provedora
+de tecnologia fica desabilitada até a aprovação da Verificação da Empresa.
+
 ## Ativos públicos configurados
 
 Esses identificadores não são credenciais secretas:
 
 - app principal Meta/WhatsApp: `2503807193454662`;
 - app Instagram: `1369166301463722`;
+- portfólio empresarial WalOnTheRoad: `206930247736358`;
 - configuração do WhatsApp Embedded Signup: `1384774706505557`;
 - redirect OAuth: `https://wal-chat.64.181.178.125.nip.io/configuracoes`;
 - webhook Instagram: `https://wal-chat.64.181.178.125.nip.io/api/public/webhooks/instagram`;
@@ -70,9 +76,12 @@ de cadastro incorporado com token de 60 dias.
 6. O botão **Conectar WhatsApp** abriu o fluxo oficial com o `config_id` correto.
 7. WABA e telefone de teste foram criados para homologação.
 
-O término do onboarding do WABA real é uma ação assistida do titular porque a
-Meta pode solicitar senha, autenticação em dois fatores, confirmação de telefone,
-dados jurídicos da empresa, documentos ou forma de pagamento. Esses dados não
+O processo oficial de Verificação da Empresa foi iniciado com o país `Brasil` e
+deixado aberto na seleção do tipo jurídico da empresa. O término da verificação e
+do onboarding do WABA real é uma ação assistida do titular porque a Meta solicita
+classificação jurídica, nome, endereço, telefone, e-mail, site, confirmação de
+contato e possivelmente documentos. Também pode solicitar senha, autenticação em
+dois fatores, confirmação do telefone ou forma de pagamento. Esses dados não
 devem ser inventados nem automatizados pelo Wal Chat.
 
 ## Qualidade e saúde do ambiente
@@ -109,16 +118,17 @@ containers do servidor.
 
 ## Gates restantes para WhatsApp real
 
-1. Concluir o fluxo **Continuar como Walfredo Figueiredo Neto**.
-2. Selecionar ou criar o Business Portfolio e a conta WhatsApp Business reais.
-3. Cadastrar e verificar um telefone que possa receber o código da Meta.
-4. Configurar a forma de pagamento, caso a Meta a solicite.
-5. Concluir a verificação empresarial com dados e documentos reais.
-6. Gravar as evidências para App Review (envio de mensagem e criação de template).
-7. Solicitar Advanced Access para as permissões usadas pela aplicação.
-8. Validar templates aprovados, limites, quality rating e webhook com tráfego real.
-9. Executar um piloto com contatos consentidos e volume mínimo.
-10. Somente então alterar `DEMO_MODE=false` e repetir o smoke test.
+1. Concluir a Verificação da Empresa com classificação, dados e documentos reais.
+2. Solicitar e obter a Verificação do Acesso como provedora de tecnologia.
+3. Reabrir e concluir o fluxo **Continuar como Walfredo Figueiredo Neto**.
+4. Selecionar ou criar o Business Portfolio e a conta WhatsApp Business reais.
+5. Cadastrar e verificar um telefone que possa receber o código da Meta.
+6. Configurar a forma de pagamento, caso a Meta a solicite.
+7. Gravar as evidências para App Review (envio de mensagem e criação de template).
+8. Solicitar Advanced Access para as permissões usadas pela aplicação.
+9. Validar templates aprovados, limites, quality rating e webhook com tráfego real.
+10. Executar um piloto com contatos consentidos e volume mínimo.
+11. Somente então alterar `DEMO_MODE=false` e repetir o smoke test.
 
 ## Critério para liberar o live mode
 
