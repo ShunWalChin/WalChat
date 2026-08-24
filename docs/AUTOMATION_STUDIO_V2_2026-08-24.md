@@ -128,6 +128,34 @@ stateDiagram-v2
 O banco temporário `wal_chat_automation_studio_20260824_test` foi removido
 após as asserções. A validação isolada não alterou dados de produção.
 
+## Deploy de produção
+
+Deploy concluído em 24/08/2026 na release protegida:
+
+```text
+/opt/wal-chat/releases/20260824-automation-studio-v2
+```
+
+- commit implantado: `d87f287`;
+- imagem ativa: `sha256:5e7c0106113bb1d73faab7381c88cba04cf35c02b865481ee1e10c0dcca71855`;
+- serviços `app`, `webhooks` e `scheduler`: `healthy`, sem reinícios após a troca;
+- migration registrada: `20260824233000 automation_studio_v2`;
+- `/api/health`: `ok`, modo `live`;
+- `/api/ready`: Supabase e Redis `up`;
+- smoke seguro: challenges Instagram/WhatsApp aprovados, assinatura inválida
+  recusada com HTTP 401 e assinatura HMAC válida aceita com HTTP 200;
+- backup pré-deploy:
+  `/var/backups/wal-chat/20260824T144300-pre-live.tar.gz`;
+- SHA-256 do backup:
+  `0d64a164622b07945a0237882b9eae56823a37157f1fbf26ccc480ecd4ea40b1`.
+
+O smoke usa payloads vazios e não cria contato, mensagem, publicação ou evento.
+Na inspeção agregada pós-deploy, `external_sends_enabled` e
+`comment_to_dm_enabled` já estavam ativos para o único workspace de produção;
+`autonomous_ai_enabled` permaneceu desligado. O deploy não alterou esses três
+controles. Envio para destinatários reais exige uma campanha de homologação
+separada, com contato piloto e consentimento explícito.
+
 ## Limites deliberados
 
 - O grafo publicado é acíclico. Repetição usa subfluxo com limite de
