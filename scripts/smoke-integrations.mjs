@@ -22,6 +22,8 @@ assert(
 )
 
 const authorization = `Bearer ${login.data.session.access_token}`
+const calendarFrom = new Date(Date.now() - 7 * 86_400_000).toISOString()
+const calendarTo = new Date(Date.now() + 30 * 86_400_000).toISOString()
 async function requestJson(path, init = {}) {
   const response = await fetch(`${appUrl}${path}`, {
     ...init,
@@ -57,6 +59,15 @@ const [
   goLive,
   webhooks,
   media,
+  sequences,
+  automations,
+  campaigns,
+  content,
+  insights,
+  autoLike,
+  calendar,
+  bookingPages,
+  google,
 ] = await Promise.all([
   requestJson('/api/integrations/meta/status'),
   requestJson('/api/integrations/n8n/status'),
@@ -70,6 +81,17 @@ const [
   requestJson('/api/operations/go-live'),
   requestJson('/api/operations/webhooks'),
   requestJson('/api/integrations/meta/media'),
+  requestJson('/api/sequences'),
+  requestJson('/api/automations'),
+  requestJson('/api/campaigns'),
+  requestJson('/api/content'),
+  requestJson('/api/insights'),
+  requestJson('/api/auto-like'),
+  requestJson(
+    `/api/calendar?from=${encodeURIComponent(calendarFrom)}&to=${encodeURIComponent(calendarTo)}`,
+  ),
+  requestJson('/api/calendar/booking-pages'),
+  requestJson('/api/integrations/google/status'),
 ])
 
 assert(Array.isArray(meta.requiredScopes), 'Status Meta sem scopes.')
@@ -103,6 +125,25 @@ assert(Array.isArray(triggers.triggers), 'Lista de gatilhos inválida.')
 assert(Array.isArray(goLive.checks), 'Diagnóstico de Go-Live inválido.')
 assert(Array.isArray(webhooks.events), 'Observabilidade de webhooks inválida.')
 assert(Array.isArray(media.posts), 'Cache de posts Meta inválido.')
+assert(Array.isArray(sequences.sequences), 'Sequências inválidas.')
+assert(Array.isArray(automations.flows), 'Automações DAG inválidas.')
+assert(Array.isArray(campaigns.campaigns), 'Campanhas inválidas.')
+assert(campaigns.runtime?.demoMode === true, 'Campanhas fora do modo seguro.')
+assert(Array.isArray(content.items), 'Estúdio de conteúdo inválido.')
+assert(content.runtime?.demoMode === true, 'Publicação fora do modo seguro.')
+assert(Array.isArray(insights.daily), 'Insights inválidos.')
+assert(
+  autoLike.capability?.code === 'instagram_comment_like_not_available' &&
+    autoLike.settings?.effectiveEnabled === false,
+  'Auto-like não respeitou a capacidade oficial.',
+)
+assert(Array.isArray(calendar.events), 'Eventos do calendário inválidos.')
+assert(Array.isArray(calendar.tasks), 'Tarefas do calendário inválidas.')
+assert(Array.isArray(bookingPages.pages), 'Páginas de agenda inválidas.')
+assert(
+  typeof google.platformConfigured === 'boolean',
+  'Status Google inválido.',
+)
 
 // Exercita o endpoint de runtime somente no estado seguro. O smoke nunca liga
 // efeitos externos, mesmo quando executado por engano em um ambiente live.
@@ -203,6 +244,15 @@ console.log(
       goLiveKillSwitches: 'off',
       webhookObservability: 'ok',
       metaMediaCache: 'ok',
+      sequences: 'ok',
+      automations: 'ok',
+      campaigns: 'safe-demo',
+      contentStudio: 'safe-demo',
+      insights: 'ok',
+      autoLike: 'officially-unsupported',
+      calendar: 'ok',
+      bookingPages: 'ok',
+      googleStatus: google.platformConfigured ? 'configured' : 'pending',
     },
     null,
     2,

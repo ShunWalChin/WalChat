@@ -6,7 +6,14 @@ const appUrl = process.env.SMOKE_APP_URL ?? 'http://127.0.0.1:3001'
 const supabaseUrl = process.env.SUPABASE_URL
 const publishableKey = process.env.VITE_SUPABASE_ANON_KEY
 const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-const metaSecret = process.env.META_APP_SECRET
+const instagramSecret =
+  process.env.META_INSTAGRAM_APP_SECRET ?? process.env.META_APP_SECRET
+const whatsappSecret =
+  process.env.META_WHATSAPP_APP_SECRET ?? process.env.META_APP_SECRET
+const instagramVerifyToken =
+  process.env.META_INSTAGRAM_VERIFY_TOKEN ?? process.env.META_VERIFY_TOKEN
+const whatsappVerifyToken =
+  process.env.META_WHATSAPP_VERIFY_TOKEN ?? process.env.META_VERIFY_TOKEN
 const authEmail = process.env.SMOKE_AUTH_EMAIL ?? 'demo@walchat.local'
 const authPassword = process.env.SMOKE_AUTH_PASSWORD ?? 'wal123'
 
@@ -14,6 +21,11 @@ const authPassword = process.env.SMOKE_AUTH_PASSWORD ?? 'wal123'
 function assert(condition, message) {
   if (!condition) throw new Error(message)
 }
+
+assert(instagramSecret, 'Secret do app Instagram ausente no smoke.')
+assert(whatsappSecret, 'Secret do app WhatsApp ausente no smoke.')
+assert(instagramVerifyToken, 'Verify token Instagram ausente no smoke.')
+assert(whatsappVerifyToken, 'Verify token WhatsApp ausente no smoke.')
 
 const healthResponse = await fetch(`${appUrl}/api/health`)
 const health = await healthResponse.json()
@@ -39,14 +51,14 @@ const anonContacts = await anonymous.from('contacts').select('id')
 assert(Boolean(anonContacts.error), 'Anon não deveria ler contatos.')
 
 const verification = await fetch(
-  `${appUrl}/api/public/webhooks/instagram?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(process.env.META_VERIFY_TOKEN)}&hub.challenge=wal_ok`,
+  `${appUrl}/api/public/webhooks/instagram?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(instagramVerifyToken)}&hub.challenge=wal_ok`,
 )
 assert(
   verification.ok && (await verification.text()) === 'wal_ok',
   'Verificação GET do webhook falhou.',
 )
 const whatsappVerification = await fetch(
-  `${appUrl}/api/public/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(process.env.META_VERIFY_TOKEN)}&hub.challenge=wal_wa_ok`,
+  `${appUrl}/api/public/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(whatsappVerifyToken)}&hub.challenge=wal_wa_ok`,
 )
 assert(
   whatsappVerification.ok &&
@@ -74,7 +86,7 @@ const payload = {
   ],
 }
 const rawBody = JSON.stringify(payload)
-const signature = `sha256=${createHmac('sha256', metaSecret).update(rawBody).digest('hex')}`
+const signature = `sha256=${createHmac('sha256', instagramSecret).update(rawBody).digest('hex')}`
 const invalid = await fetch(`${appUrl}/api/public/webhooks/instagram`, {
   method: 'POST',
   headers: {
@@ -102,7 +114,7 @@ const whatsappPayload = {
   entry: [],
 }
 const whatsappRawBody = JSON.stringify(whatsappPayload)
-const whatsappSignature = `sha256=${createHmac('sha256', metaSecret).update(whatsappRawBody).digest('hex')}`
+const whatsappSignature = `sha256=${createHmac('sha256', whatsappSecret).update(whatsappRawBody).digest('hex')}`
 const whatsappWebhook = await fetch(`${appUrl}/api/public/webhooks/whatsapp`, {
   method: 'POST',
   headers: {
