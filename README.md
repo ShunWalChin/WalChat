@@ -372,6 +372,7 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 - [Configuração do Google Calendar, Meet e Tasks](docs/CONFIGURACAO_GOOGLE_CALENDAR.md)
 - [Manual em PDF](output/pdf/manual-interno-wal-chat.pdf)
 - [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)
+- [Validação Meta em produção — 24/08/2026](docs/VALIDACAO_META_PRODUCAO_2026-08-24.md)
 
 ## Documentação
 
@@ -396,11 +397,12 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 | [Manual completo de acessos](docs/MANUAL_COMPLETO_ACESSOS_OPERACAO_CONFIGURACAO.md)     | URLs, usuários, módulos e configuração           |
 | [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)                     | Evidências da validação publicada                |
 | [Validação do wizard e n8n](docs/RELATORIO_VALIDACAO_N8N_2026-08-23.md)                 | Testes, migration dry-run e gate de deploy       |
+| [Validação Meta em produção](docs/VALIDACAO_META_PRODUCAO_2026-08-24.md)               | Instagram real, WhatsApp e gates de live mode    |
 
 ## Limites conhecidos do MVP
 
 - Alcance editorial e publicação ainda dependem dos serviços de sincronização/publicação da Instagram API; mensagens, CRM, Inbox e conexões já usam o backend real.
-- Instagram Login e WhatsApp Embedded Signup estão implementados, mas a homologação real depende do App ID/secret, WABA, telefone, conta Professional e Advanced Access.
+- O Instagram `@walfredonetto` está conectado e validado. O WhatsApp Embedded Signup está configurado, mas o live mode ainda depende do WABA/número reais, verificação empresarial, App Review e Advanced Access.
 - Calendar/Meet/Tasks funcionam localmente; efeitos no Google dependem do OAuth
   Client, APIs habilitadas e consentimento do usuário. Sem credenciais, a UI
   informa a pendência e mantém a agenda local.
