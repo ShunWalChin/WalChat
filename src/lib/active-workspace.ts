@@ -46,9 +46,26 @@ export function getActiveWorkspaceId() {
   return activeId
 }
 
+/**
+ * Prazo máximo que uma chamada espera pela descoberta de workspaces.
+ *
+ * O portão é uma otimização para evitar o 409 de quem tem mais de um workspace,
+ * não um requisito de correção — a maioria tem um só e funciona sem o header.
+ * Sem este teto, uma requisição pendurada (sem resposta e sem erro) deixaria
+ * toda a aplicação esperando para sempre, com a tela travada e nenhum erro.
+ */
+const WORKSPACE_GATE_TIMEOUT_MS = 8_000
+
 /** Aguarda a lista de workspaces ser resolvida — inclusive quando está vazia. */
-export function whenWorkspaceReady() {
-  return ready
+export function whenWorkspaceReady(timeoutMs = WORKSPACE_GATE_TIMEOUT_MS) {
+  if (timeoutMs <= 0) return ready
+  return new Promise<void>((resolve) => {
+    const temporizador = setTimeout(resolve, timeoutMs)
+    void ready.then(() => {
+      clearTimeout(temporizador)
+      resolve()
+    })
+  })
 }
 
 export function setActiveWorkspaceId(id: string | null) {

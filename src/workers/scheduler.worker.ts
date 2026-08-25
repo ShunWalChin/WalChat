@@ -584,6 +584,7 @@ async function processSequenceJob(job: {
       ? (payload.flowAwait as {
           kind: 'choice' | 'input'
           timeoutSeconds: number | null
+          attempts?: number
         })
       : null
   const triggerId = payload.triggerId ? String(payload.triggerId) : null

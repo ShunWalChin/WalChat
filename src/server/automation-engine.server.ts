@@ -565,7 +565,11 @@ export async function resumeAutomationAfterMessage(
     reason?: string | null
     policy?: string | null
     /** Quando presente, a execução para aqui e espera o contato responder. */
-    awaits?: { kind: 'choice' | 'input'; timeoutSeconds: number | null } | null
+    awaits?: {
+      kind: 'choice' | 'input'
+      timeoutSeconds: number | null
+      attempts?: number
+    } | null
   },
   client = getSupabaseAdmin(),
 ) {
@@ -612,7 +616,9 @@ export async function resumeAutomationAfterMessage(
       awaiting_kind: input.awaits.kind,
       awaiting_node_id: input.nodeId,
       awaiting_until: until,
-      awaiting_attempts: 0,
+      // Zerar aqui apagaria a tentativa que o reenvio acabou de contar, e o
+      // limite de tentativas nunca seria alcançado.
+      awaiting_attempts: input.awaits.attempts ?? 0,
       last_error_code: null,
     })
     if (until)
@@ -662,6 +668,10 @@ async function scheduleAwaitTimeoutJob(
           nodeId: input.nodeId,
         },
         run_at: input.runAt,
+        // O reenvio de uma pergunta reestaciona no mesmo nó. Se o prazo
+        // anterior já tivesse disparado, sem reabrir o novo nunca dispararia e
+        // a execução ficaria esperando para sempre.
+        status: 'pending',
       },
       { onConflict: 'workspace_id,dedupe_key' },
     )
@@ -762,6 +772,7 @@ async function scheduleAutomationJob(
           nodeId: input.nodeId,
         },
         run_at: input.runAt,
+        status: 'pending',
       },
       { onConflict: 'workspace_id,dedupe_key' },
     )
@@ -790,7 +801,17 @@ async function scheduleFlowMessage(
     aiGenerated: boolean
     choices?: Array<AutomationChoice> | null
     /** Presente quando o nó deve parar e esperar o contato responder. */
-    awaits?: { kind: 'choice' | 'input'; timeoutSeconds: number | null } | null
+    awaits?: {
+      kind: 'choice' | 'input'
+      timeoutSeconds: number | null
+      /** Tentativas já gastas neste nó; o estacionamento precisa preservá-las. */
+      attempts?: number
+    } | null
+    /**
+     * Diferencia jobs do mesmo nó. Sem isto, o reenvio de uma pergunta cairia
+     * na chave do prompt original e o upsert atingiria a linha já concluída.
+     */
+    dedupeSuffix?: string
   },
 ) {
   const context = execution.context as Record<string, unknown>
@@ -800,7 +821,9 @@ async function scheduleFlowMessage(
       {
         workspace_id: execution.workspace_id,
         kind: 'sequence_step',
-        dedupe_key: `flow:${execution.id}:message:${input.nodeId}`,
+        dedupe_key: `flow:${execution.id}:message:${input.nodeId}${
+          input.dedupeSuffix ?? ''
+        }`,
         payload: {
           platform: execution.platform,
           contactId: execution.contact_id,
@@ -821,6 +844,9 @@ async function scheduleFlowMessage(
           flowAwait: input.awaits ?? null,
         },
         run_at: new Date().toISOString(),
+        // `claim_due_scheduled_jobs` só enxerga 'pending'. Sem reabrir, um
+        // upsert sobre uma linha concluída nunca voltaria a ser executado.
+        status: 'pending',
       },
       { onConflict: 'workspace_id,dedupe_key' },
     )
@@ -1102,7 +1128,12 @@ export async function resumeAutomationAfterReply(
       mediaUrl: null,
       mediaType: null,
       aiGenerated: false,
-      awaits: { kind: 'input', timeoutSeconds: node.config.timeoutSeconds },
+      awaits: {
+        kind: 'input',
+        timeoutSeconds: node.config.timeoutSeconds,
+        attempts,
+      },
+      dedupeSuffix: `:retry:${attempts}`,
     })
     await updateExecution(client, execution.id, input.workspaceId, {
       awaiting_attempts: attempts,

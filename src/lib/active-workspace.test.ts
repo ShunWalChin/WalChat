@@ -91,3 +91,30 @@ describe('workspace ativo', () => {
     expect(liberado).toBe(false)
   })
 })
+
+describe('portão com prazo', () => {
+  it('libera as chamadas se a descoberta pendurar sem responder', async () => {
+    vi.useFakeTimers()
+    try {
+      const mod = await freshModule()
+      let liberado = false
+      // Ninguém chama publishWorkspaces nem releaseWorkspaceGate: simula uma
+      // requisição que ficou pendurada sem resposta e sem erro.
+      void mod.whenWorkspaceReady(8_000).then(() => {
+        liberado = true
+      })
+      await vi.advanceTimersByTimeAsync(7_000)
+      expect(liberado).toBe(false)
+      await vi.advanceTimersByTimeAsync(1_500)
+      expect(liberado).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('resolve imediatamente quando a lista chega antes do prazo', async () => {
+    const mod = await freshModule()
+    mod.publishWorkspaces(WORKSPACES)
+    await expect(mod.whenWorkspaceReady(50)).resolves.toBeUndefined()
+  })
+})
