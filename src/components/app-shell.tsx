@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/auth-context'
+import { useWorkspace } from '../contexts/workspace-context'
 import { apiFetch } from '../lib/api-client'
 
 const groups = [
@@ -97,6 +98,7 @@ const titles: Record<string, { eyebrow: string; title: string }> = {
 /** Protege as rotas internas e organiza sidebar, topo e conteúdo. */
 export function AppShell() {
   const { user, loading, signOut } = useAuth()
+  const workspace = useWorkspace()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [instagramUsername, setInstagramUsername] = useState<string | null>(
     null,
@@ -159,6 +161,28 @@ export function AppShell() {
             <X size={20} />
           </button>
         </div>
+
+        {workspace.workspaces.length > 1 && (
+          <div className="workspace-picker">
+            <label htmlFor="workspace-select">Workspace</label>
+            <select
+              id="workspace-select"
+              value={workspace.activeId ?? ''}
+              onChange={(event) => workspace.switchTo(event.target.value)}
+            >
+              {workspace.workspaces.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {workspace.error && (
+          <p className="workspace-error" role="status">
+            {workspace.error}
+          </p>
+        )}
 
         <Link to="/configuracoes" className="account-picker">
           <span className="avatar avatar-orange">WC</span>

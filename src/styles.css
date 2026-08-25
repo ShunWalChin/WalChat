@@ -9887,3 +9887,38 @@ select,
     backdrop-filter: blur(10px) saturate(112%);
   }
 }
+
+/* Seletor de workspace: só aparece quando o usuário pertence a mais de um. */
+.workspace-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.workspace-picker label {
+  color: #949188;
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.workspace-picker select {
+  width: 100%;
+  border: 1px solid #353530;
+  border-radius: 11px;
+  background: #1e1e1a;
+  color: #fff;
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.workspace-picker select:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 1px;
+}
+.workspace-error {
+  color: var(--yellow);
+  font-size: 10px;
+  line-height: 1.4;
+  margin: 0 0 10px;
+}

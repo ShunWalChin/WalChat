@@ -47,6 +47,7 @@ import { Route as ApiInsightsRouteImport } from './routes/api/insights'
 import { Route as ApiReadyRouteImport } from './routes/api/ready'
 import { Route as ApiSequencesRouteImport } from './routes/api/sequences'
 import { Route as ApiTriggersRouteImport } from './routes/api/triggers'
+import { Route as ApiWorkspacesRouteImport } from './routes/api/workspaces'
 import { Route as ApiAiAgentsRouteImport } from './routes/api/ai/agents'
 import { Route as ApiAiKnowledgeRouteImport } from './routes/api/ai/knowledge'
 import { Route as ApiAiSettingsRouteImport } from './routes/api/ai/settings'
@@ -279,6 +280,11 @@ const ApiSequencesRoute = ApiSequencesRouteImport.update({
 const ApiTriggersRoute = ApiTriggersRouteImport.update({
   id: '/api/triggers',
   path: '/api/triggers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspacesRoute = ApiWorkspacesRouteImport.update({
+  id: '/api/workspaces',
+  path: '/api/workspaces',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAiAgentsRoute = ApiAiAgentsRouteImport.update({
@@ -567,6 +573,7 @@ export interface FileRoutesByFullPath {
   '/api/ready': typeof ApiReadyRoute
   '/api/sequences': typeof ApiSequencesRoute
   '/api/triggers': typeof ApiTriggersRoute
+  '/api/workspaces': typeof ApiWorkspacesRoute
   '/api/ai/agents': typeof ApiAiAgentsRoute
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
   '/api/ai/settings': typeof ApiAiSettingsRoute
@@ -650,6 +657,7 @@ export interface FileRoutesByTo {
   '/api/ready': typeof ApiReadyRoute
   '/api/sequences': typeof ApiSequencesRoute
   '/api/triggers': typeof ApiTriggersRoute
+  '/api/workspaces': typeof ApiWorkspacesRoute
   '/api/ai/agents': typeof ApiAiAgentsRoute
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
   '/api/ai/settings': typeof ApiAiSettingsRoute
@@ -735,6 +743,7 @@ export interface FileRoutesById {
   '/api/ready': typeof ApiReadyRoute
   '/api/sequences': typeof ApiSequencesRoute
   '/api/triggers': typeof ApiTriggersRoute
+  '/api/workspaces': typeof ApiWorkspacesRoute
   '/api/ai/agents': typeof ApiAiAgentsRoute
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
   '/api/ai/settings': typeof ApiAiSettingsRoute
@@ -820,6 +829,7 @@ export interface FileRouteTypes {
     | '/api/ready'
     | '/api/sequences'
     | '/api/triggers'
+    | '/api/workspaces'
     | '/api/ai/agents'
     | '/api/ai/knowledge'
     | '/api/ai/settings'
@@ -903,6 +913,7 @@ export interface FileRouteTypes {
     | '/api/ready'
     | '/api/sequences'
     | '/api/triggers'
+    | '/api/workspaces'
     | '/api/ai/agents'
     | '/api/ai/knowledge'
     | '/api/ai/settings'
@@ -987,6 +998,7 @@ export interface FileRouteTypes {
     | '/api/ready'
     | '/api/sequences'
     | '/api/triggers'
+    | '/api/workspaces'
     | '/api/ai/agents'
     | '/api/ai/knowledge'
     | '/api/ai/settings'
@@ -1056,6 +1068,7 @@ export interface RootRouteChildren {
   ApiReadyRoute: typeof ApiReadyRoute
   ApiSequencesRoute: typeof ApiSequencesRoute
   ApiTriggersRoute: typeof ApiTriggersRoute
+  ApiWorkspacesRoute: typeof ApiWorkspacesRoute
   ApiAiAgentsRoute: typeof ApiAiAgentsRoute
   ApiAiKnowledgeRoute: typeof ApiAiKnowledgeRoute
   ApiAiSettingsRoute: typeof ApiAiSettingsRoute
@@ -1360,6 +1373,13 @@ declare module '@tanstack/react-router' {
       path: '/api/triggers'
       fullPath: '/api/triggers'
       preLoaderRoute: typeof ApiTriggersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspaces': {
+      id: '/api/workspaces'
+      path: '/api/workspaces'
+      fullPath: '/api/workspaces'
+      preLoaderRoute: typeof ApiWorkspacesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ai/agents': {
@@ -1800,6 +1820,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiReadyRoute: ApiReadyRoute,
   ApiSequencesRoute: ApiSequencesRoute,
   ApiTriggersRoute: ApiTriggersRoute,
+  ApiWorkspacesRoute: ApiWorkspacesRoute,
   ApiAiAgentsRoute: ApiAiAgentsRoute,
   ApiAiKnowledgeRoute: ApiAiKnowledgeRoute,
   ApiAiSettingsRoute: ApiAiSettingsRoute,

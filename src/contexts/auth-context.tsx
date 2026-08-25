@@ -1,5 +1,6 @@
 /** Sessão compartilhada: Supabase Auth quando configurado e fallback no modo demo. */
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { resetWorkspaceState } from '../lib/active-workspace'
 import { getBrowserSupabase, isSupabaseConfigured } from '../lib/supabase'
 
 type WalUser = { id: string; email: string; name: string }
@@ -103,6 +104,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser({ id: 'demo', email: 'demo@walchat.local', name: 'Wal Demo' })
       },
       async signOut() {
+        // Sem isto a próxima sessão herdaria o workspace da anterior.
+        resetWorkspaceState()
         localStorage.removeItem(DEMO_KEY)
         const supabase = getBrowserSupabase()
         if (supabase) await supabase.auth.signOut()

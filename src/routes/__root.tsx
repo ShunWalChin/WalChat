@@ -5,6 +5,7 @@ import appCss from '../styles.css?url'
 import { AnalyticsConsent } from '../components/analytics-consent'
 import { NotFoundPage } from '../components/not-found-page'
 import { AuthProvider } from '../contexts/auth-context'
+import { WorkspaceProvider } from '../contexts/workspace-context'
 import { seoHead } from '../lib/seo'
 import { publicStructuredData } from '../lib/site-config'
 
@@ -60,8 +61,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <AuthProvider>
-          {children}
-          <AnalyticsConsent />
+          <WorkspaceProvider>
+            {children}
+            <AnalyticsConsent />
+          </WorkspaceProvider>
         </AuthProvider>
         <Scripts />
       </body>

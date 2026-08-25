@@ -281,51 +281,52 @@ chaves administrativas ou credenciais de IA.
 
 ## API e webhook
 
-| Método      | Endpoint                                     | Responsabilidade                              |
-| ----------- | -------------------------------------------- | --------------------------------------------- |
-| `GET`       | `/api/health`                                | Liveness do processo, sem sondar dependências |
-| `GET`       | `/api/ready`                                 | Readiness real de Supabase e Redis            |
-| `GET/POST`  | `/api/public/webhooks/instagram`             | Challenge, HMAC e fila Meta                   |
-| `GET/POST`  | `/api/public/webhooks/whatsapp`              | Challenge, HMAC e fila WhatsApp               |
-| `POST`      | `/api/integrations/meta/start`               | Início OAuth com state de uso único           |
-| `GET`       | `/api/integrations/meta/status`              | Estado sanitizado da conexão                  |
-| `GET`       | `/api/integrations/meta/callback`            | Code exchange e token cifrado                 |
-| `POST`      | `/api/integrations/meta/validate`            | Revalidação de perfil, token e webhooks       |
-| `DELETE`    | `/api/integrations/meta/disconnect`          | Desassinatura e remoção da credencial         |
-| `POST`      | `/api/integrations/meta/whatsapp/complete`   | Finaliza Embedded Signup e assina a WABA      |
-| `POST`      | `/api/integrations/meta/whatsapp/validate`   | Revalida token, WABA, telefone e webhook      |
-| `GET/POST`  | `/api/integrations/meta/whatsapp/templates`  | Lista e sincroniza templates oficiais         |
-| `POST`      | `/api/integrations/meta/whatsapp/register`   | Registra telefone com PIN efêmero             |
-| `GET/PUT`   | `/api/ai/settings`                           | Provedor, modelo e chave cifrada              |
-| `GET/*`     | `/api/ai/agents`, `/api/ai/knowledge`        | CRUD autenticado de agentes e conhecimento    |
-| `POST`      | `/api/ai/suggest`                            | Playground/sugestão a partir do agente salvo  |
-| `GET/PATCH` | `/api/operations/go-live`                    | Diagnóstico e kill switches do workspace      |
-| `GET/POST`  | `/api/operations/webhooks`                   | Observabilidade e replay seguro de falhas     |
-| `GET/POST`  | `/api/integrations/meta/media`               | Cache e sincronização de publicações reais    |
-| `GET/PATCH` | `/api/inbox`                                 | Conversas reais, mensagens, leitura e IA      |
-| `GET`       | `/api/contacts`                              | CRM multicanal e elegibilidade                |
-| `GET`       | `/api/dashboard`                             | Métricas operacionais reais                   |
-| `GET/*`     | `/api/triggers`                              | CRUD de gatilhos simples persistidos          |
-| `GET/POST`  | `/api/automations`                           | Catálogo e criação de jornadas DAG            |
-| `GET/PATCH` | `/api/automations/:flowId`                   | Rascunho, revisão otimista e observabilidade  |
-| `POST`      | `/api/automations/:flowId`                   | Publicação atômica de versão imutável         |
-| `POST`      | `/api/automations/:flowId/execute`           | Execução manual idempotente e Meta-safe       |
-| `GET/*`     | `/api/automations/fields`                    | Campos de contato e globais tipados           |
-| `GET/*`     | `/api/calendar`                              | Agenda unificada e CRUD de eventos/tarefas    |
-| `GET/*`     | `/api/calendar/booking-pages`                | Tipos e links públicos de agendamento         |
-| `GET/POST`  | `/api/public/bookings/:slug`                 | Free/Busy e reserva pública transacional      |
-| `POST/GET`  | `/api/integrations/google/start`, `callback` | OAuth Google com state, PKCE e token cifrado  |
-| `GET/PATCH` | `/api/integrations/google/status`            | Seleção de calendário e lista do Tasks        |
-| `POST`      | `/api/integrations/google/sync`              | Sync incremental Calendar e Tasks             |
-| `GET/PUT`   | `/api/integrations/n8n/status`, `configure`  | Wizard e credenciais cifradas do n8n          |
-| `POST`      | `/api/integrations/n8n/test`, `events`       | Teste e despacho idempotente de eventos       |
-| `DELETE`    | `/api/integrations/n8n/disconnect`           | Remove conexão e secrets do workspace         |
-| `POST`      | `/api/public/webhooks/n8n/:connectionId`     | HMAC, anti-replay e ações inbound controladas |
-| `POST`      | `/api/messages/send`                         | Envio humano com compliance                   |
-| `POST`      | `/api/compliance/check`                      | Decisão pura de elegibilidade                 |
-| `POST`      | `/api/data-deletion`                         | Signed request de exclusão da Meta            |
-| `GET/POST`  | `/api/privacy/deletion-requests`             | Protocolo LGPD público e consulta de status   |
-| `GET`       | `/api/public/reviews`                        | Avaliações verificadas e consentidas          |
+| Método      | Endpoint                                     | Responsabilidade                               |
+| ----------- | -------------------------------------------- | ---------------------------------------------- |
+| `GET`       | `/api/health`                                | Liveness do processo, sem sondar dependências  |
+| `GET`       | `/api/ready`                                 | Readiness real de Supabase e Redis             |
+| `GET/POST`  | `/api/public/webhooks/instagram`             | Challenge, HMAC e fila Meta                    |
+| `GET/POST`  | `/api/public/webhooks/whatsapp`              | Challenge, HMAC e fila WhatsApp                |
+| `POST`      | `/api/integrations/meta/start`               | Início OAuth com state de uso único            |
+| `GET`       | `/api/integrations/meta/status`              | Estado sanitizado da conexão                   |
+| `GET`       | `/api/integrations/meta/callback`            | Code exchange e token cifrado                  |
+| `POST`      | `/api/integrations/meta/validate`            | Revalidação de perfil, token e webhooks        |
+| `DELETE`    | `/api/integrations/meta/disconnect`          | Desassinatura e remoção da credencial          |
+| `POST`      | `/api/integrations/meta/whatsapp/complete`   | Finaliza Embedded Signup e assina a WABA       |
+| `POST`      | `/api/integrations/meta/whatsapp/validate`   | Revalida token, WABA, telefone e webhook       |
+| `GET/POST`  | `/api/integrations/meta/whatsapp/templates`  | Lista e sincroniza templates oficiais          |
+| `POST`      | `/api/integrations/meta/whatsapp/register`   | Registra telefone com PIN efêmero              |
+| `GET/PUT`   | `/api/ai/settings`                           | Provedor, modelo e chave cifrada               |
+| `GET/*`     | `/api/ai/agents`, `/api/ai/knowledge`        | CRUD autenticado de agentes e conhecimento     |
+| `POST`      | `/api/ai/suggest`                            | Playground/sugestão a partir do agente salvo   |
+| `GET/PATCH` | `/api/operations/go-live`                    | Diagnóstico e kill switches do workspace       |
+| `GET/POST`  | `/api/operations/webhooks`                   | Observabilidade e replay seguro de falhas      |
+| `GET/POST`  | `/api/integrations/meta/media`               | Cache e sincronização de publicações reais     |
+| `GET/PATCH` | `/api/inbox`                                 | Conversas reais, mensagens, leitura e IA       |
+| `GET`       | `/api/contacts`                              | CRM multicanal e elegibilidade                 |
+| `GET`       | `/api/dashboard`                             | Métricas operacionais reais                    |
+| `GET/*`     | `/api/triggers`                              | CRUD de gatilhos simples persistidos           |
+| `GET/POST`  | `/api/automations`                           | Catálogo e criação de jornadas DAG             |
+| `GET/PATCH` | `/api/automations/:flowId`                   | Rascunho, revisão otimista e observabilidade   |
+| `POST`      | `/api/automations/:flowId`                   | Publicação atômica de versão imutável          |
+| `POST`      | `/api/automations/:flowId/execute`           | Execução manual idempotente e Meta-safe        |
+| `GET`       | `/api/workspaces`                            | Workspaces do usuário para o seletor de tenant |
+| `GET/*`     | `/api/automations/fields`                    | Campos de contato e globais tipados            |
+| `GET/*`     | `/api/calendar`                              | Agenda unificada e CRUD de eventos/tarefas     |
+| `GET/*`     | `/api/calendar/booking-pages`                | Tipos e links públicos de agendamento          |
+| `GET/POST`  | `/api/public/bookings/:slug`                 | Free/Busy e reserva pública transacional       |
+| `POST/GET`  | `/api/integrations/google/start`, `callback` | OAuth Google com state, PKCE e token cifrado   |
+| `GET/PATCH` | `/api/integrations/google/status`            | Seleção de calendário e lista do Tasks         |
+| `POST`      | `/api/integrations/google/sync`              | Sync incremental Calendar e Tasks              |
+| `GET/PUT`   | `/api/integrations/n8n/status`, `configure`  | Wizard e credenciais cifradas do n8n           |
+| `POST`      | `/api/integrations/n8n/test`, `events`       | Teste e despacho idempotente de eventos        |
+| `DELETE`    | `/api/integrations/n8n/disconnect`           | Remove conexão e secrets do workspace          |
+| `POST`      | `/api/public/webhooks/n8n/:connectionId`     | HMAC, anti-replay e ações inbound controladas  |
+| `POST`      | `/api/messages/send`                         | Envio humano com compliance                    |
+| `POST`      | `/api/compliance/check`                      | Decisão pura de elegibilidade                  |
+| `POST`      | `/api/data-deletion`                         | Signed request de exclusão da Meta             |
+| `GET/POST`  | `/api/privacy/deletion-requests`             | Protocolo LGPD público e consulta de status    |
+| `GET`       | `/api/public/reviews`                        | Avaliações verificadas e consentidas           |
 
 Contratos, respostas e códigos HTTP: [API e webhooks](docs/API_E_WEBHOOKS.md).
 
@@ -435,6 +436,9 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 - O endpoint de exclusão valida o signed request, remove dados Instagram/WhatsApp em transação e devolve um protocolo consultável.
 - SMTP de produção é necessário para confirmação de e-mail e recuperação de senha.
 - Rate limiting por rota está versionado no Nginx; a validação no domínio final e o monitoramento/alertas seguem obrigatórios antes de tráfego em escala.
+- Usuários com mais de um workspace escolhem o tenant no seletor da barra
+  lateral; a escolha persiste no navegador e acompanha toda chamada privada no
+  header `X-Workspace-Id`.
 
 ## Licença
 
