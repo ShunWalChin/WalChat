@@ -13,6 +13,8 @@ import {
   saveIntegrationCredential,
   writeIntegrationAudit,
 } from '../../../../server/integration-credentials.server'
+import { assertRateLimit } from '../../../../server/rate-limit.server'
+import { requestIdentity } from '../../../../server/request-identity.server'
 import { getSupabaseAdmin } from '../../../../server/supabase-admin.server'
 
 function cookie(request: Request, name: string) {
@@ -66,6 +68,19 @@ export const Route = createFileRoute('/api/integrations/google/callback')({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        // O callback e anonimo por contrato do Google. O state de uso unico ja
+        // impede a troca do code, mas sem cota cada tentativa ainda custa uma
+        // ida ao Postgres.
+        try {
+          await assertRateLimit({
+            namespace: 'google-oauth-callback',
+            identity: requestIdentity(request),
+            limit: 30,
+            windowSeconds: 300,
+          })
+        } catch {
+          return response('error')
+        }
         const url = new URL(request.url)
         if (url.searchParams.get('error')) return response('denied')
         const code = url.searchParams.get('code')

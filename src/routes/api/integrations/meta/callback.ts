@@ -18,6 +18,8 @@ import {
   saveIntegrationCredential,
   writeIntegrationAudit,
 } from '../../../../server/integration-credentials.server'
+import { assertRateLimit } from '../../../../server/rate-limit.server'
+import { requestIdentity } from '../../../../server/request-identity.server'
 import { getSupabaseAdmin } from '../../../../server/supabase-admin.server'
 
 function readCookie(request: Request, name: string) {
@@ -86,6 +88,18 @@ export const Route = createFileRoute('/api/integrations/meta/callback')({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        // Mesmo protegido pelo state de uso unico, o callback e anonimo e toca
+        // o banco a cada chamada; a cota mantem o custo previsivel.
+        try {
+          await assertRateLimit({
+            namespace: 'meta-oauth-callback',
+            identity: requestIdentity(request),
+            limit: 30,
+            windowSeconds: 300,
+          })
+        } catch {
+          return callbackResponse('error')
+        }
         const url = new URL(request.url)
         if (url.searchParams.get('error')) return callbackResponse('denied')
         const code = url.searchParams.get('code')

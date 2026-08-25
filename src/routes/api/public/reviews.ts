@@ -1,13 +1,21 @@
 /** Avaliações públicas só saem após consentimento e publicação explícita. */
 import { createFileRoute } from '@tanstack/react-router'
 import { apiErrorResponse } from '../../../server/api-auth.server'
+import { assertRateLimit } from '../../../server/rate-limit.server'
+import { requestIdentity } from '../../../server/request-identity.server'
 import { getSupabaseAdmin } from '../../../server/supabase-admin.server'
 
 export const Route = createFileRoute('/api/public/reviews')({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
         try {
+          await assertRateLimit({
+            namespace: 'public-reviews',
+            identity: requestIdentity(request),
+            limit: 60,
+            windowSeconds: 60,
+          })
           const admin = getSupabaseAdmin()
           if (!admin) return Response.json({ reviews: [] })
           const { data, error } = await admin

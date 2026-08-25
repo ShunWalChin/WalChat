@@ -7,6 +7,8 @@ import {
   getServerEnv,
 } from '../../../../server/env.server'
 import { enqueueInstagramWebhook } from '../../../../server/queue.server'
+import { assertRateLimit } from '../../../../server/rate-limit.server'
+import { requestIdentity } from '../../../../server/request-identity.server'
 import {
   INSTAGRAM_WEBHOOK_BODY_LIMIT,
   readLimitedText,
@@ -86,11 +88,20 @@ export const Route = createFileRoute('/api/public/webhooks/instagram')({
             request.headers.get('x-hub-signature-256'),
             app.appSecret,
           )
-          if (!valid)
+          if (!valid) {
+            // Bursts assinados da Meta seguem sem cota. Só quem falha o HMAC
+            // entra no balde, então uma enxurrada forjada para de consumir CPU.
+            await assertRateLimit({
+              namespace: 'instagram-webhook-unsigned',
+              identity: requestIdentity(request),
+              limit: 20,
+              windowSeconds: 300,
+            })
             return Response.json(
               { error: 'Assinatura inválida.' },
               { status: 401 },
             )
+          }
 
           const payload = webhookPayloadSchema.parse(JSON.parse(rawBody))
           if (payload.object !== 'instagram')

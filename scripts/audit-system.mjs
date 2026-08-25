@@ -66,6 +66,31 @@ for (const file of apiFiles) {
       file: name,
       code: 'unbounded_json_body',
     })
+  // Endpoint anonimo sem cota vira amplificacao barata contra Postgres/Redis.
+  if (
+    isPublic &&
+    !name.endsWith('/api/health.ts') &&
+    !name.endsWith('/api/ready.ts')
+  ) {
+    if (!source.includes('assertRateLimit'))
+      findings.push({
+        severity: 'error',
+        file: name,
+        code: 'public_api_without_rate_limit',
+      })
+    // A chave do balde precisa vir do resolvedor endurecido; ler headers de IP
+    // direto na rota reabre o bypass por header forjado.
+    if (
+      /headers\.get\('(cf-connecting-ip|x-forwarded-for|x-real-ip|true-client-ip)'/i.test(
+        source,
+      )
+    )
+      findings.push({
+        severity: 'error',
+        file: name,
+        code: 'raw_client_ip_header_read',
+      })
+  }
 }
 
 const expectedPublicFiles = [

@@ -5,7 +5,9 @@ import { z } from 'zod'
 import { apiErrorResponse } from '../../server/api-auth.server'
 import { getMetaAppSecrets, getServerEnv } from '../../server/env.server'
 import { verifyMetaSignedRequest } from '../../server/meta-signed-request.server'
+import { assertRateLimit } from '../../server/rate-limit.server'
 import { readLimitedText } from '../../server/request-body.server'
+import { requestIdentity } from '../../server/request-identity.server'
 import { getSupabaseAdmin } from '../../server/supabase-admin.server'
 
 const confirmationSchema = z.string().regex(/^[A-Za-z0-9_-]{24,128}$/)
@@ -15,6 +17,14 @@ export const Route = createFileRoute('/api/data-deletion')({
     handlers: {
       GET: async ({ request }) => {
         try {
+          // Consulta anônima que toca o banco com service role: sem cota, vira
+          // amplificação barata e sonda de códigos de protocolo.
+          await assertRateLimit({
+            namespace: 'data-deletion-status',
+            identity: requestIdentity(request),
+            limit: 30,
+            windowSeconds: 300,
+          })
           const confirmation = confirmationSchema.parse(
             new URL(request.url).searchParams.get('confirmation'),
           )
@@ -46,6 +56,12 @@ export const Route = createFileRoute('/api/data-deletion')({
       },
       POST: async ({ request }) => {
         try {
+          await assertRateLimit({
+            namespace: 'data-deletion-callback',
+            identity: requestIdentity(request),
+            limit: 20,
+            windowSeconds: 300,
+          })
           const env = getServerEnv()
           const appSecrets = getMetaAppSecrets(env)
           if (appSecrets.length === 0)

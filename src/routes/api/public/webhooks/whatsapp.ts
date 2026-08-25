@@ -7,6 +7,8 @@ import {
   getWhatsAppAppConfig,
 } from '../../../../server/env.server'
 import { enqueueWhatsAppWebhook } from '../../../../server/queue.server'
+import { assertRateLimit } from '../../../../server/rate-limit.server'
+import { requestIdentity } from '../../../../server/request-identity.server'
 import {
   INSTAGRAM_WEBHOOK_BODY_LIMIT,
   readLimitedText,
@@ -64,11 +66,18 @@ export const Route = createFileRoute('/api/public/webhooks/whatsapp')({
               request.headers.get('x-hub-signature-256'),
               secret,
             )
-          )
+          ) {
+            await assertRateLimit({
+              namespace: 'whatsapp-webhook-unsigned',
+              identity: requestIdentity(request),
+              limit: 20,
+              windowSeconds: 300,
+            })
             return Response.json(
               { error: 'Assinatura inválida.' },
               { status: 401 },
             )
+          }
           const payload = payloadSchema.parse(JSON.parse(rawBody))
           if (payload.object !== 'whatsapp_business_account')
             return Response.json({ received: true, ignored: true })
