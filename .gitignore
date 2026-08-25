@@ -23,3 +23,8 @@ backups/
 .vinxi
 __unconfig*
 todos.json
+
+# Snapshots de deploy e imagens exportadas nao pertencem ao repositorio.
+*.tar
+*.tar.gz
+*.tgz

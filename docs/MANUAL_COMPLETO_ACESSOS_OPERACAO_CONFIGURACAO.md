@@ -10,6 +10,20 @@ Aplicação: [https://wal-chat.64.181.178.125.nip.io](https://wal-chat.64.181.17
 > Supabase. As credenciais de operador ficam no cofre local indicado na seção 3.
 > Nunca envie o cofre por e-mail, WhatsApp, issue, commit ou chat.
 
+> **Este repositório é público.** Identificadores que servem de alvo direto —
+> usuário SSH, caminho da chave privada e e-mail das contas administrativas —
+> aparecem aqui como marcadores `<ASSIM>`. Os valores reais ficam apenas no
+> cofre `Acessos Privados/`. Substitua o marcador na hora de executar o comando
+> e não recoloque o valor concreto no arquivo versionado.
+>
+> | Marcador                          | Onde está o valor real                                              |
+> | --------------------------------- | ------------------------------------------------------------------- |
+> | `<IP_DO_SERVIDOR>`                | Cofre local (o `nip.io` do domínio de homologação já expõe este IP) |
+> | `<USUARIO_SSH>`                   | Cofre local                                                         |
+> | `<USUARIO_SSH_RECUPERACAO>`       | Cofre local                                                         |
+> | `<CAMINHO_DA_CHAVE_SSH>`          | Máquina do operador                                                 |
+> | `<CONTA_OWNER>` / `<CONTA_ADMIN>` | Cofre local                                                         |
+
 ## 1. Situação atual do ambiente
 
 Em 17/08/2026 foram confirmados:
@@ -105,7 +119,7 @@ Os painéis internos não são publicados na internet.
 Supabase Studio:
 
 ```powershell
-ssh -i "H:\Documentos\januaria-mg-vitrine-site\Chaves de acesso Oracle\ssh-key-2026-06-29.key" -L 54353:127.0.0.1:54353 waladmin@64.181.178.125
+ssh -i "<CAMINHO_DA_CHAVE_SSH>" -L 54353:127.0.0.1:54353 <USUARIO_SSH>@<IP_DO_SERVIDOR>
 ```
 
 Com o túnel aberto, acessar [http://127.0.0.1:54353](http://127.0.0.1:54353).
@@ -113,7 +127,7 @@ Com o túnel aberto, acessar [http://127.0.0.1:54353](http://127.0.0.1:54353).
 Caixa de e-mails local Inbucket:
 
 ```powershell
-ssh -i "H:\Documentos\januaria-mg-vitrine-site\Chaves de acesso Oracle\ssh-key-2026-06-29.key" -L 54354:127.0.0.1:54354 waladmin@64.181.178.125
+ssh -i "<CAMINHO_DA_CHAVE_SSH>" -L 54354:127.0.0.1:54354 <USUARIO_SSH>@<IP_DO_SERVIDOR>
 ```
 
 Depois acessar [http://127.0.0.1:54354](http://127.0.0.1:54354).
@@ -122,11 +136,11 @@ Depois acessar [http://127.0.0.1:54354](http://127.0.0.1:54354).
 
 ### 3.1 Usuários do aplicativo
 
-| Login                 | Papel                     | Uso                                         |
-| --------------------- | ------------------------- | ------------------------------------------- |
-| `root@walchat.local`  | `owner`                   | Titular técnico do workspace administrativo |
-| `admin@walchat.local` | `admin`                   | Administração diária e configuração         |
-| `demo@walchat.local`  | `owner` do workspace demo | Smoke test e demonstração isolada           |
+| Login                | Papel                     | Uso                                         |
+| -------------------- | ------------------------- | ------------------------------------------- |
+| `<CONTA_OWNER>`      | `owner`                   | Titular técnico do workspace administrativo |
+| `<CONTA_ADMIN>`      | `admin`                   | Administração diária e configuração         |
+| `demo@walchat.local` | `owner` do workspace demo | Smoke test e demonstração isolada           |
 
 As três contas foram autenticadas com sucesso em 17/08/2026. As senhas estão em:
 
@@ -136,7 +150,7 @@ A pasta `Acessos Privados` está no `.gitignore` e não deve ser versionada.
 
 As contas `.local` são técnicas e não recebem recuperação por e-mail. Antes do
 Live Mode, criar contas nominais com e-mail real, configurar SMTP e manter a
-conta `root@walchat.local` somente como acesso de emergência.
+conta `<CONTA_OWNER>` somente como acesso de emergência.
 
 ### 3.2 Papéis disponíveis
 
@@ -152,11 +166,11 @@ tenant mesmo conhecendo IDs internos.
 
 ### 3.3 Usuários do servidor
 
-| Usuário    | Autenticação                 | Observação                                                           |
-| ---------- | ---------------------------- | -------------------------------------------------------------------- |
-| `waladmin` | Chave SSH                    | Administração principal; possui `sudo` e grupo Docker                |
-| `opc`      | Chave SSH                    | Conta Oracle preservada para recuperação; possui `sudo`              |
-| `root`     | Sem login direto operacional | Acessado com `sudo -i`; login SSH direto bloqueado pela chave Oracle |
+| Usuário                     | Autenticação                 | Observação                                                           |
+| --------------------------- | ---------------------------- | -------------------------------------------------------------------- |
+| `<USUARIO_SSH>`             | Chave SSH                    | Administração principal; possui `sudo` e grupo Docker                |
+| `<USUARIO_SSH_RECUPERACAO>` | Chave SSH                    | Conta Oracle preservada para recuperação; possui `sudo`              |
+| `root`                      | Sem login direto operacional | Acessado com `sudo -i`; login SSH direto bloqueado pela chave Oracle |
 
 Os demais usuários Linux (`nginx`, serviços Oracle, contêineres e contas com
 `nologin`) são identidades técnicas do sistema operacional, não contas humanas
@@ -165,7 +179,7 @@ do Wal Chat. Não possuem senha de operador a ser compartilhada.
 Acesso recomendado:
 
 ```powershell
-ssh -i "H:\Documentos\januaria-mg-vitrine-site\Chaves de acesso Oracle\ssh-key-2026-06-29.key" waladmin@64.181.178.125
+ssh -i "<CAMINHO_DA_CHAVE_SSH>" <USUARIO_SSH>@<IP_DO_SERVIDOR>
 sudo -i
 ```
 
@@ -174,7 +188,7 @@ Não habilitar `PasswordAuthentication` nem login root por senha.
 ## 4. Primeiro acesso ao Wal Chat
 
 1. Abra a página de entrada.
-2. Use `root@walchat.local` ou `admin@walchat.local` e consulte a senha no cofre.
+2. Use `<CONTA_OWNER>` ou `<CONTA_ADMIN>` e consulte a senha no cofre.
 3. Confirme que o topo mostra o usuário autenticado, e não `Wal Demo`.
 4. Abra **Configurações**.
 5. Confirme o estado da Meta e da IA. No estado atual ambos devem aparecer sem
@@ -343,7 +357,7 @@ sudo docker compose \
 
 ### 6.6 Conectar a conta pelo Wal Chat
 
-1. Faça login com `root@walchat.local` ou uma futura conta nominal `owner`.
+1. Faça login com `<CONTA_OWNER>` ou uma futura conta nominal `owner`.
 2. Abra **Configurações**.
 3. Clique em **Conectar Instagram**.
 4. Autorize todas as permissões solicitadas.
