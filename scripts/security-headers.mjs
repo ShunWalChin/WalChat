@@ -4,11 +4,15 @@ export function buildSecurityHeaders({
   supabaseUrl,
   analyticsEnabled = false,
   mapsEnabled = false,
+  scriptNonce,
 }) {
   const connectSources = new Set(["'self'"])
+  // Com nonce por requisicao o script inline do SSR e permitido nominalmente e
+  // um script injetado por XSS deixa de ser. Sem nonce a politica cai no
+  // 'unsafe-inline' historico, que nao distingue os dois.
   const scriptSources = new Set([
     "'self'",
-    "'unsafe-inline'",
+    scriptNonce ? `'nonce-${scriptNonce}'` : "'unsafe-inline'",
     'https://connect.facebook.net',
   ])
   const frameSources = new Set([

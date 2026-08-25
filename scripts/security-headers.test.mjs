@@ -37,6 +37,32 @@ describe('cabeçalhos HTTP de produção', () => {
     )
   })
 
+  it('troca unsafe-inline pelo nonce quando ele é fornecido', () => {
+    const headers = buildSecurityHeaders({
+      isHttps: true,
+      scriptNonce: 'abc123',
+    })
+    const csp = headers['content-security-policy']
+
+    expect(csp).toContain("script-src 'self' 'nonce-abc123'")
+    // A diretiva de script não pode manter unsafe-inline: navegadores que
+    // entendem nonce ignorariam o keyword, mas os que não entendem voltariam a
+    // aceitar qualquer script injetado.
+    const scriptDirective = csp
+      .split('; ')
+      .find((directive) => directive.startsWith('script-src '))
+    expect(scriptDirective).not.toContain("'unsafe-inline'")
+  })
+
+  it('mantém unsafe-inline quando não há nonce, para não quebrar o SSR', () => {
+    const headers = buildSecurityHeaders({ isHttps: true })
+    const scriptDirective = headers['content-security-policy']
+      .split('; ')
+      .find((directive) => directive.startsWith('script-src '))
+
+    expect(scriptDirective).toContain("'unsafe-inline'")
+  })
+
   it('ignora URL inválida e não ativa HSTS em HTTP local', () => {
     const headers = buildSecurityHeaders({
       isHttps: false,

@@ -3,13 +3,14 @@
  * Converte HTTP do Node para Fetch API e serve assets versionados.
  */
 import http from 'node:http'
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import app from '../dist/server/server.js'
+import { createNonceTransform } from './html-nonce.mjs'
 import { buildSecurityHeaders } from './security-headers.mjs'
 
 const port = Number(process.env.PORT ?? 3000)
@@ -31,11 +32,15 @@ const server = http.createServer(async (incoming, outgoing) => {
       : randomUUID()
     outgoing.setHeader('x-request-id', requestId)
     const hasBody = method !== 'GET' && method !== 'HEAD'
+    // Um nonce por requisicao permite tirar 'unsafe-inline' de script-src: o
+    // script do SSR e autorizado nominalmente e o injetado por XSS nao.
+    const scriptNonce = randomBytes(16).toString('base64')
     const securityHeaders = buildSecurityHeaders({
       isHttps: url.protocol === 'https:',
       supabaseUrl: process.env.VITE_SUPABASE_URL,
       analyticsEnabled: Boolean(process.env.VITE_GA_MEASUREMENT_ID),
       mapsEnabled: Boolean(process.env.VITE_PUBLIC_GOOGLE_MAPS_EMBED_URL),
+      scriptNonce,
     })
     for (const [name, value] of Object.entries(securityHeaders))
       outgoing.setHeader(name, value)
@@ -76,7 +81,18 @@ const server = http.createServer(async (incoming, outgoing) => {
       return
     }
 
-    Readable.fromWeb(response.body).pipe(outgoing)
+    // Somente HTML carrega as tags <script>; qualquer outro corpo passa direto.
+    const isHtml = response.headers.get('content-type')?.includes('text/html')
+    if (!isHtml) {
+      Readable.fromWeb(response.body).pipe(outgoing)
+      return
+    }
+    // A reescrita muda o tamanho do corpo; manter o content-length original
+    // truncaria a pagina.
+    outgoing.removeHeader('content-length')
+    Readable.fromWeb(
+      response.body.pipeThrough(createNonceTransform(scriptNonce)),
+    ).pipe(outgoing)
   } catch (error) {
     console.error(
       JSON.stringify({
