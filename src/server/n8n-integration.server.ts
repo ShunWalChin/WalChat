@@ -9,6 +9,7 @@ import {
 } from 'node:crypto'
 import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
+import { isPublicAddress } from './outbound-url'
 import { ApiError } from './api-auth.server'
 import { startAutomationExecution } from './automation-engine.server'
 import { getServerEnv } from './env.server'
@@ -968,45 +969,4 @@ function requireAdmin() {
   const admin = getSupabaseAdmin()
   if (!admin) throw new ApiError(503, 'Backend Supabase indisponível.')
   return admin
-}
-
-function isPublicAddress(address: string) {
-  if (address.includes(':')) {
-    const normalized = address.toLowerCase()
-    if (
-      normalized === '::1' ||
-      normalized === '::' ||
-      normalized.startsWith('fc') ||
-      normalized.startsWith('fd')
-    )
-      return false
-    if (/^fe[89ab]/.test(normalized)) return false
-    if (normalized.startsWith('::ffff:'))
-      return isPublicAddress(normalized.slice(7))
-    return true
-  }
-  const octets = address.split('.').map(Number)
-  if (
-    octets.length !== 4 ||
-    octets.some((value) => !Number.isInteger(value) || value < 0 || value > 255)
-  )
-    return false
-  const [a, b, c] = octets
-  return !(
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    // 192.0.0.0/24 carrega o NAT64 e outras atribuicoes de protocolo.
-    (a === 192 && b === 0 && c === 0) ||
-    // TEST-NET-1/2/3 nunca sao destinos reais e costumam mapear para lab interno.
-    (a === 192 && b === 0 && c === 2) ||
-    (a === 198 && b === 51 && c === 100) ||
-    (a === 203 && b === 0 && c === 113) ||
-    (a === 192 && b === 168) ||
-    (a === 198 && (b === 18 || b === 19)) ||
-    a >= 224
-  )
 }

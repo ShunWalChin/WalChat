@@ -172,24 +172,35 @@ describe('nó de requisição externa', () => {
     ).toThrow()
   })
 
-  it('recusa caminho de resposta que tenta alcançar o protótipo', () => {
-    const proto = {
+  /** Monta um nó de requisição com um único mapeamento de resposta. */
+  function comMapeamento(path: string) {
+    return {
       ...request,
       config: {
         method: 'GET' as const,
         url: 'https://api.exemplo.com',
         responseMapping: [
-          {
-            path: '__proto__.polluted',
-            save: { target: 'bot' as const, fieldKey: 'x' },
-          },
+          { path, save: { target: 'bot' as const, fieldKey: 'destino' } },
         ],
       },
     }
+  }
+
+  it('aceita um caminho normal, provando que o campo de destino é válido', () => {
     expect(() =>
-      validateAutomationGraph(graphWith(proto, ['default'])),
-    ).toThrow()
+      validateAutomationGraph(graphWith(comMapeamento('data.id'), ['default'])),
+    ).not.toThrow()
   })
+
+  it.each(['__proto__', '__proto__.polluted', 'data.constructor', 'prototype'])(
+    'recusa o caminho de resposta %s, que alcançaria o protótipo',
+    (path) => {
+      // `_` é válido no segmento, então a regex sozinha aceitaria `__proto__`.
+      expect(() =>
+        validateAutomationGraph(graphWith(comMapeamento(path), ['default'])),
+      ).toThrow()
+    },
+  )
 })
 
 describe('nodeAwaitsReply', () => {

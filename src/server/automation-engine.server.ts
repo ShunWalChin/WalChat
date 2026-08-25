@@ -16,6 +16,7 @@ import {
   validateAutomationGraph,
 } from './automation-graph'
 import { matchChoice } from './channel-choices'
+import { OutboundUrlError, assertSafeOutboundUrl } from './outbound-url'
 import type { AutomationChoice } from './channel-choices'
 import { USER_INPUT_REJECTION_MESSAGE, validateUserInput } from './user-input'
 import { suggestInstagramReply } from './ai.server'
@@ -232,6 +233,60 @@ export async function processAutomationStep(
         steps_count: stepsCount,
       })
       return { status: 'scheduled', nodeId: node.id, jobId: messageJob.id }
+    }
+
+    if (node.type === 'external_request') {
+      const rendered = renderAutomationFields(
+        node.config.headers.map((header) => ({
+          key: header.key,
+          value: header.value,
+        })),
+        variables,
+      )
+      const { outcome, payload } = await runExternalRequest({
+        url: renderAutomationTemplate(node.config.url, variables),
+        method: node.config.method,
+        headers: Object.entries(rendered).map(([key, value]) => ({
+          key,
+          value: String(value),
+        })),
+        body: node.config.body
+          ? renderAutomationTemplate(node.config.body, variables)
+          : undefined,
+        timeoutMs: node.config.timeoutMs,
+      })
+
+      let mapped = 0
+      if (outcome.ok)
+        for (const mapping of node.config.responseMapping) {
+          const value = scalarFromResponse(readJsonPath(payload, mapping.path))
+          if (value === null) continue
+          await saveUserInputValue(client, execution, mapping.save, value)
+          mapped++
+        }
+
+      const branch = outcome.ok
+        ? 'default'
+        : hasBranch(graph, node.id, 'error')
+          ? 'error'
+          : null
+      // Sem porta de erro desenhada, a falha precisa aparecer como falha e não
+      // seguir pelo caminho de sucesso.
+      if (!branch) throw new Error('automation_external_request_failed')
+
+      stepsCount++
+      await recordStep(client, execution, node.id, node.type, 'completed', {
+        status: outcome.status,
+        mapped,
+        errorCode: outcome.errorCode,
+      })
+      const nextNodeId = automationNextNode(graph, node.id, branch)
+      currentNodeId = nextNodeId
+      await updateExecution(client, execution.id, job.workspace_id, {
+        current_node_id: nextNodeId,
+        steps_count: stepsCount,
+      })
+      continue
     }
 
     if (node.type === 'user_input') {
@@ -1233,4 +1288,142 @@ export async function expireAutomationAwait(
 
   await advanceFromAwait(client, execution, graph, input.nodeId, 'timeout')
   return { expired: true, branch: 'timeout' }
+}
+
+/** Teto do corpo lido de uma API externa; acima disso a resposta é descartada. */
+const EXTERNAL_RESPONSE_LIMIT = 256 * 1024
+
+/**
+ * Lê um caminho por pontos dentro do JSON de resposta.
+ *
+ * Só percorre propriedades próprias: mesmo com o contrato recusando `__proto__`,
+ * uma leitura ingênua ainda alcançaria chaves herdadas de um corpo hostil.
+ */
+export function readJsonPath(source: unknown, path: string): unknown {
+  let current = source
+  for (const segment of path.split('.')) {
+    if (current === null || typeof current !== 'object') return undefined
+    if (!Object.prototype.hasOwnProperty.call(current, segment))
+      return undefined
+    current = (current as Record<string, unknown>)[segment]
+  }
+  return current
+}
+
+/** Só valores escalares vão para um campo; objeto inteiro não cabe num campo. */
+export function scalarFromResponse(value: unknown): string | number | null {
+  if (typeof value === 'string' || typeof value === 'number') return value
+  if (typeof value === 'boolean') return String(value)
+  return null
+}
+
+export type ExternalRequestOutcome = {
+  ok: boolean
+  status: number | null
+  mapped: number
+  errorCode?: string
+}
+
+/**
+ * Executa a chamada externa configurada no nó.
+ *
+ * O destino é validado a cada execução, e não só na publicação: a URL pode
+ * conter variáveis do contato, então o host final só existe agora.
+ */
+export async function runExternalRequest(
+  input: {
+    url: string
+    method: string
+    headers: Array<{ key: string; value: string }>
+    body?: string
+    timeoutMs: number
+  },
+  fetcher: typeof fetch = fetch,
+): Promise<{ outcome: ExternalRequestOutcome; payload: unknown }> {
+  let safeUrl: URL
+  try {
+    safeUrl = await assertSafeOutboundUrl(input.url, { allowQuery: true })
+  } catch (error) {
+    return {
+      outcome: {
+        ok: false,
+        status: null,
+        mapped: 0,
+        errorCode:
+          error instanceof OutboundUrlError ? 'unsafe_target' : 'invalid_url',
+      },
+      payload: null,
+    }
+  }
+
+  const headers = new Headers()
+  for (const header of input.headers) headers.set(header.key, header.value)
+  const sendsBody = !['GET', 'HEAD'].includes(input.method)
+  if (sendsBody && input.body && !headers.has('content-type'))
+    headers.set('content-type', 'application/json')
+
+  let response: Response
+  try {
+    response = await fetcher(safeUrl, {
+      method: input.method,
+      headers,
+      body: sendsBody ? (input.body ?? undefined) : undefined,
+      signal: AbortSignal.timeout(input.timeoutMs),
+      // Um redirect escaparia da validação de destino que acabou de rodar.
+      redirect: 'error',
+    })
+  } catch {
+    return {
+      outcome: { ok: false, status: null, mapped: 0, errorCode: 'unreachable' },
+      payload: null,
+    }
+  }
+
+  const text = await readBounded(response, EXTERNAL_RESPONSE_LIMIT)
+  let payload: unknown = null
+  try {
+    payload = text ? JSON.parse(text) : null
+  } catch {
+    // Resposta que não é JSON ainda pode ter status de sucesso; só não há o que
+    // mapear para campos.
+    payload = null
+  }
+
+  return {
+    outcome: {
+      ok: response.ok,
+      status: response.status,
+      mapped: 0,
+      ...(response.ok ? {} : { errorCode: `http_${response.status}` }),
+    },
+    payload,
+  }
+}
+
+/** Lê o corpo em fluxo e para assim que o limite é ultrapassado. */
+async function readBounded(response: Response, limitBytes: number) {
+  const body = response.body
+  if (!body) return ''
+  const reader = body.getReader()
+  const decoder = new TextDecoder('utf-8')
+  let received = 0
+  let result = ''
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      // Com `done: false` o chunk sempre existe; o tipo do reader já garante.
+      if (done) break
+      received += value.byteLength
+      if (received > limitBytes) {
+        await reader.cancel()
+        return ''
+      }
+      result += decoder.decode(value, { stream: true })
+    }
+    return result + decoder.decode()
+  } catch {
+    return ''
+  } finally {
+    reader.releaseLock()
+  }
 }

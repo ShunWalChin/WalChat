@@ -241,7 +241,23 @@ const automationNodeSchema = z.discriminatedUnion('type', [
                 .object({
                   path: z
                     .string()
-                    .regex(/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+){0,9}$/),
+                    .regex(/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+){0,9}$/)
+                    // `_` é permitido no segmento, então `__proto__` passaria
+                    // na regex sozinha. A recusa precisa ser explícita.
+                    .refine(
+                      (value) =>
+                        value
+                          .split('.')
+                          .every(
+                            (segment) =>
+                              ![
+                                '__proto__',
+                                'prototype',
+                                'constructor',
+                              ].includes(segment),
+                          ),
+                      'Caminho reservado.',
+                    ),
                   save: saveTargetSchema,
                 })
                 .strict(),
