@@ -1,5 +1,7 @@
 /** Adaptador da Graph API; nenhuma chamada externa ocorre antes do compliance. */
 import '@tanstack/react-start/server-only'
+import type { AutomationChoice } from './channel-choices'
+import { instagramQuickReplies } from './channel-choices'
 import { evaluateCompliance } from './compliance'
 import type { ComplianceInput } from './compliance'
 import { getServerEnv } from './env.server'
@@ -26,6 +28,9 @@ export type MetaSendInput = ComplianceInput & {
   instagramUserId?: string
   mediaUrl?: string | null
   mediaType?: 'image' | 'video'
+  /** Escolhas viram quick replies; o nó só entra no payload para diagnóstico. */
+  choices?: Array<AutomationChoice> | null
+  choiceNodeId?: string | null
 }
 
 export const META_SEND_TIMEOUT_MS = 15_000
@@ -135,16 +140,24 @@ export async function sendInstagramMessage(input: MetaSendInput) {
       decision,
     }
 
+  const message: Record<string, unknown> = input.mediaUrl
+    ? {
+        attachment: {
+          type: input.mediaType ?? 'image',
+          payload: { url: input.mediaUrl },
+        },
+      }
+    : { text: decision.body }
+  // A Graph API aceita quick replies tanto na mensagem de texto quanto na de
+  // anexo, então o botão não obriga o fluxo a abrir mão da mídia.
+  if (input.choices?.length)
+    message.quick_replies = instagramQuickReplies(
+      input.choiceNodeId ?? 'node',
+      input.choices,
+    )
   const payload: Record<string, unknown> = {
     recipient: { id: input.recipientId },
-    message: input.mediaUrl
-      ? {
-          attachment: {
-            type: input.mediaType ?? 'image',
-            payload: { url: input.mediaUrl },
-          },
-        }
-      : { text: decision.body },
+    message,
   }
   if (decision.tag) payload.tag = decision.tag
 

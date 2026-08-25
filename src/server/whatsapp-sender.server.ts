@@ -1,6 +1,8 @@
 /** Gateway de saída da WhatsApp Cloud API com compliance e at-most-once. */
 import '@tanstack/react-start/server-only'
 import { createHmac } from 'node:crypto'
+import type { AutomationChoice } from './channel-choices'
+import { whatsappInteractive } from './channel-choices'
 import { evaluateWhatsAppCompliance } from './compliance'
 import type { WhatsAppComplianceInput } from './compliance'
 import { getServerEnv, getWhatsAppAppConfig } from './env.server'
@@ -39,6 +41,9 @@ export type WhatsAppSendInput = WhatsAppComplianceInput & {
   template?: WhatsAppTemplateSend | null
   mediaUrl?: string | null
   mediaType?: 'image' | 'video'
+  /** Escolhas viram botões até três opções e lista a partir da quarta. */
+  choices?: Array<AutomationChoice> | null
+  choiceNodeId?: string | null
 }
 
 function appSecretProof(accessToken: string, appSecret: string) {
@@ -118,38 +123,57 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
     'appsecret_proof',
     appSecretProof(account.accessToken, whatsappApp.appSecret),
   )
-  const payload = input.template
+  // Template tem forma própria e não aceita as escolhas do fluxo; fora dele, a
+  // mensagem interativa substitui texto e mídia porque a Cloud API não combina
+  // anexo com botão na mesma mensagem.
+  const interactive =
+    !input.template && input.choices?.length
+      ? whatsappInteractive(
+          input.choiceNodeId ?? 'node',
+          decision.body,
+          input.choices,
+        )
+      : null
+  const payload = interactive
     ? {
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
         to: input.recipientId,
-        type: 'template',
-        template: {
-          name: input.template.name,
-          language: { code: input.template.language },
-          ...(input.template.components?.length
-            ? { components: input.template.components }
-            : {}),
-        },
+        type: 'interactive',
+        interactive,
       }
-    : input.mediaUrl
+    : input.template
       ? {
           messaging_product: 'whatsapp',
           recipient_type: 'individual',
           to: input.recipientId,
-          type: input.mediaType ?? 'image',
-          [input.mediaType ?? 'image']: {
-            link: input.mediaUrl,
-            caption: decision.body,
+          type: 'template',
+          template: {
+            name: input.template.name,
+            language: { code: input.template.language },
+            ...(input.template.components?.length
+              ? { components: input.template.components }
+              : {}),
           },
         }
-      : {
-          messaging_product: 'whatsapp',
-          recipient_type: 'individual',
-          to: input.recipientId,
-          type: 'text',
-          text: { preview_url: false, body: decision.body },
-        }
+      : input.mediaUrl
+        ? {
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: input.recipientId,
+            type: input.mediaType ?? 'image',
+            [input.mediaType ?? 'image']: {
+              link: input.mediaUrl,
+              caption: decision.body,
+            },
+          }
+        : {
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: input.recipientId,
+            type: 'text',
+            text: { preview_url: false, body: decision.body },
+          }
 
   try {
     const response = await fetch(url, {

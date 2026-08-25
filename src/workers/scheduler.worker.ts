@@ -28,6 +28,7 @@ import { writeWorkerHeartbeat } from '../server/worker-heartbeat'
 import { applyBookingLink } from '../server/booking-links.server'
 import { syncGoogleConnection } from '../server/google-calendar.server'
 import {
+  expireAutomationAwait,
   markAutomationExecutionFailure,
   processAutomationStep,
   resumeAutomationAfterIntegration,
@@ -36,6 +37,28 @@ import {
 import { n8nDispatchSchema } from '../server/n8n-contract'
 import { sendN8nEvent } from '../server/n8n-integration.server'
 import { syncWorkspaceInstagramInsights } from '../server/insights-sync.server'
+
+/**
+ * Prazo de resposta vencido.
+ *
+ * A execução pode ter andado entre o agendamento e o disparo — o contato
+ * respondeu, o fluxo foi cancelado — então quem decide se ainda há espera é o
+ * motor, olhando o estado atual, e não este job.
+ */
+async function processAutomationAwaitTimeout(job: {
+  id: string
+  workspace_id: string
+  payload: Record<string, unknown>
+}) {
+  const executionId = String(job.payload.flowExecutionId ?? '')
+  const nodeId = String(job.payload.nodeId ?? '')
+  if (!executionId || !nodeId) return { expired: false }
+  return expireAutomationAwait({
+    workspaceId: job.workspace_id,
+    executionId,
+    nodeId,
+  })
+}
 
 /** Falha cedo: um scheduler sem service role não pode operar com segurança. */
 function requireSupabase() {
@@ -232,6 +255,8 @@ async function processDueJobs() {
       else if (job.kind === 'campaign_message') await processCampaignJob(job)
       else if (job.kind === 'content_publish')
         await processContentPublishJob(job)
+      else if (job.kind === 'automation_await_timeout')
+        await processAutomationAwaitTimeout(job)
       else if (job.kind === 'insights_sync') await processInsightsSyncJob(job)
       else throw new UnsupportedScheduledJobError(job.kind)
       const { error: completedError } = await supabase
@@ -546,6 +571,21 @@ async function processSequenceJob(job: {
   const flowNextNodeId = payload.flowNextNodeId
     ? String(payload.flowNextNodeId)
     : null
+  // As escolhas viajam no job porque quem conhece o grafo é o motor, não o
+  // gateway de envio.
+  const flowChoices = Array.isArray(payload.flowChoices)
+    ? (payload.flowChoices as Array<{ key: string; label: string }>)
+    : null
+  const flowChoiceNodeId = payload.flowChoiceNodeId
+    ? String(payload.flowChoiceNodeId)
+    : null
+  const flowAwait =
+    payload.flowAwait && typeof payload.flowAwait === 'object'
+      ? (payload.flowAwait as {
+          kind: 'choice' | 'input'
+          timeoutSeconds: number | null
+        })
+      : null
   const triggerId = payload.triggerId ? String(payload.triggerId) : null
   const bookingPageId = payload.bookingPageId
     ? String(payload.bookingPageId)
@@ -644,6 +684,8 @@ async function processSequenceJob(job: {
         mediaUrl && /\.(mp4|mov)(\?|$)/i.test(mediaUrl)
           ? ('video' as const)
           : ('image' as const),
+      choices: flowChoices,
+      choiceNodeId: flowChoiceNodeId,
     }
     let result
     if (platform === 'whatsapp') {
@@ -806,6 +848,7 @@ async function processSequenceJob(job: {
         privateReply: Boolean(commentId),
         reason: result.sent ? null : result.decision.reason,
         policy: result.decision.policy,
+        awaits: flowAwait,
       })
       return {
         sent: result.sent,

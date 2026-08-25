@@ -8,8 +8,10 @@ import {
   CircleStop,
   Clock3,
   GitBranch,
+  Globe,
   Hand,
   LoaderCircle,
+  MessageCircleQuestion,
   MessageSquareText,
   Network,
   Play,
@@ -89,6 +91,17 @@ type StudioData = {
 type Feedback = { tone: 'success' | 'error' | 'info'; text: string }
 type NodeType = AutomationNode['type']
 
+const INPUT_EXPECTATION_LABEL: Record<
+  'text' | 'email' | 'phone' | 'number' | 'date',
+  string
+> = {
+  text: 'Texto livre',
+  email: 'E-mail',
+  phone: 'Telefone',
+  number: 'Número',
+  date: 'Data',
+}
+
 const NODE_META: Record<
   NodeType,
   { label: string; description: string; color: string; icon: typeof Workflow }
@@ -134,6 +147,18 @@ const NODE_META: Record<
     description: 'Tags e campos tipados',
     color: '#238561',
     icon: Tag,
+  },
+  user_input: {
+    label: 'Pergunta',
+    description: 'Coleta e valida a resposta',
+    color: '#0d7a86',
+    icon: MessageCircleQuestion,
+  },
+  external_request: {
+    label: 'Requisição externa',
+    description: 'Chama uma API e usa a resposta',
+    color: '#5c6b7a',
+    icon: Globe,
   },
   handoff: {
     label: 'Handoff humano',
@@ -1906,6 +1931,10 @@ function nodeSummary(node: AutomationNode) {
     return `${node.config.category} · prioridade ${node.config.priority}`
   if (node.type === 'n8n_event') return node.config.eventName
   if (node.type === 'subflow') return `Fluxo ${node.config.flowId.slice(0, 8)}`
+  if (node.type === 'user_input')
+    return `${INPUT_EXPECTATION_LABEL[node.config.expects]} → ${node.config.save.fieldKey}`
+  if (node.type === 'external_request')
+    return `${node.config.method} ${new URL(node.config.url).host}`
   return node.config?.outcome ?? 'Jornada concluída'
 }
 function durationUnitSeconds(seconds: number) {

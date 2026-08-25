@@ -15,6 +15,9 @@ import {
   selectAutomationBranch,
   validateAutomationGraph,
 } from './automation-graph'
+import { matchChoice } from './channel-choices'
+import type { AutomationChoice } from './channel-choices'
+import { USER_INPUT_REJECTION_MESSAGE, validateUserInput } from './user-input'
 import { suggestInstagramReply } from './ai.server'
 import { getServerEnv } from './env.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
@@ -189,7 +192,12 @@ export async function processAutomationStep(
     }
 
     if (node.type === 'message') {
-      const nextNodeId = automationNextNode(graph, node.id)
+      const choices = node.config.choices ?? null
+      // Com escolhas não existe "próximo nó" até o contato responder; o destino
+      // sai da porta que corresponder à escolha, já na retomada.
+      const nextNodeId = choices?.length
+        ? node.id
+        : automationNextNode(graph, node.id)
       const message = renderAutomationTemplate(
         node.config.text,
         variables,
@@ -203,12 +211,51 @@ export async function processAutomationStep(
         mediaUrl: node.config.mediaUrl ?? null,
         mediaType: node.config.mediaType ?? null,
         aiGenerated: false,
+        choices,
+        awaits: choices?.length
+          ? {
+              kind: 'choice',
+              timeoutSeconds: node.config.awaitTimeoutSeconds ?? null,
+            }
+          : null,
       })
       stepsCount++
       await recordStep(client, execution, node.id, node.type, 'scheduled', {
         scheduledJobId: messageJob.id,
         characters: message.length,
         mediaType: node.config.mediaType ?? undefined,
+        choices: choices?.length ?? undefined,
+      })
+      await updateExecution(client, execution.id, job.workspace_id, {
+        status: 'scheduled',
+        current_node_id: node.id,
+        steps_count: stepsCount,
+      })
+      return { status: 'scheduled', nodeId: node.id, jobId: messageJob.id }
+    }
+
+    if (node.type === 'user_input') {
+      const prompt = renderAutomationTemplate(
+        node.config.prompt,
+        variables,
+      ).trim()
+      if (!prompt) throw new Error('automation_rendered_message_empty')
+      const messageJob = await scheduleFlowMessage(client, execution, {
+        nodeId: node.id,
+        // A porta real depende da resposta; o próprio nó marca o lugar.
+        nextNodeId: node.id,
+        message: prompt,
+        bookingPageId: null,
+        mediaUrl: null,
+        mediaType: null,
+        aiGenerated: false,
+        awaits: { kind: 'input', timeoutSeconds: node.config.timeoutSeconds },
+      })
+      stepsCount++
+      await recordStep(client, execution, node.id, node.type, 'scheduled', {
+        scheduledJobId: messageJob.id,
+        expects: node.config.expects,
+        maxAttempts: node.config.maxAttempts,
       })
       await updateExecution(client, execution.id, job.workspace_id, {
         status: 'scheduled',
@@ -462,6 +509,8 @@ export async function resumeAutomationAfterMessage(
     privateReply: boolean
     reason?: string | null
     policy?: string | null
+    /** Quando presente, a execução para aqui e espera o contato responder. */
+    awaits?: { kind: 'choice' | 'input'; timeoutSeconds: number | null } | null
   },
   client = getSupabaseAdmin(),
 ) {
@@ -495,6 +544,32 @@ export async function resumeAutomationAfterMessage(
     return { status: terminalStatus }
   }
 
+  // Pergunta e botão só fazem sentido depois que a mensagem saiu. Estacionar
+  // aqui, e não antes do envio, evita esperar por uma resposta a algo que o
+  // compliance bloqueou.
+  if (input.awaits) {
+    const until = input.awaits.timeoutSeconds
+      ? new Date(Date.now() + input.awaits.timeoutSeconds * 1_000).toISOString()
+      : null
+    await updateExecution(client, input.executionId, input.workspaceId, {
+      status: 'waiting_reply',
+      current_node_id: input.nodeId,
+      awaiting_kind: input.awaits.kind,
+      awaiting_node_id: input.nodeId,
+      awaiting_until: until,
+      awaiting_attempts: 0,
+      last_error_code: null,
+    })
+    if (until)
+      await scheduleAwaitTimeoutJob(client, {
+        workspaceId: input.workspaceId,
+        executionId: input.executionId,
+        nodeId: input.nodeId,
+        runAt: until,
+      })
+    return { status: 'waiting_reply', awaitingUntil: until }
+  }
+
   const job = await scheduleAutomationJob(client, {
     workspaceId: input.workspaceId,
     executionId: input.executionId,
@@ -508,6 +583,37 @@ export async function resumeAutomationAfterMessage(
     last_error_code: null,
   })
   return { status: 'scheduled', jobId: job.id }
+}
+
+/** Job que acorda a execução cujo prazo de resposta venceu. */
+async function scheduleAwaitTimeoutJob(
+  client: AdminClient,
+  input: {
+    workspaceId: string
+    executionId: string
+    nodeId: string
+    runAt: string
+  },
+) {
+  const { data, error } = await client
+    .from('scheduled_jobs')
+    .upsert(
+      {
+        workspace_id: input.workspaceId,
+        kind: 'automation_await_timeout',
+        dedupe_key: `flow:${input.executionId}:await:${input.nodeId}`,
+        payload: {
+          flowExecutionId: input.executionId,
+          nodeId: input.nodeId,
+        },
+        run_at: input.runAt,
+      },
+      { onConflict: 'workspace_id,dedupe_key' },
+    )
+    .select('id')
+    .single()
+  if (error) throw error
+  return data
 }
 
 /** Retoma o fluxo somente depois que a entrega assinada ao n8n foi confirmada. */
@@ -627,6 +733,9 @@ async function scheduleFlowMessage(
     mediaUrl: string | null
     mediaType: 'image' | 'video' | null
     aiGenerated: boolean
+    choices?: Array<AutomationChoice> | null
+    /** Presente quando o nó deve parar e esperar o contato responder. */
+    awaits?: { kind: 'choice' | 'input'; timeoutSeconds: number | null } | null
   },
 ) {
   const context = execution.context as Record<string, unknown>
@@ -652,6 +761,9 @@ async function scheduleFlowMessage(
           flowExecutionId: execution.id,
           flowNodeId: input.nodeId,
           flowNextNodeId: input.nextNodeId,
+          flowChoices: input.choices ?? null,
+          flowChoiceNodeId: input.choices?.length ? input.nodeId : null,
+          flowAwait: input.awaits ?? null,
         },
         run_at: new Date().toISOString(),
       },
@@ -811,4 +923,314 @@ async function updateLegacyRun(
     .eq('id', automationRunId)
     .eq('workspace_id', workspaceId)
   if (error) throw error
+}
+
+/** Resultado da tentativa de casar uma mensagem recebida com uma espera ativa. */
+export type AutomationReplyOutcome =
+  | { handled: false; reason: 'no_waiting_execution' | 'no_match' }
+  | {
+      handled: true
+      executionId: string
+      nodeId: string
+      branch: string
+      savedValue?: string | number
+    }
+  | { handled: true; executionId: string; nodeId: string; retried: true }
+
+/**
+ * Retoma a execução parada quando o contato responde.
+ *
+ * Devolve `handled: false` de propósito quando nada casa: a mensagem continua
+ * seguindo o caminho normal — Inbox, gatilhos e IA — em vez de ser engolida por
+ * um fluxo que estava esperando outra coisa.
+ */
+export async function resumeAutomationAfterReply(
+  input: {
+    workspaceId: string
+    contactId: string
+    text?: string | null
+    payload?: string | null
+  },
+  client = getSupabaseAdmin(),
+): Promise<AutomationReplyOutcome> {
+  if (!client) throw new Error('automation_supabase_unavailable')
+
+  // Um contato pode estar em mais de um fluxo. A resposta vale para a espera
+  // mais recente, que é a conversa que ele está vendo na tela.
+  const { data: execution, error } = await client
+    .from('automation_executions')
+    .select(
+      'id,workspace_id,flow_version_id,awaiting_kind,awaiting_node_id,awaiting_attempts,contact_id,platform,context',
+    )
+    .eq('workspace_id', input.workspaceId)
+    .eq('contact_id', input.contactId)
+    .eq('status', 'waiting_reply')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  if (!execution?.awaiting_node_id)
+    return { handled: false, reason: 'no_waiting_execution' }
+
+  const graph = await loadExecutionGraph(client, execution)
+  const node = automationNode(graph, execution.awaiting_node_id)
+
+  if (node.type === 'message' && node.config.choices?.length) {
+    const key = matchChoice(node.config.choices, {
+      text: input.text,
+      payload: input.payload,
+    })
+    // Texto livre não avança um menu: o contato continua podendo escrever e ser
+    // atendido pelos outros caminhos enquanto a espera segue de pé.
+    if (!key) return { handled: false, reason: 'no_match' }
+    await advanceFromAwait(client, execution, graph, node.id, key)
+    return {
+      handled: true,
+      executionId: execution.id,
+      nodeId: node.id,
+      branch: key,
+    }
+  }
+
+  if (node.type === 'user_input') {
+    const result = validateUserInput(input.text, node.config.expects)
+    if (result.valid) {
+      await saveUserInputValue(
+        client,
+        execution,
+        node.config.save,
+        result.value,
+      )
+      await advanceFromAwait(client, execution, graph, node.id, 'default')
+      return {
+        handled: true,
+        executionId: execution.id,
+        nodeId: node.id,
+        branch: 'default',
+        savedValue: result.value,
+      }
+    }
+
+    const attempts = Number(execution.awaiting_attempts ?? 0) + 1
+    if (attempts >= node.config.maxAttempts) {
+      // Sem a porta `invalid` desenhada, encerrar é melhor que deixar o contato
+      // preso repetindo uma pergunta que ele não consegue responder.
+      if (!hasBranch(graph, node.id, 'invalid')) {
+        await clearAwait(client, execution, {
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+        })
+        return {
+          handled: true,
+          executionId: execution.id,
+          nodeId: node.id,
+          branch: 'invalid',
+        }
+      }
+      await advanceFromAwait(client, execution, graph, node.id, 'invalid')
+      return {
+        handled: true,
+        executionId: execution.id,
+        nodeId: node.id,
+        branch: 'invalid',
+      }
+    }
+
+    // Ainda há tentativa: reenvia a orientação e continua esperando.
+    await scheduleFlowMessage(client, execution, {
+      nodeId: node.id,
+      nextNodeId: node.id,
+      message:
+        node.config.invalidMessage ??
+        USER_INPUT_REJECTION_MESSAGE[result.reason],
+      bookingPageId: null,
+      mediaUrl: null,
+      mediaType: null,
+      aiGenerated: false,
+      awaits: { kind: 'input', timeoutSeconds: node.config.timeoutSeconds },
+    })
+    await updateExecution(client, execution.id, input.workspaceId, {
+      awaiting_attempts: attempts,
+    })
+    return {
+      handled: true,
+      executionId: execution.id,
+      nodeId: node.id,
+      retried: true,
+    }
+  }
+
+  return { handled: false, reason: 'no_waiting_execution' }
+}
+
+async function loadExecutionGraph(
+  client: AdminClient,
+  execution: { workspace_id: string; flow_version_id: string },
+) {
+  const { data, error } = await client
+    .from('automation_flow_versions')
+    .select('graph')
+    .eq('workspace_id', execution.workspace_id)
+    .eq('id', execution.flow_version_id)
+    .single()
+  if (error) throw error
+  return validateAutomationGraph(data.graph)
+}
+
+function hasBranch(graph: AutomationGraph, from: string, branch: string) {
+  return graph.edges.some(
+    (edge) => edge.from === from && edge.branch === branch,
+  )
+}
+
+async function clearAwait(
+  client: AdminClient,
+  execution: { id: string; workspace_id: string },
+  changes: Record<string, unknown>,
+) {
+  await updateExecution(client, execution.id, execution.workspace_id, {
+    ...changes,
+    awaiting_kind: null,
+    awaiting_node_id: null,
+    awaiting_until: null,
+    awaiting_attempts: 0,
+  })
+}
+
+/** Limpa a espera e agenda o próximo nó da porta escolhida. */
+async function advanceFromAwait(
+  client: AdminClient,
+  execution: { id: string; workspace_id: string },
+  graph: AutomationGraph,
+  nodeId: string,
+  branch: string,
+) {
+  const nextNodeId = automationNextNode(graph, nodeId, branch)
+  await scheduleAutomationJob(client, {
+    workspaceId: execution.workspace_id,
+    executionId: execution.id,
+    nodeId: nextNodeId,
+    runAt: new Date().toISOString(),
+    // O nó e a porta entram na chave: repetir a mesma escolha não reagenda o
+    // passo, mas trocar de porta continua funcionando.
+    dedupeKey: 'flow:' + execution.id + ':reply:' + nodeId + ':' + branch,
+  })
+  await clearAwait(client, execution, {
+    status: 'scheduled',
+    current_node_id: nextNodeId,
+    last_error_code: null,
+  })
+}
+
+/**
+ * Colunas de contato que uma pergunta pode preencher.
+ *
+ * A chave vem da configuração do fluxo. Mesmo sendo escrita por um admin, ela
+ * não pode virar nome de coluna livre: sem esta lista, um fluxo conseguiria
+ * escrever em `workspace_id`, `lead_score` ou qualquer outra coluna do CRM.
+ */
+const WRITABLE_CONTACT_COLUMNS = new Set([
+  'email',
+  'phone',
+  'full_name',
+  'display_name',
+  'company',
+  'job_title',
+  'city',
+  'state',
+  'country_code',
+  'language',
+  'timezone',
+])
+
+/** Grava a resposta validada no destino escolhido no nó. */
+async function saveUserInputValue(
+  client: AdminClient,
+  execution: { id: string; workspace_id: string; contact_id: string },
+  save: { target: 'contact' | 'custom' | 'bot'; fieldKey: string },
+  value: string | number,
+) {
+  if (save.target === 'bot') {
+    // Campos de bot são declarados antes pelo operador, com rótulo e tipo.
+    // Criar um aqui produziria uma linha sem `label` nem `field_type`, que o
+    // banco recusa, então a pergunta só atualiza o que já existe.
+    const { data, error } = await client
+      .from('automation_bot_fields')
+      .update({ value })
+      .eq('workspace_id', execution.workspace_id)
+      .eq('field_key', save.fieldKey)
+      .select('id')
+      .maybeSingle()
+    if (error) throw error
+    if (!data) throw new Error('automation_bot_field_missing')
+    return
+  }
+
+  if (save.target === 'contact') {
+    if (!WRITABLE_CONTACT_COLUMNS.has(save.fieldKey))
+      throw new Error('automation_contact_field_not_writable')
+    const { error } = await client
+      .from('contacts')
+      .update({ [save.fieldKey]: String(value) })
+      .eq('workspace_id', execution.workspace_id)
+      .eq('id', execution.contact_id)
+    if (error) throw error
+    return
+  }
+
+  // `custom_fields` é um jsonb do próprio contato: precisa ser lido e mesclado
+  // para não apagar as outras respostas já coletadas.
+  const { data: contact, error: contactError } = await client
+    .from('contacts')
+    .select('custom_fields')
+    .eq('workspace_id', execution.workspace_id)
+    .eq('id', execution.contact_id)
+    .single()
+  if (contactError) throw contactError
+
+  // A coluna é `not null default '{}'`, então não há caso nulo a cobrir aqui.
+  const custom = {
+    ...(contact.custom_fields as Record<string, unknown>),
+    [save.fieldKey]: value,
+  }
+  const { error } = await client
+    .from('contacts')
+    .update({ custom_fields: custom })
+    .eq('workspace_id', execution.workspace_id)
+    .eq('id', execution.contact_id)
+  if (error) throw error
+}
+
+/** Fecha a espera vencida pela porta `timeout`, ou encerra se ela não existir. */
+export async function expireAutomationAwait(
+  input: { workspaceId: string; executionId: string; nodeId: string },
+  client = getSupabaseAdmin(),
+) {
+  if (!client) throw new Error('automation_supabase_unavailable')
+  const { data: execution, error } = await client
+    .from('automation_executions')
+    .select('id,workspace_id,flow_version_id,status,awaiting_node_id')
+    .eq('workspace_id', input.workspaceId)
+    .eq('id', input.executionId)
+    .maybeSingle()
+  if (error) throw error
+  // O contato pode ter respondido entre o agendamento e o disparo do job.
+  if (
+    !execution ||
+    execution.status !== 'waiting_reply' ||
+    execution.awaiting_node_id !== input.nodeId
+  )
+    return { expired: false }
+
+  const graph = await loadExecutionGraph(client, execution)
+  if (!hasBranch(graph, input.nodeId, 'timeout')) {
+    await clearAwait(client, execution, {
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+    })
+    return { expired: true, branch: null }
+  }
+
+  await advanceFromAwait(client, execution, graph, input.nodeId, 'timeout')
+  return { expired: true, branch: 'timeout' }
 }

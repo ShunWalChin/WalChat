@@ -1,7 +1,10 @@
 /** Normaliza webhooks Meta, persiste a inbox e agenda automações elegíveis. */
 import '@tanstack/react-start/server-only'
 import { suggestInstagramReply } from './ai.server'
-import { startAutomationExecution } from './automation-engine.server'
+import {
+  resumeAutomationAfterReply,
+  startAutomationExecution,
+} from './automation-engine.server'
 import { isOptOutKeyword } from './compliance'
 import { getServerEnv } from './env.server'
 import { assertRateLimit } from './rate-limit.server'
@@ -216,6 +219,20 @@ async function ingestInbound(input: {
   // Reações são telemetria da mensagem existente, não uma nova conversa na inbox.
   if (input.channel === 'reaction' || !ingested.conversation_id) return
 
+  // Um fluxo parado esperando resposta tem precedência: a pessoa está no meio
+  // de um menu ou de uma pergunta e disparar um gatilho novo aqui atropelaria a
+  // conversa em andamento.
+  const resumed = await resumeAutomationAfterReply(
+    {
+      workspaceId: input.workspaceId,
+      contactId: ingested.contact_id,
+      text: input.text,
+      payload: postbackPayload(input.raw),
+    },
+    input.supabase,
+  )
+  if (resumed.handled) return
+
   const scheduledByTrigger = await matchAndScheduleTrigger({
     ...input,
     contactId: ingested.contact_id,
@@ -233,6 +250,24 @@ async function ingestInbound(input: {
       senderId: input.senderId,
       channel: input.channel,
     })
+}
+
+/**
+ * Lê o payload do botão dentro do evento bruto da Meta.
+ *
+ * Quick reply e postback chegam em lugares diferentes do mesmo evento, e o
+ * corpo é dado externo — daí a leitura defensiva em vez de um cast.
+ */
+function postbackPayload(raw: unknown): string | null {
+  if (!raw || typeof raw !== 'object') return null
+  const event = raw as {
+    postback?: { payload?: unknown }
+    message?: { quick_reply?: { payload?: unknown } }
+  }
+  const fromPostback = event.postback?.payload
+  if (typeof fromPostback === 'string') return fromPostback
+  const fromQuickReply = event.message?.quick_reply?.payload
+  return typeof fromQuickReply === 'string' ? fromQuickReply : null
 }
 
 /** Aplica opt-out, match e cooldown; no máximo um gatilho agenda resposta por evento. */

@@ -17,6 +17,32 @@ const externalField = z
   })
   .strict()
 
+/**
+ * Uma escolha oferecida ao contato. O mesmo contrato serve aos dois canais: o
+ * sender decide a forma nativa (quick reply no Instagram, botão ou lista no
+ * WhatsApp) a partir da quantidade. Unificar aqui evita obrigar o operador a
+ * saber o limite de cada API para montar um fluxo.
+ */
+const choiceSchema = z
+  .object({
+    key: z.string().regex(/^[a-z][a-z0-9_-]{0,31}$/),
+    // 20 caracteres é o menor teto entre os canais suportados.
+    label: z.string().trim().min(1).max(20),
+  })
+  .strict()
+
+/** 10 é o limite da lista do WhatsApp, o mais restritivo entre os canais. */
+const choicesSchema = z.array(choiceSchema).min(1).max(10)
+
+const inputExpectation = z.enum(['text', 'email', 'phone', 'number', 'date'])
+
+const saveTargetSchema = z
+  .object({
+    target: z.enum(['contact', 'custom', 'bot']),
+    fieldKey,
+  })
+  .strict()
+
 const actionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('add_tag'), tagId: z.uuid() }).strict(),
   z.object({ type: z.literal('remove_tag'), tagId: z.uuid() }).strict(),
@@ -74,8 +100,16 @@ const automationNodeSchema = z.discriminatedUnion('type', [
             .nullable()
             .optional(),
           mediaType: z.enum(['image', 'video']).nullable().optional(),
+          // Com escolhas a execução para e espera o contato responder; sem
+          // elas o nó segue direto, como sempre fez.
+          choices: choicesSchema.optional(),
+          awaitTimeoutSeconds: z.number().int().min(60).max(604_800).optional(),
         })
-        .strict(),
+        .strict()
+        .refine(
+          (config) => !config.awaitTimeoutSeconds || config.choices?.length,
+          'awaitTimeoutSeconds só faz sentido com escolhas.',
+        ),
     })
     .strict(),
   z
@@ -171,6 +205,57 @@ const automationNodeSchema = z.discriminatedUnion('type', [
   z
     .object({
       id: nodeId,
+      type: z.literal('user_input'),
+      config: z
+        .object({
+          prompt: z.string().trim().min(1).max(1_000),
+          expects: inputExpectation,
+          save: saveTargetSchema,
+          // Cada tentativa reenvia a mensagem de erro; esgotadas, sai por
+          // `invalid` para o fluxo tratar sem deixar o contato preso.
+          maxAttempts: z.number().int().min(1).max(5).default(2),
+          invalidMessage: z.string().trim().min(1).max(500).optional(),
+          timeoutSeconds: z.number().int().min(60).max(604_800).default(86_400),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: nodeId,
+      type: z.literal('external_request'),
+      config: z
+        .object({
+          method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
+          url: z
+            .url()
+            .max(2_048)
+            .refine((value) => value.startsWith('https://'), 'Use HTTPS.'),
+          headers: z.array(externalField).max(10).default([]),
+          body: z.string().max(4_000).optional(),
+          // Caminho por pontos dentro do JSON de resposta; sem `eval` e sem
+          // acesso a chaves de protótipo.
+          responseMapping: z
+            .array(
+              z
+                .object({
+                  path: z
+                    .string()
+                    .regex(/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+){0,9}$/),
+                  save: saveTargetSchema,
+                })
+                .strict(),
+            )
+            .max(10)
+            .default([]),
+          timeoutMs: z.number().int().min(1_000).max(15_000).default(8_000),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      id: nodeId,
       type: z.literal('end'),
       config: z
         .object({ outcome: z.string().trim().min(1).max(80).optional() })
@@ -193,7 +278,7 @@ const automationEdgeSchema = z
 
 export const automationGraphSchema = z
   .object({
-    schemaVersion: z.union([z.literal(1), z.literal(2)]),
+    schemaVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
     entryNodeId: nodeId,
     nodes: z.array(automationNodeSchema).min(2).max(100),
     edges: z.array(automationEdgeSchema).min(1).max(200),
@@ -261,14 +346,13 @@ export function validateAutomationGraph(input: unknown): AutomationGraph {
         throw new AutomationGraphError('end_has_outgoing_edge', node.id)
       continue
     }
-    const expected =
-      node.type === 'condition'
-        ? new Set(['true', 'false'])
-        : node.type === 'random_split'
-          ? new Set(node.config.branches.map((branch) => branch.key))
-          : new Set(['default'])
-    if (!sameSet(branches, expected))
-      throw new AutomationGraphError('invalid_node_branches', node.id)
+    const ports = nodePorts(node)
+    for (const required of ports.required)
+      if (!branches.has(required))
+        throw new AutomationGraphError('invalid_node_branches', node.id)
+    for (const branch of branches)
+      if (!ports.allowed.has(branch))
+        throw new AutomationGraphError('invalid_node_branches', node.id)
     if (
       node.type === 'random_split' &&
       node.config.branches.reduce((sum, branch) => sum + branch.weight, 0) !==
@@ -428,9 +512,61 @@ export function isAutomationFieldValue(
   return false
 }
 
-function sameSet(left: Set<string>, right: Set<string>) {
+/**
+ * Portas de saída de cada nó.
+ *
+ * `required` precisa existir para o fluxo não travar; `allowed` inclui as saídas
+ * opcionais — timeout, resposta inválida e erro de request. Antes a checagem
+ * exigia igualdade exata, o que impediria qualquer porta opcional.
+ */
+export function nodePorts(node: AutomationNode): {
+  required: Set<string>
+  allowed: Set<string>
+} {
+  switch (node.type) {
+    case 'end':
+      return { required: new Set(), allowed: new Set() }
+    case 'condition':
+      return {
+        required: new Set(['true', 'false']),
+        allowed: new Set(['true', 'false']),
+      }
+    case 'random_split': {
+      const keys = node.config.branches.map((branch) => branch.key)
+      return { required: new Set(keys), allowed: new Set(keys) }
+    }
+    case 'message': {
+      const choices = node.config.choices
+      if (!choices?.length)
+        return { required: new Set(['default']), allowed: new Set(['default']) }
+      const keys = choices.map((choice) => choice.key)
+      // `timeout` é opcional: sem ela a espera encerra a execução em vez de
+      // seguir por um caminho alternativo.
+      return {
+        required: new Set(keys),
+        allowed: new Set([...keys, 'timeout']),
+      }
+    }
+    case 'user_input':
+      return {
+        required: new Set(['default']),
+        allowed: new Set(['default', 'invalid', 'timeout']),
+      }
+    case 'external_request':
+      return {
+        required: new Set(['default']),
+        allowed: new Set(['default', 'error']),
+      }
+    default:
+      return { required: new Set(['default']), allowed: new Set(['default']) }
+  }
+}
+
+/** Indica se o nó interrompe a execução até o contato responder. */
+export function nodeAwaitsReply(node: AutomationNode) {
   return (
-    left.size === right.size && [...left].every((value) => right.has(value))
+    node.type === 'user_input' ||
+    (node.type === 'message' && Boolean(node.config.choices?.length))
   )
 }
 

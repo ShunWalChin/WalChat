@@ -1,7 +1,10 @@
 /** Normaliza mensagens/status do WhatsApp e alimenta Inbox e automações. */
 import '@tanstack/react-start/server-only'
 import { suggestInstagramReply } from './ai.server'
-import { startAutomationExecution } from './automation-engine.server'
+import {
+  resumeAutomationAfterReply,
+  startAutomationExecution,
+} from './automation-engine.server'
 import { isOptOutKeyword } from './compliance'
 import { assertRateLimit } from './rate-limit.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
@@ -146,6 +149,18 @@ export async function processWhatsAppWebhook(
             .eq('workspace_id', account.workspace_id)
             .eq('id', ingested.contact_id)
         } else if (ingested.interaction_inserted) {
+          // Um fluxo parado esperando resposta tem precedência sobre gatilhos:
+          // a pessoa está no meio de um menu ou de uma pergunta.
+          const resumed = await resumeAutomationAfterReply(
+            {
+              workspaceId: account.workspace_id,
+              contactId: ingested.contact_id,
+              text: normalized.text,
+              payload: interactiveReplyId(message),
+            },
+            supabase,
+          )
+          if (resumed.handled) continue
           const triggered = await scheduleWhatsAppTrigger({
             supabase,
             workspaceId: account.workspace_id,
@@ -208,6 +223,25 @@ export function normalizeWhatsAppMessage(message: WhatsAppMessage) {
     text,
     mediaId: media?.id ?? null,
   }
+}
+
+/**
+ * O `id` do botão ou da linha da lista é o que carrega o payload emitido por
+ * este produto; o título é só o texto que o contato viu.
+ */
+function interactiveReplyId(message: {
+  interactive?: {
+    button_reply?: { id?: string }
+    list_reply?: { id?: string }
+  }
+  button?: { payload?: string }
+}): string | null {
+  return (
+    message.interactive?.button_reply?.id ??
+    message.interactive?.list_reply?.id ??
+    message.button?.payload ??
+    null
+  )
 }
 
 function whatsappTimestamp(value?: string) {
