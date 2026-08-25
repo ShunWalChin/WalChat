@@ -139,11 +139,61 @@ Quatro arquivos `walchat-*.tar` (~20 MB) estavam na árvore de trabalho sem
 serem ignorados — a um `git add -A` de entrar no repositório público. `*.tar`,
 `*.tar.gz` e `*.tgz` foram adicionados ao `.gitignore`.
 
+### 10. CSP autorizava qualquer script inline — corrigido
+
+`script-src` trazia `'unsafe-inline'`, o que dá ao script legítimo do SSR e ao
+script injetado por XSS exatamente a mesma permissão. Como a sessão do Supabase
+fica em `localStorage`, era a diretiva com maior valor a fechar.
+
+O servidor passou a gerar um nonce de 16 bytes por requisição, colocá-lo na
+política e marcar cada tag `<script>` do HTML com ele. A marcação acontece em
+streaming, sem bufferizar a resposta: o corte de cada chunk recua até o último
+`<` que ainda pode abrir uma tag incompleta, porque reter um número fixo de
+caracteres partiria ao meio uma tag que atravessa a fronteira. O bundle emite
+apenas três scripts inline e nenhum handler `on*=`, então nada precisou ser
+reescrito no aplicativo.
+
+Verificado em navegador contra o bundle de produção:
+
+| Comprovação                                      | Resultado                |
+| ------------------------------------------------ | ------------------------ |
+| Scripts da página com nonce casando com o header | 4 de 4                   |
+| React hidrata e o roteador navega sem recarregar | sim, 35 chunks dinâmicos |
+| Erros de console                                 | nenhum                   |
+| `<script>` inline inserido no DOM **sem** nonce  | bloqueado                |
+| Mesmo script **com** o nonce da página           | executa                  |
+
+`style-src` mantém `'unsafe-inline'` de propósito: atributos `style` são gerados
+pelo React e injeção de CSS tem severidade muito menor que execução de script.
+
+O ganho é real mas tem limite honesto: o nonce bloqueia **marcação injetada**,
+que é o vetor da esmagadora maioria dos XSS refletidos e armazenados. Um atacante
+que já tenha execução de script na página consegue ler o nonce pela propriedade
+IDL e reusá-lo.
+
+### 11. Um workspace por usuário na prática — corrigido
+
+O backend já aceitava `X-Workspace-Id` e respondia `409` quando o usuário
+pertencia a dois ou mais workspaces sem enviá-lo. O frontend nunca enviava o
+header, então a segunda associação quebrava todas as APIs privadas.
+
+`GET /api/workspaces` lista as associações pelo cliente sujeito a RLS — é a
+única rota privada que não pode exigir o header, porque existe para descobri-lo.
+O tenant ativo vive fora do React, porque `apiFetch` precisa lê-lo fora de
+componente, e persiste no navegador.
+
+O detalhe que evita um bug sutil: `apiFetch` espera a lista resolver antes de
+montar os headers. Sem essa espera, as chamadas que o shell dispara no primeiro
+render sairiam sem o header e voltariam `409` — exatamente o problema que a
+mudança pretende resolver. O portão é liberado também nos caminhos sem workspace
+algum (modo demo, erro de carregamento, logout), para não travar a interface, e
+o logout volta a travá-lo para que a sessão seguinte não herde o tenant anterior.
+
 ## Verificação
 
 | Etapa                     | Resultado                                    |
 | ------------------------- | -------------------------------------------- |
-| `npm test`                | 120 testes, 30 arquivos, 0 falhas            |
+| `npm test`                | 136 testes, 32 arquivos, 0 falhas            |
 | `npx tsc --noEmit`        | limpo                                        |
 | `npm run lint`            | limpo                                        |
 | `npm run check`           | limpo                                        |
@@ -152,8 +202,10 @@ serem ignorados — a um `git add -A` de entrar no repositório público. `*.tar
 | `npm run validate:routes` | 21 rotas HTML, 404, robots, sitemap e health |
 | `npm audit --omit=dev`    | 0 vulnerabilidades                           |
 
-Antes desta auditoria a suíte tinha 105 testes; os 15 novos cobrem o resolvedor
-de identidade e as faixas SSRF recém-bloqueadas.
+Antes desta auditoria a suíte tinha 105 testes. Os 31 novos cobrem o resolvedor
+de identidade, as faixas SSRF recém-bloqueadas, a injeção de nonce em streaming
+— inclusive com a tag partida na fronteira do chunk — e a escolha do workspace
+ativo.
 
 ## Ações pendentes que exigem decisão humana
 
@@ -170,9 +222,6 @@ de identidade e as faixas SSRF recém-bloqueadas.
    README hoje recebe a versão de 21/07, sem nenhum hardening desta linha.
 4. **Domínio próprio no lugar do `nip.io`.** Enquanto o host codificar o IP, não
    há como não divulgar o endereço do servidor.
-5. **CSP sem `unsafe-inline` em `script-src`.** Hoje a diretiva permite script
-   inline, o que reduz muito o valor da CSP contra XSS — e a sessão Supabase
-   fica em `localStorage`. Migrar para CSP com nonce.
-6. **Rebinding DNS na saída para o n8n.** A resolução acontece na validação e
+5. **Rebinding DNS na saída para o n8n.** A resolução acontece na validação e
    não no momento do `fetch`; fechar a janela exige fixar o IP resolvido no
    agente HTTP.
