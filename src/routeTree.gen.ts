@@ -65,6 +65,7 @@ import { Route as ApiOperationsWebhooksRouteImport } from './routes/api/operatio
 import { Route as ApiPrivacyDeletionRequestsRouteImport } from './routes/api/privacy/deletion-requests'
 import { Route as ApiPublicReviewsRouteImport } from './routes/api/public/reviews'
 import { Route as ApiAutomationsFlowIdExecuteRouteImport } from './routes/api/automations/$flowId/execute'
+import { Route as ApiAutomationsFlowIdSimulateRouteImport } from './routes/api/automations/$flowId/simulate'
 import { Route as ApiContactsContactIdNotesRouteImport } from './routes/api/contacts/$contactId/notes'
 import { Route as ApiIntegrationsGoogleCallbackRouteImport } from './routes/api/integrations/google/callback'
 import { Route as ApiIntegrationsGoogleDisconnectRouteImport } from './routes/api/integrations/google/disconnect'
@@ -374,6 +375,12 @@ const ApiAutomationsFlowIdExecuteRoute =
     path: '/execute',
     getParentRoute: () => ApiAutomationsFlowIdRoute,
   } as any)
+const ApiAutomationsFlowIdSimulateRoute =
+  ApiAutomationsFlowIdSimulateRouteImport.update({
+    id: '/simulate',
+    path: '/simulate',
+    getParentRoute: () => ApiAutomationsFlowIdRoute,
+  } as any)
 const ApiContactsContactIdNotesRoute =
   ApiContactsContactIdNotesRouteImport.update({
     id: '/notes',
@@ -591,6 +598,7 @@ export interface FileRoutesByFullPath {
   '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
   '/api/public/reviews': typeof ApiPublicReviewsRoute
   '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
+  '/api/automations/$flowId/simulate': typeof ApiAutomationsFlowIdSimulateRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
   '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
   '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
@@ -675,6 +683,7 @@ export interface FileRoutesByTo {
   '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
   '/api/public/reviews': typeof ApiPublicReviewsRoute
   '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
+  '/api/automations/$flowId/simulate': typeof ApiAutomationsFlowIdSimulateRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
   '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
   '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
@@ -761,6 +770,7 @@ export interface FileRoutesById {
   '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
   '/api/public/reviews': typeof ApiPublicReviewsRoute
   '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
+  '/api/automations/$flowId/simulate': typeof ApiAutomationsFlowIdSimulateRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
   '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
   '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
@@ -847,6 +857,7 @@ export interface FileRouteTypes {
     | '/api/privacy/deletion-requests'
     | '/api/public/reviews'
     | '/api/automations/$flowId/execute'
+    | '/api/automations/$flowId/simulate'
     | '/api/contacts/$contactId/notes'
     | '/api/integrations/google/callback'
     | '/api/integrations/google/disconnect'
@@ -931,6 +942,7 @@ export interface FileRouteTypes {
     | '/api/privacy/deletion-requests'
     | '/api/public/reviews'
     | '/api/automations/$flowId/execute'
+    | '/api/automations/$flowId/simulate'
     | '/api/contacts/$contactId/notes'
     | '/api/integrations/google/callback'
     | '/api/integrations/google/disconnect'
@@ -1016,6 +1028,7 @@ export interface FileRouteTypes {
     | '/api/privacy/deletion-requests'
     | '/api/public/reviews'
     | '/api/automations/$flowId/execute'
+    | '/api/automations/$flowId/simulate'
     | '/api/contacts/$contactId/notes'
     | '/api/integrations/google/callback'
     | '/api/integrations/google/disconnect'
@@ -1501,6 +1514,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAutomationsFlowIdExecuteRouteImport
       parentRoute: typeof ApiAutomationsFlowIdRoute
     }
+    '/api/automations/$flowId/simulate': {
+      id: '/api/automations/$flowId/simulate'
+      path: '/simulate'
+      fullPath: '/api/automations/$flowId/simulate'
+      preLoaderRoute: typeof ApiAutomationsFlowIdSimulateRouteImport
+      parentRoute: typeof ApiAutomationsFlowIdRoute
+    }
     '/api/contacts/$contactId/notes': {
       id: '/api/contacts/$contactId/notes'
       path: '/notes'
@@ -1735,10 +1755,12 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface ApiAutomationsFlowIdRouteChildren {
   ApiAutomationsFlowIdExecuteRoute: typeof ApiAutomationsFlowIdExecuteRoute
+  ApiAutomationsFlowIdSimulateRoute: typeof ApiAutomationsFlowIdSimulateRoute
 }
 
 const ApiAutomationsFlowIdRouteChildren: ApiAutomationsFlowIdRouteChildren = {
   ApiAutomationsFlowIdExecuteRoute: ApiAutomationsFlowIdExecuteRoute,
+  ApiAutomationsFlowIdSimulateRoute: ApiAutomationsFlowIdSimulateRoute,
 }
 
 const ApiAutomationsFlowIdRouteWithChildren =
