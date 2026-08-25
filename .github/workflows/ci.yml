@@ -1,0 +1,119 @@
+# Portão obrigatório do Wal Chat. Roda apenas o que não depende de secrets:
+# Supabase, Redis e Meta ficam para o smoke manual descrito no README.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+# Sem write em nada: o job só lê o código e publica status.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Testes, tipos, lint e auditoria
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências travadas
+        run: npm ci
+
+      - name: Formatação
+        run: npm run check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tipos
+        run: npx tsc --noEmit
+
+      - name: Testes unitários
+        run: npm test
+
+      - name: Auditoria estática de rotas e limites
+        run: npm run audit:system
+
+      - name: Build cliente e SSR
+        run: npm run build
+
+      # validate:routes fala HTTP com o bundle real. Sobe o servidor de produção
+      # em modo demo: /api/health é liveness puro e o SSR não precisa de
+      # Supabase, Redis ou Meta para renderizar as rotas públicas.
+      - name: Subir o servidor de produção
+        run: |
+          DEMO_MODE=true PORT=3001 HOST=127.0.0.1             APP_ORIGIN=http://127.0.0.1:3001             npm start > /tmp/wal-chat-server.log 2>&1 &
+          echo $! > /tmp/wal-chat-server.pid
+          for _ in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3001/api/health > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "servidor não respondeu /api/health"
+          cat /tmp/wal-chat-server.log
+          exit 1
+
+      - name: Validar rotas, SEO, robots e sitemap
+        env:
+          SMOKE_APP_URL: http://127.0.0.1:3001
+        run: npm run validate:routes
+
+      - name: Encerrar o servidor
+        if: always()
+        run: kill "$(cat /tmp/wal-chat-server.pid)" 2>/dev/null || true
+
+  dependencias:
+    name: Vulnerabilidades em dependências de produção
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Falha só em vulnerabilidade que chega ao runtime; devDependencies não
+      # são superfície de ataque de produção.
+      - name: npm audit (produção)
+        run: npm audit --omit=dev --audit-level=high
+
+  segredos:
+    name: Varredura de segredos no diff
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
