@@ -468,9 +468,7 @@ function InboxPage() {
         }),
       })
       setContactTagIds((current) =>
-        hasTag
-          ? current.filter((id) => id !== tagId)
-          : [...current, tagId],
+        hasTag ? current.filter((id) => id !== tagId) : [...current, tagId],
       )
       setError('')
     } catch (caught) {

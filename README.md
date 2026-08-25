@@ -95,7 +95,7 @@ flowchart LR
 
 O backend recebe o corpo bruto do webhook, valida `X-Hub-Signature-256`, persiste uma chave idempotente e enfileira o processamento. O worker normaliza contatos e interações; o scheduler executa sequências e chama o motor de compliance imediatamente antes de qualquer envio. DMs recebem um claim persistente antes da chamada externa; timeout ou resposta ambígua vira estado `unknown` e não dispara retry automático.
 
-A revisão de segurança mais recente está documentada em [Auditoria do backend core — 20/08/2026](docs/AUDITORIA_BACKEND_CORE_2026-08-20.md).
+A revisão de segurança mais recente está documentada em [Auditoria de segurança — 25/08/2026](docs/AUDITORIA_SEGURANCA_2026-08-25.md); a anterior, focada no núcleo do backend, está em [Auditoria do backend core — 20/08/2026](docs/AUDITORIA_BACKEND_CORE_2026-08-20.md).
 
 O desenho e o runbook do novo motor estão em
 [Arquitetura do backend e automações DAG — 22/08/2026](docs/ARQUITETURA_BACKEND_AUTOMACOES_DAG_2026-08-22.md).
@@ -251,6 +251,7 @@ Essa credencial existe apenas para desenvolvimento. Nunca reutilize a senha loca
 | `GOOGLE_OAUTH_REDIRECT_URI`               | Backend   | Callback exato do Google                  |
 | `APP_ORIGIN`                              | Backend   | Origem pública da aplicação               |
 | `DEMO_MODE`                               | Backend   | Impede efeitos externos quando `true`     |
+| `TRUSTED_CLIENT_IP_HEADER`                | Backend   | Header de IP da CDN, quando houver uma    |
 
 Variáveis `VITE_PUBLIC_*`, a chave publishable do Supabase e o ID público GA4
 podem chegar ao navegador. Nunca adicione o prefixo `VITE_` a tokens Meta,
@@ -411,6 +412,7 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 | [Validação de produção real V1](docs/VALIDACAO_PRODUCAO_REAL_V1.md)                     | Escopo, evidências e aprovação do piloto         |
 | [Atualização operacional V1](docs/ATUALIZACAO_OPERACIONAL_V1.md)                        | Go-Live, gateway, Inbox, Comment-to-DM e RAG     |
 | [Auditoria técnica 30/07](docs/AUDITORIA_TECNICA_2026-07-30.md)                         | Achados priorizados e parecer de promoção        |
+| [Auditoria de segurança 25/08](docs/AUDITORIA_SEGURANCA_2026-08-25.md)                  | Rate limit, SSRF, exposição pública e CI         |
 | [Auditoria pré-produção e SEO](docs/AUDITORIA_PRE_PRODUCAO_SEGURANCA_SEO_2026-08-20.md) | Funções, segurança, SEO, evidências e pendências |
 | [Manual operacional](docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md)                   | Implantação e contas reais                       |
 | [Manual completo de acessos](docs/MANUAL_COMPLETO_ACESSOS_OPERACAO_CONFIGURACAO.md)     | URLs, usuários, módulos e configuração           |

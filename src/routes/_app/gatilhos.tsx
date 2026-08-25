@@ -110,8 +110,7 @@ function TriggersPage() {
       const payload = {
         ...form,
         responseText: destinationKind === 'text' ? form.responseText : null,
-        sequenceId:
-          destinationKind === 'sequence' ? form.sequenceId : null,
+        sequenceId: destinationKind === 'sequence' ? form.sequenceId : null,
         flowId: destinationKind === 'flow' ? form.flowId : null,
       }
       await apiFetch('/api/triggers', {
@@ -298,8 +297,8 @@ function TriggersPage() {
           )}
           {destinationKind === 'sequence' && form.source === 'comment' && (
             <small className="form-helper">
-              Para comentários, o primeiro envio da sequência deve ser texto;
-              a API oficial permite uma única Private Reply.
+              Para comentários, o primeiro envio da sequência deve ser texto; a
+              API oficial permite uma única Private Reply.
             </small>
           )}
           <label>

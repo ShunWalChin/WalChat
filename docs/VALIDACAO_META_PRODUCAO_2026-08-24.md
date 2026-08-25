@@ -15,16 +15,16 @@ Ambiente validado:
 
 ## Parecer executivo
 
-| Integração | Estado | Evidência |
-| --- | --- | --- |
-| Instagram Professional | Conectado e validado | `@walfredonetto`, token cifrado, permissões e webhooks validados pela aplicação |
-| Webhook do Instagram | Operacional | callback HTTPS, challenge e assinatura HMAC habilitados |
-| WhatsApp Embedded Signup | Configurado, bloqueado pela Meta | wizard abre com o `config_id` oficial; a Meta recusa onboarding enquanto o provedor não estiver verificado |
-| Webhook do WhatsApp | Operacional | callback validado, campo `messages` assinado e teste oficial recebido |
-| WABA/número de teste | Criados | ativos de teste disponíveis no painel da Meta |
-| WABA/número real | Pendente de onboarding | exige seleção/criação pelo titular no popup da Meta |
-| App Review/Advanced Access | Pendente externo | depende da verificação empresarial e das evidências exigidas pela Meta |
-| Disparos externos | Bloqueados por segurança | `DEMO_MODE=true` até a conclusão dos gates de go-live |
+| Integração                 | Estado                           | Evidência                                                                                                  |
+| -------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Instagram Professional     | Conectado e validado             | `@walfredonetto`, token cifrado, permissões e webhooks validados pela aplicação                            |
+| Webhook do Instagram       | Operacional                      | callback HTTPS, challenge e assinatura HMAC habilitados                                                    |
+| WhatsApp Embedded Signup   | Configurado, bloqueado pela Meta | wizard abre com o `config_id` oficial; a Meta recusa onboarding enquanto o provedor não estiver verificado |
+| Webhook do WhatsApp        | Operacional                      | callback validado, campo `messages` assinado e teste oficial recebido                                      |
+| WABA/número de teste       | Criados                          | ativos de teste disponíveis no painel da Meta                                                              |
+| WABA/número real           | Pendente de onboarding           | exige seleção/criação pelo titular no popup da Meta                                                        |
+| App Review/Advanced Access | Pendente externo                 | depende da verificação empresarial e das evidências exigidas pela Meta                                     |
+| Disparos externos          | Bloqueados por segurança         | `DEMO_MODE=true` até a conclusão dos gates de go-live                                                      |
 
 O Instagram está pronto para o primeiro ciclo controlado de testes reais. O
 WhatsApp está tecnicamente integrado, mas só deve enviar para usuários externos
