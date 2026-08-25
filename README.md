@@ -404,32 +404,33 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 
 ## Documentação
 
-| Documento                                                                               | Conteúdo                                           |
-| --------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| [Arquitetura](docs/ARQUITETURA.md)                                                      | Componentes, fluxos, isolamento e decisões         |
-| [API e webhooks](docs/API_E_WEBHOOKS.md)                                                | Contratos HTTP e eventos Meta                      |
-| [Banco de dados](docs/BANCO_DE_DADOS.md)                                                | Tabelas, RLS, GRANTs, views e jobs                 |
-| [Segurança e compliance](docs/SEGURANCA_E_COMPLIANCE.md)                                | Regras Meta, secrets e controles                   |
-| [Configuração Meta e OpenAI](docs/CONFIGURACAO_META_E_OPENAI.md)                        | Onboarding e testes com contas reais               |
-| [Google Calendar, Meet e Tasks](docs/CONFIGURACAO_GOOGLE_CALENDAR.md)                   | OAuth, agenda pública, sync e homologação          |
-| [Validação do Calendário](docs/VALIDACAO_CALENDARIO_OPERACIONAL_2026-08-20.md)          | Evidências locais e checklist da conta piloto      |
-| [Instagram + WhatsApp Business](docs/INTEGRACOES_META_INSTAGRAM_WHATSAPP.md)            | Setup completo, callbacks, testes e operação       |
-| [Mapa do código](docs/MAPA_DO_CODIGO.md)                                                | Responsabilidade de cada arquivo                   |
-| [Guia de desenvolvimento](docs/GUIA_DE_DESENVOLVIMENTO.md)                              | Convenções, testes e extensão do produto           |
-| [Plano de produção](docs/PLANO_DE_PRODUCAO.md)                                          | Gates, riscos e sequência segura de go-live        |
-| [Validação de produção real V1](docs/VALIDACAO_PRODUCAO_REAL_V1.md)                     | Escopo, evidências e aprovação do piloto           |
-| [Atualização operacional V1](docs/ATUALIZACAO_OPERACIONAL_V1.md)                        | Go-Live, gateway, Inbox, Comment-to-DM e RAG       |
-| [Auditoria técnica 30/07](docs/AUDITORIA_TECNICA_2026-07-30.md)                         | Achados priorizados e parecer de promoção          |
-| [Auditoria de segurança 25/08](docs/AUDITORIA_SEGURANCA_2026-08-25.md)                  | Rate limit, SSRF, exposição pública e CI           |
-| [Auditoria pré-produção e SEO](docs/AUDITORIA_PRE_PRODUCAO_SEGURANCA_SEO_2026-08-20.md) | Funções, segurança, SEO, evidências e pendências   |
-| [Manual operacional](docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md)                   | Implantação e contas reais                         |
-| [Manual completo de acessos](docs/MANUAL_COMPLETO_ACESSOS_OPERACAO_CONFIGURACAO.md)     | URLs, usuários, módulos e configuração             |
-| [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)                     | Evidências da validação publicada                  |
-| [Validação do wizard e n8n](docs/RELATORIO_VALIDACAO_N8N_2026-08-23.md)                 | Testes, migration dry-run e gate de deploy         |
-| [Validação Meta em produção](docs/VALIDACAO_META_PRODUCAO_2026-08-24.md)                | Instagram real, WhatsApp e gates de live mode      |
-| [Validação dos módulos de produção](docs/VALIDACAO_MODULOS_PRODUCAO_2026-08-24.md)      | Release, testes, botões, integrações e decisão     |
-| [Backup e ativação live](docs/ATIVACAO_LIVE_E_BACKUP_2026-08-24.md)                     | Backup, promoção, testes reais e rollback          |
-| [Deploy 25/08 — paridade e hardening](docs/DEPLOY_2026-08-25_MANYCHAT_E_SEGURANCA.md)   | Migration ensaiada, Nginx e evidências em produção |
+| Documento                                                                               | Conteúdo                                                |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| [Arquitetura](docs/ARQUITETURA.md)                                                      | Componentes, fluxos, isolamento e decisões              |
+| [API e webhooks](docs/API_E_WEBHOOKS.md)                                                | Contratos HTTP e eventos Meta                           |
+| [Banco de dados](docs/BANCO_DE_DADOS.md)                                                | Tabelas, RLS, GRANTs, views e jobs                      |
+| [Segurança e compliance](docs/SEGURANCA_E_COMPLIANCE.md)                                | Regras Meta, secrets e controles                        |
+| [Configuração Meta e OpenAI](docs/CONFIGURACAO_META_E_OPENAI.md)                        | Onboarding e testes com contas reais                    |
+| [Google Calendar, Meet e Tasks](docs/CONFIGURACAO_GOOGLE_CALENDAR.md)                   | OAuth, agenda pública, sync e homologação               |
+| [Validação do Calendário](docs/VALIDACAO_CALENDARIO_OPERACIONAL_2026-08-20.md)          | Evidências locais e checklist da conta piloto           |
+| [Instagram + WhatsApp Business](docs/INTEGRACOES_META_INSTAGRAM_WHATSAPP.md)            | Setup completo, callbacks, testes e operação            |
+| [Mapa do código](docs/MAPA_DO_CODIGO.md)                                                | Responsabilidade de cada arquivo                        |
+| [Guia de desenvolvimento](docs/GUIA_DE_DESENVOLVIMENTO.md)                              | Convenções, testes e extensão do produto                |
+| [Plano de produção](docs/PLANO_DE_PRODUCAO.md)                                          | Gates, riscos e sequência segura de go-live             |
+| [Validação de produção real V1](docs/VALIDACAO_PRODUCAO_REAL_V1.md)                     | Escopo, evidências e aprovação do piloto                |
+| [Atualização operacional V1](docs/ATUALIZACAO_OPERACIONAL_V1.md)                        | Go-Live, gateway, Inbox, Comment-to-DM e RAG            |
+| [Auditoria técnica 30/07](docs/AUDITORIA_TECNICA_2026-07-30.md)                         | Achados priorizados e parecer de promoção               |
+| [Auditoria de segurança 25/08](docs/AUDITORIA_SEGURANCA_2026-08-25.md)                  | Rate limit, SSRF, exposição pública e CI                |
+| [Auditoria pré-produção e SEO](docs/AUDITORIA_PRE_PRODUCAO_SEGURANCA_SEO_2026-08-20.md) | Funções, segurança, SEO, evidências e pendências        |
+| [Manual operacional](docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md)                   | Implantação e contas reais                              |
+| [Manual completo de acessos](docs/MANUAL_COMPLETO_ACESSOS_OPERACAO_CONFIGURACAO.md)     | URLs, usuários, módulos e configuração                  |
+| [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)                     | Evidências da validação publicada                       |
+| [Validação do wizard e n8n](docs/RELATORIO_VALIDACAO_N8N_2026-08-23.md)                 | Testes, migration dry-run e gate de deploy              |
+| [Validação Meta em produção](docs/VALIDACAO_META_PRODUCAO_2026-08-24.md)                | Instagram real, WhatsApp e gates de live mode           |
+| [Validação dos módulos de produção](docs/VALIDACAO_MODULOS_PRODUCAO_2026-08-24.md)      | Release, testes, botões, integrações e decisão          |
+| [Backup e ativação live](docs/ATIVACAO_LIVE_E_BACKUP_2026-08-24.md)                     | Backup, promoção, testes reais e rollback               |
+| [Deploy 25/08 — paridade e hardening](docs/DEPLOY_2026-08-25_MANYCHAT_E_SEGURANCA.md)   | Migration ensaiada, Nginx e evidências em produção      |
+| [Design system 25/08](docs/DESIGN_SYSTEM_2026-08-25.md)                                 | Tokens, piso tipográfico e contraste medido em 16 telas |
 
 ## Limites conhecidos do MVP
 
