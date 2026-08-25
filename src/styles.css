@@ -10047,3 +10047,64 @@ select,
 .automation-simulation-warning {
   color: var(--orange-dark);
 }
+
+/* Escolha do modelo ao criar uma jornada. */
+.automation-templates {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.automation-templates > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.automation-templates > header strong {
+  display: block;
+  font-size: 12px;
+}
+.automation-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 9px;
+}
+.automation-template-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  text-align: left;
+  cursor: pointer;
+}
+.automation-template-card:hover:not(:disabled) {
+  border-color: var(--orange);
+}
+.automation-template-card:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.automation-template-card strong {
+  font-size: 12px;
+}
+.automation-template-card span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.automation-template-card small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+.automation-template-card.is-blank {
+  border-style: dashed;
+}

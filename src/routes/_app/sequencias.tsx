@@ -46,6 +46,8 @@ import {
   validateAutomationGraph,
 } from '../../server/automation-graph'
 import type { SimulationResult } from '../../server/automation-simulator'
+import { AUTOMATION_TEMPLATES } from '../../lib/automation-templates'
+import type { AutomationTemplate } from '../../lib/automation-templates'
 
 export const Route = createFileRoute('/_app/sequencias')({
   component: AutomationStudio,
@@ -222,6 +224,7 @@ function AutomationStudio() {
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [simulation, setSimulation] = useState<SimulationResult | null>(null)
   const [simulationReplies, setSimulationReplies] = useState('')
+  const [templatePicker, setTemplatePicker] = useState(false)
   const [history, setHistory] = useState<AutomationGraph[]>([])
 
   const loadCatalogs = useCallback(async () => {
@@ -315,24 +318,30 @@ function AutomationStudio() {
     setFeedback(null)
   }
 
-  async function createFlow() {
-    const name = window.prompt('Nome da nova automação:', 'Nova jornada')
+  async function createFlow(template?: AutomationTemplate) {
+    const name = window.prompt(
+      'Nome da nova automação:',
+      template?.name ?? 'Nova jornada',
+    )
     if (!name?.trim()) return
     setBusy('create')
+    setTemplatePicker(false)
     try {
       const result = await apiFetch<{ id: string }>('/api/automations', {
         method: 'POST',
         body: JSON.stringify({
           name: name.trim(),
-          description: '',
-          graph: starterGraph(),
+          description: template?.summary ?? '',
+          graph: template?.graph ?? starterGraph(),
         }),
       })
       setSelectedFlowId(result.id)
       await load(result.id)
       setFeedback({
         tone: 'success',
-        text: 'Jornada criada. Configure, valide e publique quando estiver pronta.',
+        text: template
+          ? `Jornada criada a partir de "${template.name}". ${template.nextStep}`
+          : 'Jornada criada. Configure, valide e publique quando estiver pronta.',
       })
     } catch (error) {
       setFeedback({ tone: 'error', text: errorMessage(error) })
@@ -598,7 +607,7 @@ function AutomationStudio() {
             </Link>
             <button
               className="button button-dark"
-              onClick={() => void createFlow()}
+              onClick={() => setTemplatePicker(true)}
               disabled={!canManage || Boolean(busy)}
             >
               <Plus size={16} /> Nova automação
@@ -977,6 +986,14 @@ function AutomationStudio() {
           )}
         </aside>
       </div>
+      {templatePicker && (
+        <TemplatePicker
+          busy={Boolean(busy)}
+          onPick={(template) => void createFlow(template)}
+          onBlank={() => void createFlow()}
+          onClose={() => setTemplatePicker(false)}
+        />
+      )}
       {simulation && (
         <SimulationPanel
           result={simulation}
@@ -1027,6 +1044,64 @@ function FlowNodeCard({
       </span>
       <i />
     </button>
+  )
+}
+
+/**
+ * Escolha do ponto de partida da jornada.
+ *
+ * A tela em branco é o que mais trava quem abre o editor pela primeira vez, mas
+ * ela continua disponível para quem já sabe o que quer construir.
+ */
+function TemplatePicker(props: {
+  busy: boolean
+  onPick: (template: AutomationTemplate) => void
+  onBlank: () => void
+  onClose: () => void
+}) {
+  return (
+    <section className="automation-templates" aria-label="Modelos de jornada">
+      <header>
+        <div>
+          <span className="eyebrow">COMEÇAR POR</span>
+          <strong>Escolha um modelo pronto</strong>
+        </div>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={props.onClose}
+          aria-label="Fechar modelos"
+        >
+          <X size={16} />
+        </button>
+      </header>
+      <div className="automation-template-grid">
+        {AUTOMATION_TEMPLATES.map((template) => (
+          <button
+            key={template.id}
+            type="button"
+            className="automation-template-card"
+            disabled={props.busy}
+            onClick={() => props.onPick(template)}
+          >
+            <strong>{template.name}</strong>
+            <span>{template.summary}</span>
+            <small>
+              {template.graph.nodes.length} blocos · {template.nextStep}
+            </small>
+          </button>
+        ))}
+        <button
+          type="button"
+          className="automation-template-card is-blank"
+          disabled={props.busy}
+          onClick={props.onBlank}
+        >
+          <strong>Começar do zero</strong>
+          <span>Uma entrada, uma mensagem e um encerramento.</span>
+        </button>
+      </div>
+    </section>
   )
 }
 
