@@ -9951,3 +9951,99 @@ select,
 .automation-hint strong {
   color: var(--ink);
 }
+
+/* Resultado do teste de jornada. */
+.automation-simulation {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.automation-simulation > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.automation-simulation > header strong {
+  display: block;
+  font-size: 12px;
+}
+.automation-simulation-input {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.automation-simulation-input span {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.automation-simulation-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.automation-simulation-steps li {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  gap: 9px;
+  align-items: start;
+}
+.automation-simulation-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-top: 4px;
+}
+.automation-simulation-steps strong {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.automation-simulation-steps p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.automation-simulation-bubble {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px 10px 10px 2px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.automation-simulation-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+.automation-simulation-choices span {
+  padding: 3px 9px;
+  border: 1px solid var(--blue);
+  border-radius: 999px;
+  color: var(--blue);
+  font-size: 10px;
+}
+.automation-simulation-reply {
+  color: var(--muted);
+  font-style: italic;
+}
+.automation-simulation-warning {
+  color: var(--orange-dark);
+}

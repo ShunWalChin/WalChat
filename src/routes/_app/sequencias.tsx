@@ -15,6 +15,7 @@ import {
   MessageSquareText,
   Network,
   Play,
+  PlayCircle,
   Plus,
   Rocket,
   Save,
@@ -27,6 +28,7 @@ import {
   Undo2,
   Webhook,
   Workflow,
+  X,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
@@ -43,6 +45,7 @@ import {
   AutomationGraphError,
   validateAutomationGraph,
 } from '../../server/automation-graph'
+import type { SimulationResult } from '../../server/automation-simulator'
 
 export const Route = createFileRoute('/_app/sequencias')({
   component: AutomationStudio,
@@ -186,9 +189,14 @@ const NODE_META: Record<
     icon: CircleStop,
   },
 }
+/** Quebra de linha em qualquer sistema; o textarea pode chegar com CRLF. */
+const SPLIT_LINES = /\r?\n/
+
 const PALETTE: NodeType[] = [
   'message',
+  'user_input',
   'ai_reply',
+  'external_request',
   'delay',
   'condition',
   'random_split',
@@ -212,6 +220,8 @@ function AutomationStudio() {
   const [zoom, setZoom] = useState(0.88)
   const [busy, setBusy] = useState<string | null>('load')
   const [feedback, setFeedback] = useState<Feedback | null>(null)
+  const [simulation, setSimulation] = useState<SimulationResult | null>(null)
+  const [simulationReplies, setSimulationReplies] = useState('')
   const [history, setHistory] = useState<AutomationGraph[]>([])
 
   const loadCatalogs = useCallback(async () => {
@@ -486,6 +496,37 @@ function AutomationStudio() {
       setFeedback({ tone: 'error', text: errorMessage(error) })
     }
   }
+  /** Roda o teste contra o grafo em edição, sem precisar salvar antes. */
+  async function runSimulation() {
+    if (!draft || !detail) return
+    setBusy('simulate')
+    try {
+      const result = await apiFetch<SimulationResult>(
+        `/api/automations/${detail.flow.id}/simulate`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            graph: draft,
+            replies: simulationReplies
+              .split(SPLIT_LINES)
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .slice(0, 20),
+          }),
+        },
+      )
+      setSimulation(result)
+      setFeedback(null)
+    } catch (error) {
+      setFeedback({
+        tone: 'error',
+        text: error instanceof Error ? error.message : 'Falha ao simular.',
+      })
+    } finally {
+      setBusy(null)
+    }
+  }
+
   function updateNode(node: AutomationNode) {
     if (!draft) return
     // Mexer nas escolhas muda as saídas do bloco. Reconciliar aqui evita que o
@@ -713,6 +754,19 @@ function AutomationStudio() {
                   </button>
                   <button
                     className="button button-outline"
+                    onClick={() => void runSimulation()}
+                    disabled={Boolean(busy)}
+                    title="Percorre a jornada sem enviar nada"
+                  >
+                    {busy === 'simulate' ? (
+                      <LoaderCircle className="spin" size={15} />
+                    ) : (
+                      <PlayCircle size={15} />
+                    )}{' '}
+                    Testar
+                  </button>
+                  <button
+                    className="button button-outline"
                     onClick={() => void saveDraft()}
                     disabled={!canManage || !hasChanges || Boolean(busy)}
                   >
@@ -923,6 +977,16 @@ function AutomationStudio() {
           )}
         </aside>
       </div>
+      {simulation && (
+        <SimulationPanel
+          result={simulation}
+          replies={simulationReplies}
+          onRepliesChange={setSimulationReplies}
+          onRun={() => void runSimulation()}
+          onClose={() => setSimulation(null)}
+          busy={Boolean(busy)}
+        />
+      )}
       {detail && <ExecutionTrail executions={detail.executions} />}
     </div>
   )
@@ -963,6 +1027,112 @@ function FlowNodeCard({
       </span>
       <i />
     </button>
+  )
+}
+
+/** Rótulo do desfecho da simulação, na linguagem do operador. */
+const SIMULATION_STATUS_LABEL: Record<SimulationResult['status'], string> = {
+  completed: 'A jornada chegou ao fim',
+  awaiting_reply: 'Parou esperando o contato responder',
+  step_limit: 'A jornada passou do limite de passos',
+  error: 'A jornada não pôde continuar',
+}
+
+/**
+ * Resultado do teste de fluxo.
+ *
+ * Mostra o texto exato que sairia — já com o rodapé de opt-out — porque a
+ * diferença entre o que foi digitado e o que o contato recebe é justamente o
+ * que costuma surpreender depois de publicar.
+ */
+function SimulationPanel(props: {
+  result: SimulationResult
+  replies: string
+  onRepliesChange: (value: string) => void
+  onRun: () => void
+  onClose: () => void
+  busy: boolean
+}) {
+  const { result } = props
+  return (
+    <section className="automation-simulation" aria-label="Teste da jornada">
+      <header>
+        <div>
+          <span className="eyebrow">TESTE</span>
+          <strong>{SIMULATION_STATUS_LABEL[result.status]}</strong>
+        </div>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={props.onClose}
+          aria-label="Fechar teste"
+        >
+          <X size={16} />
+        </button>
+      </header>
+
+      <label className="automation-simulation-input">
+        <span>Respostas do contato, uma por linha</span>
+        <textarea
+          value={props.replies}
+          rows={3}
+          placeholder={'Quero agendar\nana@exemplo.com.br'}
+          onChange={(event) => props.onRepliesChange(event.target.value)}
+        />
+      </label>
+      <button
+        type="button"
+        className="button button-outline"
+        onClick={props.onRun}
+        disabled={props.busy}
+      >
+        <PlayCircle size={14} /> Rodar de novo
+      </button>
+
+      {result.error && <p className="automation-hint">{result.error}</p>}
+
+      <ol className="automation-simulation-steps">
+        {result.steps.map((step, index) => (
+          <li key={`${step.nodeId}-${index}`}>
+            <span
+              className="automation-simulation-dot"
+              style={{ background: NODE_META[step.nodeType].color }}
+            />
+            <div>
+              <strong>{NODE_META[step.nodeType].label}</strong>
+              <p>{step.summary}</p>
+              {step.outgoing && (
+                <pre className="automation-simulation-bubble">
+                  {step.outgoing}
+                </pre>
+              )}
+              {step.choices && (
+                <div className="automation-simulation-choices">
+                  {step.choices.map((choice) => (
+                    <span key={choice.key}>{choice.label}</span>
+                  ))}
+                </div>
+              )}
+              {step.reply && (
+                <p className="automation-simulation-reply">
+                  Contato respondeu: “{step.reply}”
+                </p>
+              )}
+              {step.warning && (
+                <p className="automation-simulation-warning">{step.warning}</p>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      {result.unusedReplies > 0 && (
+        <p className="automation-hint">
+          {result.unusedReplies} resposta(s) não foram usadas: a jornada
+          terminou antes de perguntar tudo.
+        </p>
+      )}
+    </section>
   )
 }
 
