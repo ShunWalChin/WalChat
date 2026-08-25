@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageIntro } from '../../components/ui'
+import { choiceKeyFromLabel, reconcileEdges } from '../../lib/automation-editor'
 import { apiFetch } from '../../lib/api-client'
 import type {
   AutomationAction,
@@ -486,11 +487,15 @@ function AutomationStudio() {
     }
   }
   function updateNode(node: AutomationNode) {
-    if (draft)
-      commitGraph({
+    if (!draft) return
+    // Mexer nas escolhas muda as saídas do bloco. Reconciliar aqui evita que o
+    // operador precise criar e apagar conexões à mão só para renomear um botão.
+    commitGraph(
+      reconcileEdges({
         ...draft,
         nodes: draft.nodes.map((item) => (item.id === node.id ? node : item)),
-      })
+      }),
+    )
   }
   function updateEdge(branch: string, to: string) {
     if (draft && selectedNode)
@@ -1068,6 +1073,276 @@ function NodeInspector(props: {
           </Field>
         </>
       )}
+      {node.type === 'message' && (
+        <ChoicesEditor
+          node={node}
+          disabled={disabled}
+          onChange={props.onChange}
+        />
+      )}
+      {node.type === 'user_input' && (
+        <>
+          <Field label="Pergunta">
+            <textarea
+              value={node.config.prompt}
+              maxLength={1000}
+              disabled={disabled}
+              onChange={(event) =>
+                props.onChange({
+                  ...node,
+                  config: { ...node.config, prompt: event.target.value },
+                })
+              }
+            />
+          </Field>
+          <Field label="Tipo de resposta esperada">
+            <select
+              value={node.config.expects}
+              disabled={disabled}
+              onChange={(event) =>
+                props.onChange({
+                  ...node,
+                  config: {
+                    ...node.config,
+                    expects: event.target.value as typeof node.config.expects,
+                  },
+                })
+              }
+            >
+              {Object.entries(INPUT_EXPECTATION_LABEL).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Guardar em">
+            <select
+              value={node.config.save.target}
+              disabled={disabled}
+              onChange={(event) =>
+                props.onChange({
+                  ...node,
+                  config: {
+                    ...node.config,
+                    save: {
+                      ...node.config.save,
+                      target: event.target
+                        .value as typeof node.config.save.target,
+                    },
+                  },
+                })
+              }
+            >
+              <option value="custom">Campo personalizado do contato</option>
+              <option value="contact">Dado do contato</option>
+              <option value="bot">Campo do bot</option>
+            </select>
+          </Field>
+          <Field
+            label={
+              node.config.save.target === 'contact'
+                ? 'Qual dado do contato'
+                : 'Chave do campo'
+            }
+          >
+            {node.config.save.target === 'contact' ? (
+              <select
+                value={node.config.save.fieldKey}
+                disabled={disabled}
+                onChange={(event) =>
+                  props.onChange({
+                    ...node,
+                    config: {
+                      ...node.config,
+                      save: {
+                        ...node.config.save,
+                        fieldKey: event.target.value,
+                      },
+                    },
+                  })
+                }
+              >
+                {WRITABLE_CONTACT_FIELDS.map((field) => (
+                  <option key={field.key} value={field.key}>
+                    {field.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                value={node.config.save.fieldKey}
+                maxLength={63}
+                placeholder="orcamento_informado"
+                disabled={disabled}
+                onChange={(event) =>
+                  props.onChange({
+                    ...node,
+                    config: {
+                      ...node.config,
+                      save: {
+                        ...node.config.save,
+                        fieldKey: event.target.value
+                          .toLowerCase()
+                          .replace(/[^a-z0-9_]/g, '_'),
+                      },
+                    },
+                  })
+                }
+              />
+            )}
+          </Field>
+          <Field label="Mensagem quando a resposta não serve">
+            <input
+              value={node.config.invalidMessage ?? ''}
+              maxLength={500}
+              placeholder="Deixe vazio para usar o texto padrão"
+              disabled={disabled}
+              onChange={(event) =>
+                props.onChange({
+                  ...node,
+                  config: {
+                    ...node.config,
+                    invalidMessage: event.target.value || undefined,
+                  },
+                })
+              }
+            />
+          </Field>
+          <div className="automation-ab-grid">
+            <Field label="Tentativas">
+              <input
+                type="number"
+                min={1}
+                max={5}
+                value={node.config.maxAttempts}
+                disabled={disabled}
+                onChange={(event) =>
+                  props.onChange({
+                    ...node,
+                    config: {
+                      ...node.config,
+                      maxAttempts: Math.max(
+                        1,
+                        Math.min(5, Number(event.target.value)),
+                      ),
+                    },
+                  })
+                }
+              />
+            </Field>
+            <Field label="Prazo de resposta (horas)">
+              <input
+                type="number"
+                min={1}
+                max={168}
+                value={Math.round(node.config.timeoutSeconds / 3600)}
+                disabled={disabled}
+                onChange={(event) =>
+                  props.onChange({
+                    ...node,
+                    config: {
+                      ...node.config,
+                      timeoutSeconds:
+                        Math.max(1, Math.min(168, Number(event.target.value))) *
+                        3600,
+                    },
+                  })
+                }
+              />
+            </Field>
+          </div>
+          <p className="automation-hint">
+            Conecte a saída <strong>invalid</strong> para tratar quem não
+            conseguiu responder e a saída <strong>timeout</strong> para quem
+            sumiu. Sem elas, a jornada encerra nesses casos.
+          </p>
+        </>
+      )}
+      {node.type === 'external_request' && (
+        <>
+          <div className="automation-ab-grid">
+            <Field label="Método">
+              <select
+                value={node.config.method}
+                disabled={disabled}
+                onChange={(event) =>
+                  props.onChange({
+                    ...node,
+                    config: {
+                      ...node.config,
+                      method: event.target.value as typeof node.config.method,
+                    },
+                  })
+                }
+              >
+                {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((method) => (
+                  <option key={method} value={method}>
+                    {method}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Tempo limite (segundos)">
+              <input
+                type="number"
+                min={1}
+                max={15}
+                value={Math.round(node.config.timeoutMs / 1000)}
+                disabled={disabled}
+                onChange={(event) =>
+                  props.onChange({
+                    ...node,
+                    config: {
+                      ...node.config,
+                      timeoutMs:
+                        Math.max(1, Math.min(15, Number(event.target.value))) *
+                        1000,
+                    },
+                  })
+                }
+              />
+            </Field>
+          </div>
+          <Field label="URL HTTPS">
+            <input
+              type="url"
+              value={node.config.url}
+              maxLength={2048}
+              placeholder="https://api.seu-sistema.com/leads"
+              disabled={disabled}
+              onChange={(event) =>
+                props.onChange({
+                  ...node,
+                  config: { ...node.config, url: event.target.value },
+                })
+              }
+            />
+          </Field>
+          <Field label="Corpo da requisição">
+            <textarea
+              value={node.config.body ?? ''}
+              maxLength={4000}
+              placeholder={'{"email": "{{custom.email_lead}}"}'}
+              disabled={disabled || node.config.method === 'GET'}
+              onChange={(event) =>
+                props.onChange({
+                  ...node,
+                  config: {
+                    ...node.config,
+                    body: event.target.value || undefined,
+                  },
+                })
+              }
+            />
+          </Field>
+          <p className="automation-hint">
+            Destinos internos e sem HTTPS são recusados. Conecte a saída{' '}
+            <strong>error</strong> para tratar falha da API; sem ela, a execução
+            falha quando a chamada não dá certo.
+          </p>
+        </>
+      )}
       {node.type === 'ai_reply' && (
         <>
           <Field label="Agente ativo">
@@ -1443,6 +1718,144 @@ function NodeInspector(props: {
   )
 }
 
+/** Dados do contato que uma pergunta pode preencher; espelha a allowlist do motor. */
+const WRITABLE_CONTACT_FIELDS = [
+  { key: 'email', label: 'E-mail' },
+  { key: 'phone', label: 'Telefone' },
+  { key: 'full_name', label: 'Nome completo' },
+  { key: 'display_name', label: 'Nome de exibição' },
+  { key: 'company', label: 'Empresa' },
+  { key: 'job_title', label: 'Cargo' },
+  { key: 'city', label: 'Cidade' },
+  { key: 'state', label: 'Estado' },
+  { key: 'country_code', label: 'País' },
+  { key: 'language', label: 'Idioma' },
+  { key: 'timezone', label: 'Fuso horário' },
+]
+
+/**
+ * Botões de resposta do bloco de mensagem.
+ *
+ * O operador escreve só o rótulo. A chave, que vira a saída do bloco e o
+ * payload enviado ao canal, é derivada aqui — pedir as duas coisas seria pedir
+ * que ele entendesse o mecanismo para escrever uma pergunta.
+ */
+function ChoicesEditor(props: {
+  node: Extract<AutomationNode, { type: 'message' }>
+  disabled: boolean
+  onChange: (node: AutomationNode) => void
+}) {
+  const choices = props.node.config.choices ?? []
+  const update = (next: Array<{ key: string; label: string }>) =>
+    props.onChange({
+      ...props.node,
+      config: {
+        ...props.node.config,
+        choices: next.length ? next : undefined,
+        // Sem escolhas não há espera, então o prazo deixa de fazer sentido.
+        awaitTimeoutSeconds: next.length
+          ? props.node.config.awaitTimeoutSeconds
+          : undefined,
+      },
+    })
+
+  return (
+    <>
+      <Field label="Botões de resposta">
+        <div className="automation-choices">
+          {choices.map((choice, index) => (
+            <div className="automation-choice-row" key={choice.key}>
+              <input
+                value={choice.label}
+                maxLength={20}
+                disabled={props.disabled}
+                aria-label={`Rótulo do botão ${index + 1}`}
+                onChange={(event) =>
+                  update(
+                    choices.map((item, current) =>
+                      current === index
+                        ? { ...item, label: event.target.value }
+                        : item,
+                    ),
+                  )
+                }
+              />
+              <button
+                type="button"
+                className="icon-button"
+                disabled={props.disabled}
+                aria-label={`Remover botão ${index + 1}`}
+                onClick={() =>
+                  update(choices.filter((_item, current) => current !== index))
+                }
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+          {choices.length < 10 && (
+            <button
+              type="button"
+              className="button button-outline"
+              disabled={props.disabled}
+              onClick={() =>
+                update([
+                  ...choices,
+                  {
+                    key: choiceKeyFromLabel(
+                      `Opção ${choices.length + 1}`,
+                      choices.map((item) => item.key),
+                    ),
+                    label: `Opção ${choices.length + 1}`,
+                  },
+                ])
+              }
+            >
+              <Plus size={14} /> Adicionar botão
+            </button>
+          )}
+        </div>
+      </Field>
+      {choices.length > 0 && (
+        <>
+          <Field label="Esperar resposta por (horas)">
+            <input
+              type="number"
+              min={1}
+              max={168}
+              value={
+                props.node.config.awaitTimeoutSeconds
+                  ? Math.round(props.node.config.awaitTimeoutSeconds / 3600)
+                  : ''
+              }
+              placeholder="Sem prazo"
+              disabled={props.disabled}
+              onChange={(event) =>
+                props.onChange({
+                  ...props.node,
+                  config: {
+                    ...props.node.config,
+                    awaitTimeoutSeconds: event.target.value
+                      ? Math.max(1, Math.min(168, Number(event.target.value))) *
+                        3600
+                      : undefined,
+                  },
+                })
+              }
+            />
+          </Field>
+          <p className="automation-hint">
+            Cada botão vira uma saída do bloco. No Instagram eles aparecem como
+            respostas rápidas; no WhatsApp, como botões até três opções e como
+            lista a partir da quarta. Quem digitar o texto do botão em vez de
+            tocar nele também é entendido.
+          </p>
+        </>
+      )}
+    </>
+  )
+}
+
 function ActionEditor({
   node,
   catalogs,
@@ -1811,6 +2224,30 @@ function createNode(
           { key: 'contact_id', value: '{{contact.id}}' },
           { key: 'lead_score', value: '{{contact.lead_score}}' },
         ],
+      },
+    }
+  if (type === 'user_input')
+    return {
+      id,
+      type,
+      config: {
+        prompt: 'Qual o melhor e-mail para eu te enviar os detalhes?',
+        expects: 'email',
+        save: { target: 'custom', fieldKey: 'email_lead' },
+        maxAttempts: 2,
+        timeoutSeconds: 86400,
+      },
+    }
+  if (type === 'external_request')
+    return {
+      id,
+      type,
+      config: {
+        method: 'POST',
+        url: 'https://api.seu-sistema.com/leads',
+        headers: [],
+        responseMapping: [],
+        timeoutMs: 8000,
       },
     }
   if (type === 'subflow') {

@@ -9922,3 +9922,32 @@ select,
   line-height: 1.4;
   margin: 0 0 10px;
 }
+
+/* Botões de resposta do bloco de mensagem e avisos do inspetor. */
+.automation-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.automation-choice-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.automation-choice-row input {
+  flex: 1;
+  min-width: 0;
+}
+.automation-hint {
+  margin: 0;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.6;
+}
+.automation-hint strong {
+  color: var(--ink);
+}
