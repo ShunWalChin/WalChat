@@ -991,7 +991,7 @@ function isPublicAddress(address: string) {
     octets.some((value) => !Number.isInteger(value) || value < 0 || value > 255)
   )
     return false
-  const [a, b] = octets
+  const [a, b, c] = octets
   return !(
     a === 0 ||
     a === 10 ||
@@ -999,6 +999,12 @@ function isPublicAddress(address: string) {
     (a === 100 && b >= 64 && b <= 127) ||
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||
+    // 192.0.0.0/24 carrega o NAT64 e outras atribuicoes de protocolo.
+    (a === 192 && b === 0 && c === 0) ||
+    // TEST-NET-1/2/3 nunca sao destinos reais e costumam mapear para lab interno.
+    (a === 192 && b === 0 && c === 2) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113) ||
     (a === 192 && b === 168) ||
     (a === 198 && (b === 18 || b === 19)) ||
     a >= 224

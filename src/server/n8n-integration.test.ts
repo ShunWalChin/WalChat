@@ -115,7 +115,7 @@ describe('assinatura dos webhooks n8n', () => {
 describe('proteção SSRF da conexão n8n', () => {
   const previousDemoMode = process.env.DEMO_MODE
   const publicResolver = (async () => [
-    { address: '203.0.113.20', family: 4 },
+    { address: '93.184.216.34', family: 4 },
   ]) as unknown as typeof lookup
 
   beforeAll(() => {
@@ -140,9 +140,26 @@ describe('proteção SSRF da conexão n8n', () => {
     'https://169.254.169.254/latest/meta-data',
     'ftp://automacoes.exemplo.com',
     'https://usuario:senha@automacoes.exemplo.com',
+    // Faixas reservadas que costumam apontar para laboratório interno.
+    'https://192.0.0.1:5678',
+    'https://192.0.2.15:5678',
+    'https://198.51.100.7:5678',
+    'https://203.0.113.20:5678',
   ])('rejeita destino perigoso %s', async (url) => {
     await expect(assertSafeN8nUrl(url, publicResolver)).rejects.toThrow()
   })
+
+  it.each(['192.0.0.1', '192.0.2.15', '198.51.100.7', '203.0.113.20'])(
+    'rejeita host que resolve para a faixa reservada %s',
+    async (address) => {
+      const reservedResolver = (async () => [
+        { address, family: 4 },
+      ]) as unknown as typeof lookup
+      await expect(
+        assertSafeN8nUrl('https://automacoes.exemplo.com', reservedResolver),
+      ).rejects.toThrow('O host do n8n resolve para uma rede não permitida.')
+    },
+  )
 })
 
 describe('contrato inbound do n8n', () => {
