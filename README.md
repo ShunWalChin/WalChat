@@ -15,7 +15,7 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | Webhooks Meta          | Instagram + WhatsApp com HMAC, idempotência, Inbox e worker                 |
 | Segurança de entrega   | Claim persistente; resposta ambígua não é reenviada automaticamente         |
 | Hardening do backend   | JWT + RLS, ingestão transacional, SKIP LOCKED e limites distribuídos        |
-| Motor de automações    | Automation Studio v2: DAG visual, IA, CRM, n8n, handoff e subfluxos         |
+| Motor de automações    | DAG visual com botões, pergunta validada, requisição externa e simulador    |
 | Reconciliação da fila  | Postgres/BullMQ por `jobId` canônico                                        |
 | OAuth Instagram        | Login, token cifrado por tenant, assinatura e validação implementados       |
 | WhatsApp Cloud API     | Embedded Signup, WABA, telefone, templates e receipts implementados         |
@@ -41,8 +41,14 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 - Gatilhos por comentário, DM, resposta de story ou mensagem do WhatsApp.
 - Embedded Signup do WhatsApp, registro do telefone, sincronização de templates e mídia autenticada.
 - Automation Studio v2: editor visual ligado ao DAG versionado com mensagem e
-  mídia, agente de IA, ação de CRM, condição, delay, A/B determinístico,
+  mídia, botões de resposta, pergunta com validação, agente de IA, requisição
+  externa com mapeamento, ação de CRM, condição, delay, A/B determinístico,
   handoff humano, evento n8n confirmado, subfluxo e trilha de execução.
+- Conversa com botões nos dois canais: o fluxo guarda uma lista única de
+  escolhas e cada canal recebe a forma nativa — respostas rápidas no Instagram,
+  botões até três opções e lista a partir da quarta no WhatsApp.
+- Teste de jornada sem publicar e sem enviar nada, com o texto exato que sairia.
+- Quatro jornadas prontas em PT-BR para clonar em um clique.
 - Agentes de IA em modo copiloto ou autônomo.
 - Reengajamento com preview de elegibilidade, persistência, início,
   pausa/cancelamento e vazão configurável de 30–45/min, protegido pelo gate de
@@ -334,7 +340,7 @@ Configuração, payloads e operação do n8n: [Integração n8n](docs/INTEGRACAO
 
 Suíte implantada e runbook: [Workflows n8n operacionais](docs/WORKFLOWS_N8N_OPERACIONAIS_2026-08-24.md).
 O escopo comparado com o produto de referência está em
-[Paridade Wal Chat × ManyChat](docs/PARIDADE_MANYCHAT_2026-08-22.md).
+[Paridade Wal Chat × ManyChat — 25/08/2026](docs/PARIDADE_MANYCHAT_2026-08-25.md).
 As evidências desta release estão no
 [Relatório de validação do n8n](docs/RELATORIO_VALIDACAO_N8N_2026-08-23.md).
 
