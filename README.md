@@ -431,6 +431,7 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 | [Backup e ativação live](docs/ATIVACAO_LIVE_E_BACKUP_2026-08-24.md)                     | Backup, promoção, testes reais e rollback               |
 | [Deploy 25/08 — paridade e hardening](docs/DEPLOY_2026-08-25_MANYCHAT_E_SEGURANCA.md)   | Migration ensaiada, Nginx e evidências em produção      |
 | [Design system 25/08](docs/DESIGN_SYSTEM_2026-08-25.md)                                 | Tokens, piso tipográfico e contraste medido em 16 telas |
+| [Débito técnico 25/08](docs/DEBITO_TECNICO_2026-08-25.md)                               | Registro priorizado com evidência e plano em três fases |
 
 ## Limites conhecidos do MVP
 
