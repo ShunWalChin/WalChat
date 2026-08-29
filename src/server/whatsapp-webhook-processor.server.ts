@@ -8,6 +8,7 @@ import {
 import { isOptOutKeyword } from './compliance'
 import { assertRateLimit } from './rate-limit.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
+import { assignConversationByRouting } from './team-routing.server'
 
 type WhatsAppContact = {
   wa_id?: string
@@ -139,6 +140,12 @@ export async function processWhatsAppWebhook(
         if (ingestionError) throw ingestionError
         if (!ingestion) throw new Error('ingest_whatsapp_inbound_empty')
         const ingested = ingestion as IngestionResult
+        if (ingested.interaction_inserted)
+          await assignConversationByRouting({
+            admin: supabase,
+            workspaceId: account.workspace_id,
+            conversationId: ingested.conversation_id,
+          })
         if (isOptOutKeyword(normalized.text)) {
           await supabase
             .from('contacts')

@@ -16,22 +16,30 @@ import { Route as ObrigadoRouteImport } from './routes/obrigado'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AppAgentesRouteImport } from './routes/_app/agentes'
+import { Route as AppAuditoriaRouteImport } from './routes/_app/auditoria'
 import { Route as AppAutoLikeRouteImport } from './routes/_app/auto-like'
 import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCommentToDmRouteImport } from './routes/_app/comment-to-dm'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app/configuracoes'
 import { Route as AppContatosRouteImport } from './routes/_app/contatos'
+import { Route as AppCrmRouteImport } from './routes/_app/crm'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppEquipeRouteImport } from './routes/_app/equipe'
 import { Route as AppGatilhosRouteImport } from './routes/_app/gatilhos'
+import { Route as AppGovernancaRouteImport } from './routes/_app/governanca'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
 import { Route as AppInsightsRouteImport } from './routes/_app/insights'
 import { Route as AppIntegracoesRouteImport } from './routes/_app/integracoes'
 import { Route as AppManualRouteImport } from './routes/_app/manual'
 import { Route as AppOperacoesRouteImport } from './routes/_app/operacoes'
 import { Route as AppPublicarRouteImport } from './routes/_app/publicar'
+import { Route as AppRadarRouteImport } from './routes/_app/radar'
 import { Route as AppReengajamentoRouteImport } from './routes/_app/reengajamento'
+import { Route as AppRespostasRouteImport } from './routes/_app/respostas'
 import { Route as AppSequenciasRouteImport } from './routes/_app/sequencias'
+import { Route as AppWebhooksRouteImport } from './routes/_app/webhooks'
 import { Route as AgendarSlugRouteImport } from './routes/agendar/$slug'
+import { Route as ApiAuditRouteImport } from './routes/api/audit'
 import { Route as ApiAutoLikeRouteImport } from './routes/api/auto-like'
 import { Route as ApiAutomationsRouteImport } from './routes/api/automations'
 import { Route as ApiCalendarRouteImport } from './routes/api/calendar'
@@ -39,14 +47,19 @@ import { Route as ApiCampaignsRouteImport } from './routes/api/campaigns'
 import { Route as ApiContactTagsRouteImport } from './routes/api/contact-tags'
 import { Route as ApiContactsRouteImport } from './routes/api/contacts'
 import { Route as ApiContentRouteImport } from './routes/api/content'
+import { Route as ApiCrmRouteImport } from './routes/api/crm'
 import { Route as ApiDashboardRouteImport } from './routes/api/dashboard'
 import { Route as ApiDataDeletionRouteImport } from './routes/api/data-deletion'
+import { Route as ApiGovernanceRouteImport } from './routes/api/governance'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiInboxRouteImport } from './routes/api/inbox'
 import { Route as ApiInsightsRouteImport } from './routes/api/insights'
 import { Route as ApiReadyRouteImport } from './routes/api/ready'
 import { Route as ApiSequencesRouteImport } from './routes/api/sequences'
+import { Route as ApiTeamRouteImport } from './routes/api/team'
+import { Route as ApiTemplatesRouteImport } from './routes/api/templates'
 import { Route as ApiTriggersRouteImport } from './routes/api/triggers'
+import { Route as ApiWebhookSourcesRouteImport } from './routes/api/webhook-sources'
 import { Route as ApiWorkspacesRouteImport } from './routes/api/workspaces'
 import { Route as ApiAiAgentsRouteImport } from './routes/api/ai/agents'
 import { Route as ApiAiKnowledgeRouteImport } from './routes/api/ai/knowledge'
@@ -59,11 +72,14 @@ import { Route as ApiCalendarBookingsRouteImport } from './routes/api/calendar/b
 import { Route as ApiComplianceCheckRouteImport } from './routes/api/compliance/check'
 import { Route as ApiContactsContactIdRouteImport } from './routes/api/contacts/$contactId'
 import { Route as ApiContactsBulkRouteImport } from './routes/api/contacts/bulk'
+import { Route as ApiCrmLeadIdRouteImport } from './routes/api/crm/$leadId'
+import { Route as ApiCrmRadarRouteImport } from './routes/api/crm/radar'
 import { Route as ApiMessagesSendRouteImport } from './routes/api/messages/send'
 import { Route as ApiOperationsGoLiveRouteImport } from './routes/api/operations/go-live'
 import { Route as ApiOperationsWebhooksRouteImport } from './routes/api/operations/webhooks'
 import { Route as ApiPrivacyDeletionRequestsRouteImport } from './routes/api/privacy/deletion-requests'
 import { Route as ApiPublicReviewsRouteImport } from './routes/api/public/reviews'
+import { Route as ApiTemplatesTemplateIdRouteImport } from './routes/api/templates/$templateId'
 import { Route as ApiAutomationsFlowIdExecuteRouteImport } from './routes/api/automations/$flowId/execute'
 import { Route as ApiAutomationsFlowIdSimulateRouteImport } from './routes/api/automations/$flowId/simulate'
 import { Route as ApiContactsContactIdNotesRouteImport } from './routes/api/contacts/$contactId/notes'
@@ -91,6 +107,7 @@ import { Route as ApiIntegrationsMetaWhatsappDisconnectRouteImport } from './rou
 import { Route as ApiIntegrationsMetaWhatsappRegisterRouteImport } from './routes/api/integrations/meta/whatsapp/register'
 import { Route as ApiIntegrationsMetaWhatsappTemplatesRouteImport } from './routes/api/integrations/meta/whatsapp/templates'
 import { Route as ApiIntegrationsMetaWhatsappValidateRouteImport } from './routes/api/integrations/meta/whatsapp/validate'
+import { Route as ApiPublicWebhooksLeadsTokenRouteImport } from './routes/api/public/webhooks/leads/$token'
 import { Route as ApiPublicWebhooksN8nConnectionIdRouteImport } from './routes/api/public/webhooks/n8n/$connectionId'
 import { Route as ApiIntegrationsMetaWhatsappMediaMediaIdRouteImport } from './routes/api/integrations/meta/whatsapp/media/$mediaId'
 
@@ -128,6 +145,11 @@ const AppAgentesRoute = AppAgentesRouteImport.update({
   path: '/agentes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAuditoriaRoute = AppAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAutoLikeRoute = AppAutoLikeRouteImport.update({
   id: '/auto-like',
   path: '/auto-like',
@@ -153,14 +175,29 @@ const AppContatosRoute = AppContatosRouteImport.update({
   path: '/contatos',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCrmRoute = AppCrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppEquipeRoute = AppEquipeRouteImport.update({
+  id: '/equipe',
+  path: '/equipe',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppGatilhosRoute = AppGatilhosRouteImport.update({
   id: '/gatilhos',
   path: '/gatilhos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGovernancaRoute = AppGovernancaRouteImport.update({
+  id: '/governanca',
+  path: '/governanca',
   getParentRoute: () => AppRoute,
 } as any)
 const AppInboxRoute = AppInboxRouteImport.update({
@@ -193,9 +230,19 @@ const AppPublicarRoute = AppPublicarRouteImport.update({
   path: '/publicar',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRadarRoute = AppRadarRouteImport.update({
+  id: '/radar',
+  path: '/radar',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppReengajamentoRoute = AppReengajamentoRouteImport.update({
   id: '/reengajamento',
   path: '/reengajamento',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRespostasRoute = AppRespostasRouteImport.update({
+  id: '/respostas',
+  path: '/respostas',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSequenciasRoute = AppSequenciasRouteImport.update({
@@ -203,9 +250,19 @@ const AppSequenciasRoute = AppSequenciasRouteImport.update({
   path: '/sequencias',
   getParentRoute: () => AppRoute,
 } as any)
+const AppWebhooksRoute = AppWebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
+  getParentRoute: () => AppRoute,
+} as any)
 const AgendarSlugRoute = AgendarSlugRouteImport.update({
   id: '/agendar/$slug',
   path: '/agendar/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuditRoute = ApiAuditRouteImport.update({
+  id: '/api/audit',
+  path: '/api/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAutoLikeRoute = ApiAutoLikeRouteImport.update({
@@ -243,6 +300,11 @@ const ApiContentRoute = ApiContentRouteImport.update({
   path: '/api/content',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCrmRoute = ApiCrmRouteImport.update({
+  id: '/api/crm',
+  path: '/api/crm',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDashboardRoute = ApiDashboardRouteImport.update({
   id: '/api/dashboard',
   path: '/api/dashboard',
@@ -251,6 +313,11 @@ const ApiDashboardRoute = ApiDashboardRouteImport.update({
 const ApiDataDeletionRoute = ApiDataDeletionRouteImport.update({
   id: '/api/data-deletion',
   path: '/api/data-deletion',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGovernanceRoute = ApiGovernanceRouteImport.update({
+  id: '/api/governance',
+  path: '/api/governance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -278,9 +345,24 @@ const ApiSequencesRoute = ApiSequencesRouteImport.update({
   path: '/api/sequences',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTeamRoute = ApiTeamRouteImport.update({
+  id: '/api/team',
+  path: '/api/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTemplatesRoute = ApiTemplatesRouteImport.update({
+  id: '/api/templates',
+  path: '/api/templates',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTriggersRoute = ApiTriggersRouteImport.update({
   id: '/api/triggers',
   path: '/api/triggers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhookSourcesRoute = ApiWebhookSourcesRouteImport.update({
+  id: '/api/webhook-sources',
+  path: '/api/webhook-sources',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspacesRoute = ApiWorkspacesRouteImport.update({
@@ -343,6 +425,16 @@ const ApiContactsBulkRoute = ApiContactsBulkRouteImport.update({
   path: '/bulk',
   getParentRoute: () => ApiContactsRoute,
 } as any)
+const ApiCrmLeadIdRoute = ApiCrmLeadIdRouteImport.update({
+  id: '/$leadId',
+  path: '/$leadId',
+  getParentRoute: () => ApiCrmRoute,
+} as any)
+const ApiCrmRadarRoute = ApiCrmRadarRouteImport.update({
+  id: '/radar',
+  path: '/radar',
+  getParentRoute: () => ApiCrmRoute,
+} as any)
 const ApiMessagesSendRoute = ApiMessagesSendRouteImport.update({
   id: '/api/messages/send',
   path: '/api/messages/send',
@@ -368,6 +460,11 @@ const ApiPublicReviewsRoute = ApiPublicReviewsRouteImport.update({
   id: '/api/public/reviews',
   path: '/api/public/reviews',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTemplatesTemplateIdRoute = ApiTemplatesTemplateIdRouteImport.update({
+  id: '/$templateId',
+  path: '/$templateId',
+  getParentRoute: () => ApiTemplatesRoute,
 } as any)
 const ApiAutomationsFlowIdExecuteRoute =
   ApiAutomationsFlowIdExecuteRouteImport.update({
@@ -529,6 +626,12 @@ const ApiIntegrationsMetaWhatsappValidateRoute =
     path: '/api/integrations/meta/whatsapp/validate',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWebhooksLeadsTokenRoute =
+  ApiPublicWebhooksLeadsTokenRouteImport.update({
+    id: '/api/public/webhooks/leads/$token',
+    path: '/api/public/webhooks/leads/$token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksN8nConnectionIdRoute =
   ApiPublicWebhooksN8nConnectionIdRouteImport.update({
     id: '/api/public/webhooks/n8n/$connectionId',
@@ -549,22 +652,30 @@ export interface FileRoutesByFullPath {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/agentes': typeof AppAgentesRoute
+  '/auditoria': typeof AppAuditoriaRoute
   '/auto-like': typeof AppAutoLikeRoute
   '/calendario': typeof AppCalendarioRoute
   '/comment-to-dm': typeof AppCommentToDmRoute
   '/configuracoes': typeof AppConfiguracoesRoute
   '/contatos': typeof AppContatosRoute
+  '/crm': typeof AppCrmRoute
   '/dashboard': typeof AppDashboardRoute
+  '/equipe': typeof AppEquipeRoute
   '/gatilhos': typeof AppGatilhosRoute
+  '/governanca': typeof AppGovernancaRoute
   '/inbox': typeof AppInboxRoute
   '/insights': typeof AppInsightsRoute
   '/integracoes': typeof AppIntegracoesRoute
   '/manual': typeof AppManualRoute
   '/operacoes': typeof AppOperacoesRoute
   '/publicar': typeof AppPublicarRoute
+  '/radar': typeof AppRadarRoute
   '/reengajamento': typeof AppReengajamentoRoute
+  '/respostas': typeof AppRespostasRoute
   '/sequencias': typeof AppSequenciasRoute
+  '/webhooks': typeof AppWebhooksRoute
   '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/audit': typeof ApiAuditRoute
   '/api/auto-like': typeof ApiAutoLikeRoute
   '/api/automations': typeof ApiAutomationsRouteWithChildren
   '/api/calendar': typeof ApiCalendarRouteWithChildren
@@ -572,14 +683,19 @@ export interface FileRoutesByFullPath {
   '/api/contact-tags': typeof ApiContactTagsRoute
   '/api/contacts': typeof ApiContactsRouteWithChildren
   '/api/content': typeof ApiContentRoute
+  '/api/crm': typeof ApiCrmRouteWithChildren
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
+  '/api/governance': typeof ApiGovernanceRoute
   '/api/health': typeof ApiHealthRoute
   '/api/inbox': typeof ApiInboxRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/ready': typeof ApiReadyRoute
   '/api/sequences': typeof ApiSequencesRoute
+  '/api/team': typeof ApiTeamRoute
+  '/api/templates': typeof ApiTemplatesRouteWithChildren
   '/api/triggers': typeof ApiTriggersRoute
+  '/api/webhook-sources': typeof ApiWebhookSourcesRoute
   '/api/workspaces': typeof ApiWorkspacesRoute
   '/api/ai/agents': typeof ApiAiAgentsRoute
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
@@ -592,11 +708,14 @@ export interface FileRoutesByFullPath {
   '/api/compliance/check': typeof ApiComplianceCheckRoute
   '/api/contacts/$contactId': typeof ApiContactsContactIdRouteWithChildren
   '/api/contacts/bulk': typeof ApiContactsBulkRoute
+  '/api/crm/$leadId': typeof ApiCrmLeadIdRoute
+  '/api/crm/radar': typeof ApiCrmRadarRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
   '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
   '/api/public/reviews': typeof ApiPublicReviewsRoute
+  '/api/templates/$templateId': typeof ApiTemplatesTemplateIdRoute
   '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
   '/api/automations/$flowId/simulate': typeof ApiAutomationsFlowIdSimulateRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
@@ -624,6 +743,7 @@ export interface FileRoutesByFullPath {
   '/api/integrations/meta/whatsapp/register': typeof ApiIntegrationsMetaWhatsappRegisterRoute
   '/api/integrations/meta/whatsapp/templates': typeof ApiIntegrationsMetaWhatsappTemplatesRoute
   '/api/integrations/meta/whatsapp/validate': typeof ApiIntegrationsMetaWhatsappValidateRoute
+  '/api/public/webhooks/leads/$token': typeof ApiPublicWebhooksLeadsTokenRoute
   '/api/public/webhooks/n8n/$connectionId': typeof ApiPublicWebhooksN8nConnectionIdRoute
   '/api/integrations/meta/whatsapp/media/$mediaId': typeof ApiIntegrationsMetaWhatsappMediaMediaIdRoute
 }
@@ -634,22 +754,30 @@ export interface FileRoutesByTo {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/agentes': typeof AppAgentesRoute
+  '/auditoria': typeof AppAuditoriaRoute
   '/auto-like': typeof AppAutoLikeRoute
   '/calendario': typeof AppCalendarioRoute
   '/comment-to-dm': typeof AppCommentToDmRoute
   '/configuracoes': typeof AppConfiguracoesRoute
   '/contatos': typeof AppContatosRoute
+  '/crm': typeof AppCrmRoute
   '/dashboard': typeof AppDashboardRoute
+  '/equipe': typeof AppEquipeRoute
   '/gatilhos': typeof AppGatilhosRoute
+  '/governanca': typeof AppGovernancaRoute
   '/inbox': typeof AppInboxRoute
   '/insights': typeof AppInsightsRoute
   '/integracoes': typeof AppIntegracoesRoute
   '/manual': typeof AppManualRoute
   '/operacoes': typeof AppOperacoesRoute
   '/publicar': typeof AppPublicarRoute
+  '/radar': typeof AppRadarRoute
   '/reengajamento': typeof AppReengajamentoRoute
+  '/respostas': typeof AppRespostasRoute
   '/sequencias': typeof AppSequenciasRoute
+  '/webhooks': typeof AppWebhooksRoute
   '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/audit': typeof ApiAuditRoute
   '/api/auto-like': typeof ApiAutoLikeRoute
   '/api/automations': typeof ApiAutomationsRouteWithChildren
   '/api/calendar': typeof ApiCalendarRouteWithChildren
@@ -657,14 +785,19 @@ export interface FileRoutesByTo {
   '/api/contact-tags': typeof ApiContactTagsRoute
   '/api/contacts': typeof ApiContactsRouteWithChildren
   '/api/content': typeof ApiContentRoute
+  '/api/crm': typeof ApiCrmRouteWithChildren
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
+  '/api/governance': typeof ApiGovernanceRoute
   '/api/health': typeof ApiHealthRoute
   '/api/inbox': typeof ApiInboxRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/ready': typeof ApiReadyRoute
   '/api/sequences': typeof ApiSequencesRoute
+  '/api/team': typeof ApiTeamRoute
+  '/api/templates': typeof ApiTemplatesRouteWithChildren
   '/api/triggers': typeof ApiTriggersRoute
+  '/api/webhook-sources': typeof ApiWebhookSourcesRoute
   '/api/workspaces': typeof ApiWorkspacesRoute
   '/api/ai/agents': typeof ApiAiAgentsRoute
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
@@ -677,11 +810,14 @@ export interface FileRoutesByTo {
   '/api/compliance/check': typeof ApiComplianceCheckRoute
   '/api/contacts/$contactId': typeof ApiContactsContactIdRouteWithChildren
   '/api/contacts/bulk': typeof ApiContactsBulkRoute
+  '/api/crm/$leadId': typeof ApiCrmLeadIdRoute
+  '/api/crm/radar': typeof ApiCrmRadarRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
   '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
   '/api/public/reviews': typeof ApiPublicReviewsRoute
+  '/api/templates/$templateId': typeof ApiTemplatesTemplateIdRoute
   '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
   '/api/automations/$flowId/simulate': typeof ApiAutomationsFlowIdSimulateRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
@@ -709,6 +845,7 @@ export interface FileRoutesByTo {
   '/api/integrations/meta/whatsapp/register': typeof ApiIntegrationsMetaWhatsappRegisterRoute
   '/api/integrations/meta/whatsapp/templates': typeof ApiIntegrationsMetaWhatsappTemplatesRoute
   '/api/integrations/meta/whatsapp/validate': typeof ApiIntegrationsMetaWhatsappValidateRoute
+  '/api/public/webhooks/leads/$token': typeof ApiPublicWebhooksLeadsTokenRoute
   '/api/public/webhooks/n8n/$connectionId': typeof ApiPublicWebhooksN8nConnectionIdRoute
   '/api/integrations/meta/whatsapp/media/$mediaId': typeof ApiIntegrationsMetaWhatsappMediaMediaIdRoute
 }
@@ -721,22 +858,30 @@ export interface FileRoutesById {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/_app/agentes': typeof AppAgentesRoute
+  '/_app/auditoria': typeof AppAuditoriaRoute
   '/_app/auto-like': typeof AppAutoLikeRoute
   '/_app/calendario': typeof AppCalendarioRoute
   '/_app/comment-to-dm': typeof AppCommentToDmRoute
   '/_app/configuracoes': typeof AppConfiguracoesRoute
   '/_app/contatos': typeof AppContatosRoute
+  '/_app/crm': typeof AppCrmRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/equipe': typeof AppEquipeRoute
   '/_app/gatilhos': typeof AppGatilhosRoute
+  '/_app/governanca': typeof AppGovernancaRoute
   '/_app/inbox': typeof AppInboxRoute
   '/_app/insights': typeof AppInsightsRoute
   '/_app/integracoes': typeof AppIntegracoesRoute
   '/_app/manual': typeof AppManualRoute
   '/_app/operacoes': typeof AppOperacoesRoute
   '/_app/publicar': typeof AppPublicarRoute
+  '/_app/radar': typeof AppRadarRoute
   '/_app/reengajamento': typeof AppReengajamentoRoute
+  '/_app/respostas': typeof AppRespostasRoute
   '/_app/sequencias': typeof AppSequenciasRoute
+  '/_app/webhooks': typeof AppWebhooksRoute
   '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/audit': typeof ApiAuditRoute
   '/api/auto-like': typeof ApiAutoLikeRoute
   '/api/automations': typeof ApiAutomationsRouteWithChildren
   '/api/calendar': typeof ApiCalendarRouteWithChildren
@@ -744,14 +889,19 @@ export interface FileRoutesById {
   '/api/contact-tags': typeof ApiContactTagsRoute
   '/api/contacts': typeof ApiContactsRouteWithChildren
   '/api/content': typeof ApiContentRoute
+  '/api/crm': typeof ApiCrmRouteWithChildren
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
+  '/api/governance': typeof ApiGovernanceRoute
   '/api/health': typeof ApiHealthRoute
   '/api/inbox': typeof ApiInboxRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/ready': typeof ApiReadyRoute
   '/api/sequences': typeof ApiSequencesRoute
+  '/api/team': typeof ApiTeamRoute
+  '/api/templates': typeof ApiTemplatesRouteWithChildren
   '/api/triggers': typeof ApiTriggersRoute
+  '/api/webhook-sources': typeof ApiWebhookSourcesRoute
   '/api/workspaces': typeof ApiWorkspacesRoute
   '/api/ai/agents': typeof ApiAiAgentsRoute
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
@@ -764,11 +914,14 @@ export interface FileRoutesById {
   '/api/compliance/check': typeof ApiComplianceCheckRoute
   '/api/contacts/$contactId': typeof ApiContactsContactIdRouteWithChildren
   '/api/contacts/bulk': typeof ApiContactsBulkRoute
+  '/api/crm/$leadId': typeof ApiCrmLeadIdRoute
+  '/api/crm/radar': typeof ApiCrmRadarRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
   '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
   '/api/public/reviews': typeof ApiPublicReviewsRoute
+  '/api/templates/$templateId': typeof ApiTemplatesTemplateIdRoute
   '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
   '/api/automations/$flowId/simulate': typeof ApiAutomationsFlowIdSimulateRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
@@ -796,6 +949,7 @@ export interface FileRoutesById {
   '/api/integrations/meta/whatsapp/register': typeof ApiIntegrationsMetaWhatsappRegisterRoute
   '/api/integrations/meta/whatsapp/templates': typeof ApiIntegrationsMetaWhatsappTemplatesRoute
   '/api/integrations/meta/whatsapp/validate': typeof ApiIntegrationsMetaWhatsappValidateRoute
+  '/api/public/webhooks/leads/$token': typeof ApiPublicWebhooksLeadsTokenRoute
   '/api/public/webhooks/n8n/$connectionId': typeof ApiPublicWebhooksN8nConnectionIdRoute
   '/api/integrations/meta/whatsapp/media/$mediaId': typeof ApiIntegrationsMetaWhatsappMediaMediaIdRoute
 }
@@ -808,22 +962,30 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/agentes'
+    | '/auditoria'
     | '/auto-like'
     | '/calendario'
     | '/comment-to-dm'
     | '/configuracoes'
     | '/contatos'
+    | '/crm'
     | '/dashboard'
+    | '/equipe'
     | '/gatilhos'
+    | '/governanca'
     | '/inbox'
     | '/insights'
     | '/integracoes'
     | '/manual'
     | '/operacoes'
     | '/publicar'
+    | '/radar'
     | '/reengajamento'
+    | '/respostas'
     | '/sequencias'
+    | '/webhooks'
     | '/agendar/$slug'
+    | '/api/audit'
     | '/api/auto-like'
     | '/api/automations'
     | '/api/calendar'
@@ -831,14 +993,19 @@ export interface FileRouteTypes {
     | '/api/contact-tags'
     | '/api/contacts'
     | '/api/content'
+    | '/api/crm'
     | '/api/dashboard'
     | '/api/data-deletion'
+    | '/api/governance'
     | '/api/health'
     | '/api/inbox'
     | '/api/insights'
     | '/api/ready'
     | '/api/sequences'
+    | '/api/team'
+    | '/api/templates'
     | '/api/triggers'
+    | '/api/webhook-sources'
     | '/api/workspaces'
     | '/api/ai/agents'
     | '/api/ai/knowledge'
@@ -851,11 +1018,14 @@ export interface FileRouteTypes {
     | '/api/compliance/check'
     | '/api/contacts/$contactId'
     | '/api/contacts/bulk'
+    | '/api/crm/$leadId'
+    | '/api/crm/radar'
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
     | '/api/privacy/deletion-requests'
     | '/api/public/reviews'
+    | '/api/templates/$templateId'
     | '/api/automations/$flowId/execute'
     | '/api/automations/$flowId/simulate'
     | '/api/contacts/$contactId/notes'
@@ -883,6 +1053,7 @@ export interface FileRouteTypes {
     | '/api/integrations/meta/whatsapp/register'
     | '/api/integrations/meta/whatsapp/templates'
     | '/api/integrations/meta/whatsapp/validate'
+    | '/api/public/webhooks/leads/$token'
     | '/api/public/webhooks/n8n/$connectionId'
     | '/api/integrations/meta/whatsapp/media/$mediaId'
   fileRoutesByTo: FileRoutesByTo
@@ -893,22 +1064,30 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/agentes'
+    | '/auditoria'
     | '/auto-like'
     | '/calendario'
     | '/comment-to-dm'
     | '/configuracoes'
     | '/contatos'
+    | '/crm'
     | '/dashboard'
+    | '/equipe'
     | '/gatilhos'
+    | '/governanca'
     | '/inbox'
     | '/insights'
     | '/integracoes'
     | '/manual'
     | '/operacoes'
     | '/publicar'
+    | '/radar'
     | '/reengajamento'
+    | '/respostas'
     | '/sequencias'
+    | '/webhooks'
     | '/agendar/$slug'
+    | '/api/audit'
     | '/api/auto-like'
     | '/api/automations'
     | '/api/calendar'
@@ -916,14 +1095,19 @@ export interface FileRouteTypes {
     | '/api/contact-tags'
     | '/api/contacts'
     | '/api/content'
+    | '/api/crm'
     | '/api/dashboard'
     | '/api/data-deletion'
+    | '/api/governance'
     | '/api/health'
     | '/api/inbox'
     | '/api/insights'
     | '/api/ready'
     | '/api/sequences'
+    | '/api/team'
+    | '/api/templates'
     | '/api/triggers'
+    | '/api/webhook-sources'
     | '/api/workspaces'
     | '/api/ai/agents'
     | '/api/ai/knowledge'
@@ -936,11 +1120,14 @@ export interface FileRouteTypes {
     | '/api/compliance/check'
     | '/api/contacts/$contactId'
     | '/api/contacts/bulk'
+    | '/api/crm/$leadId'
+    | '/api/crm/radar'
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
     | '/api/privacy/deletion-requests'
     | '/api/public/reviews'
+    | '/api/templates/$templateId'
     | '/api/automations/$flowId/execute'
     | '/api/automations/$flowId/simulate'
     | '/api/contacts/$contactId/notes'
@@ -968,6 +1155,7 @@ export interface FileRouteTypes {
     | '/api/integrations/meta/whatsapp/register'
     | '/api/integrations/meta/whatsapp/templates'
     | '/api/integrations/meta/whatsapp/validate'
+    | '/api/public/webhooks/leads/$token'
     | '/api/public/webhooks/n8n/$connectionId'
     | '/api/integrations/meta/whatsapp/media/$mediaId'
   id:
@@ -979,22 +1167,30 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/_app/agentes'
+    | '/_app/auditoria'
     | '/_app/auto-like'
     | '/_app/calendario'
     | '/_app/comment-to-dm'
     | '/_app/configuracoes'
     | '/_app/contatos'
+    | '/_app/crm'
     | '/_app/dashboard'
+    | '/_app/equipe'
     | '/_app/gatilhos'
+    | '/_app/governanca'
     | '/_app/inbox'
     | '/_app/insights'
     | '/_app/integracoes'
     | '/_app/manual'
     | '/_app/operacoes'
     | '/_app/publicar'
+    | '/_app/radar'
     | '/_app/reengajamento'
+    | '/_app/respostas'
     | '/_app/sequencias'
+    | '/_app/webhooks'
     | '/agendar/$slug'
+    | '/api/audit'
     | '/api/auto-like'
     | '/api/automations'
     | '/api/calendar'
@@ -1002,14 +1198,19 @@ export interface FileRouteTypes {
     | '/api/contact-tags'
     | '/api/contacts'
     | '/api/content'
+    | '/api/crm'
     | '/api/dashboard'
     | '/api/data-deletion'
+    | '/api/governance'
     | '/api/health'
     | '/api/inbox'
     | '/api/insights'
     | '/api/ready'
     | '/api/sequences'
+    | '/api/team'
+    | '/api/templates'
     | '/api/triggers'
+    | '/api/webhook-sources'
     | '/api/workspaces'
     | '/api/ai/agents'
     | '/api/ai/knowledge'
@@ -1022,11 +1223,14 @@ export interface FileRouteTypes {
     | '/api/compliance/check'
     | '/api/contacts/$contactId'
     | '/api/contacts/bulk'
+    | '/api/crm/$leadId'
+    | '/api/crm/radar'
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
     | '/api/privacy/deletion-requests'
     | '/api/public/reviews'
+    | '/api/templates/$templateId'
     | '/api/automations/$flowId/execute'
     | '/api/automations/$flowId/simulate'
     | '/api/contacts/$contactId/notes'
@@ -1054,6 +1258,7 @@ export interface FileRouteTypes {
     | '/api/integrations/meta/whatsapp/register'
     | '/api/integrations/meta/whatsapp/templates'
     | '/api/integrations/meta/whatsapp/validate'
+    | '/api/public/webhooks/leads/$token'
     | '/api/public/webhooks/n8n/$connectionId'
     | '/api/integrations/meta/whatsapp/media/$mediaId'
   fileRoutesById: FileRoutesById
@@ -1066,6 +1271,7 @@ export interface RootRouteChildren {
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
   AgendarSlugRoute: typeof AgendarSlugRoute
+  ApiAuditRoute: typeof ApiAuditRoute
   ApiAutoLikeRoute: typeof ApiAutoLikeRoute
   ApiAutomationsRoute: typeof ApiAutomationsRouteWithChildren
   ApiCalendarRoute: typeof ApiCalendarRouteWithChildren
@@ -1073,14 +1279,19 @@ export interface RootRouteChildren {
   ApiContactTagsRoute: typeof ApiContactTagsRoute
   ApiContactsRoute: typeof ApiContactsRouteWithChildren
   ApiContentRoute: typeof ApiContentRoute
+  ApiCrmRoute: typeof ApiCrmRouteWithChildren
   ApiDashboardRoute: typeof ApiDashboardRoute
   ApiDataDeletionRoute: typeof ApiDataDeletionRoute
+  ApiGovernanceRoute: typeof ApiGovernanceRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiInboxRoute: typeof ApiInboxRoute
   ApiInsightsRoute: typeof ApiInsightsRoute
   ApiReadyRoute: typeof ApiReadyRoute
   ApiSequencesRoute: typeof ApiSequencesRoute
+  ApiTeamRoute: typeof ApiTeamRoute
+  ApiTemplatesRoute: typeof ApiTemplatesRouteWithChildren
   ApiTriggersRoute: typeof ApiTriggersRoute
+  ApiWebhookSourcesRoute: typeof ApiWebhookSourcesRoute
   ApiWorkspacesRoute: typeof ApiWorkspacesRoute
   ApiAiAgentsRoute: typeof ApiAiAgentsRoute
   ApiAiKnowledgeRoute: typeof ApiAiKnowledgeRoute
@@ -1116,6 +1327,7 @@ export interface RootRouteChildren {
   ApiIntegrationsMetaWhatsappRegisterRoute: typeof ApiIntegrationsMetaWhatsappRegisterRoute
   ApiIntegrationsMetaWhatsappTemplatesRoute: typeof ApiIntegrationsMetaWhatsappTemplatesRoute
   ApiIntegrationsMetaWhatsappValidateRoute: typeof ApiIntegrationsMetaWhatsappValidateRoute
+  ApiPublicWebhooksLeadsTokenRoute: typeof ApiPublicWebhooksLeadsTokenRoute
   ApiPublicWebhooksN8nConnectionIdRoute: typeof ApiPublicWebhooksN8nConnectionIdRoute
   ApiIntegrationsMetaWhatsappMediaMediaIdRoute: typeof ApiIntegrationsMetaWhatsappMediaMediaIdRoute
 }
@@ -1171,6 +1383,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgentesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/auditoria': {
+      id: '/_app/auditoria'
+      path: '/auditoria'
+      fullPath: '/auditoria'
+      preLoaderRoute: typeof AppAuditoriaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/auto-like': {
       id: '/_app/auto-like'
       path: '/auto-like'
@@ -1206,6 +1425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppContatosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/crm': {
+      id: '/_app/crm'
+      path: '/crm'
+      fullPath: '/crm'
+      preLoaderRoute: typeof AppCrmRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
@@ -1213,11 +1439,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/equipe': {
+      id: '/_app/equipe'
+      path: '/equipe'
+      fullPath: '/equipe'
+      preLoaderRoute: typeof AppEquipeRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/gatilhos': {
       id: '/_app/gatilhos'
       path: '/gatilhos'
       fullPath: '/gatilhos'
       preLoaderRoute: typeof AppGatilhosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/governanca': {
+      id: '/_app/governanca'
+      path: '/governanca'
+      fullPath: '/governanca'
+      preLoaderRoute: typeof AppGovernancaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/inbox': {
@@ -1262,11 +1502,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPublicarRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/radar': {
+      id: '/_app/radar'
+      path: '/radar'
+      fullPath: '/radar'
+      preLoaderRoute: typeof AppRadarRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/reengajamento': {
       id: '/_app/reengajamento'
       path: '/reengajamento'
       fullPath: '/reengajamento'
       preLoaderRoute: typeof AppReengajamentoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/respostas': {
+      id: '/_app/respostas'
+      path: '/respostas'
+      fullPath: '/respostas'
+      preLoaderRoute: typeof AppRespostasRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/sequencias': {
@@ -1276,11 +1530,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSequenciasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/webhooks': {
+      id: '/_app/webhooks'
+      path: '/webhooks'
+      fullPath: '/webhooks'
+      preLoaderRoute: typeof AppWebhooksRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/agendar/$slug': {
       id: '/agendar/$slug'
       path: '/agendar/$slug'
       fullPath: '/agendar/$slug'
       preLoaderRoute: typeof AgendarSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/audit': {
+      id: '/api/audit'
+      path: '/api/audit'
+      fullPath: '/api/audit'
+      preLoaderRoute: typeof ApiAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auto-like': {
@@ -1332,6 +1600,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiContentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/crm': {
+      id: '/api/crm'
+      path: '/api/crm'
+      fullPath: '/api/crm'
+      preLoaderRoute: typeof ApiCrmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/dashboard': {
       id: '/api/dashboard'
       path: '/api/dashboard'
@@ -1344,6 +1619,13 @@ declare module '@tanstack/react-router' {
       path: '/api/data-deletion'
       fullPath: '/api/data-deletion'
       preLoaderRoute: typeof ApiDataDeletionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/governance': {
+      id: '/api/governance'
+      path: '/api/governance'
+      fullPath: '/api/governance'
+      preLoaderRoute: typeof ApiGovernanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -1381,11 +1663,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSequencesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/team': {
+      id: '/api/team'
+      path: '/api/team'
+      fullPath: '/api/team'
+      preLoaderRoute: typeof ApiTeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/templates': {
+      id: '/api/templates'
+      path: '/api/templates'
+      fullPath: '/api/templates'
+      preLoaderRoute: typeof ApiTemplatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/triggers': {
       id: '/api/triggers'
       path: '/api/triggers'
       fullPath: '/api/triggers'
       preLoaderRoute: typeof ApiTriggersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhook-sources': {
+      id: '/api/webhook-sources'
+      path: '/api/webhook-sources'
+      fullPath: '/api/webhook-sources'
+      preLoaderRoute: typeof ApiWebhookSourcesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/workspaces': {
@@ -1472,6 +1775,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiContactsBulkRouteImport
       parentRoute: typeof ApiContactsRoute
     }
+    '/api/crm/$leadId': {
+      id: '/api/crm/$leadId'
+      path: '/$leadId'
+      fullPath: '/api/crm/$leadId'
+      preLoaderRoute: typeof ApiCrmLeadIdRouteImport
+      parentRoute: typeof ApiCrmRoute
+    }
+    '/api/crm/radar': {
+      id: '/api/crm/radar'
+      path: '/radar'
+      fullPath: '/api/crm/radar'
+      preLoaderRoute: typeof ApiCrmRadarRouteImport
+      parentRoute: typeof ApiCrmRoute
+    }
     '/api/messages/send': {
       id: '/api/messages/send'
       path: '/api/messages/send'
@@ -1506,6 +1823,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/public/reviews'
       preLoaderRoute: typeof ApiPublicReviewsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/templates/$templateId': {
+      id: '/api/templates/$templateId'
+      path: '/$templateId'
+      fullPath: '/api/templates/$templateId'
+      preLoaderRoute: typeof ApiTemplatesTemplateIdRouteImport
+      parentRoute: typeof ApiTemplatesRoute
     }
     '/api/automations/$flowId/execute': {
       id: '/api/automations/$flowId/execute'
@@ -1696,6 +2020,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIntegrationsMetaWhatsappValidateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/leads/$token': {
+      id: '/api/public/webhooks/leads/$token'
+      path: '/api/public/webhooks/leads/$token'
+      fullPath: '/api/public/webhooks/leads/$token'
+      preLoaderRoute: typeof ApiPublicWebhooksLeadsTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/n8n/$connectionId': {
       id: '/api/public/webhooks/n8n/$connectionId'
       path: '/api/public/webhooks/n8n/$connectionId'
@@ -1715,40 +2046,54 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAgentesRoute: typeof AppAgentesRoute
+  AppAuditoriaRoute: typeof AppAuditoriaRoute
   AppAutoLikeRoute: typeof AppAutoLikeRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
   AppCommentToDmRoute: typeof AppCommentToDmRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
   AppContatosRoute: typeof AppContatosRoute
+  AppCrmRoute: typeof AppCrmRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppEquipeRoute: typeof AppEquipeRoute
   AppGatilhosRoute: typeof AppGatilhosRoute
+  AppGovernancaRoute: typeof AppGovernancaRoute
   AppInboxRoute: typeof AppInboxRoute
   AppInsightsRoute: typeof AppInsightsRoute
   AppIntegracoesRoute: typeof AppIntegracoesRoute
   AppManualRoute: typeof AppManualRoute
   AppOperacoesRoute: typeof AppOperacoesRoute
   AppPublicarRoute: typeof AppPublicarRoute
+  AppRadarRoute: typeof AppRadarRoute
   AppReengajamentoRoute: typeof AppReengajamentoRoute
+  AppRespostasRoute: typeof AppRespostasRoute
   AppSequenciasRoute: typeof AppSequenciasRoute
+  AppWebhooksRoute: typeof AppWebhooksRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAgentesRoute: AppAgentesRoute,
+  AppAuditoriaRoute: AppAuditoriaRoute,
   AppAutoLikeRoute: AppAutoLikeRoute,
   AppCalendarioRoute: AppCalendarioRoute,
   AppCommentToDmRoute: AppCommentToDmRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
   AppContatosRoute: AppContatosRoute,
+  AppCrmRoute: AppCrmRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppEquipeRoute: AppEquipeRoute,
   AppGatilhosRoute: AppGatilhosRoute,
+  AppGovernancaRoute: AppGovernancaRoute,
   AppInboxRoute: AppInboxRoute,
   AppInsightsRoute: AppInsightsRoute,
   AppIntegracoesRoute: AppIntegracoesRoute,
   AppManualRoute: AppManualRoute,
   AppOperacoesRoute: AppOperacoesRoute,
   AppPublicarRoute: AppPublicarRoute,
+  AppRadarRoute: AppRadarRoute,
   AppReengajamentoRoute: AppReengajamentoRoute,
+  AppRespostasRoute: AppRespostasRoute,
   AppSequenciasRoute: AppSequenciasRoute,
+  AppWebhooksRoute: AppWebhooksRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -1819,6 +2164,31 @@ const ApiContactsRouteWithChildren = ApiContactsRoute._addFileChildren(
   ApiContactsRouteChildren,
 )
 
+interface ApiCrmRouteChildren {
+  ApiCrmLeadIdRoute: typeof ApiCrmLeadIdRoute
+  ApiCrmRadarRoute: typeof ApiCrmRadarRoute
+}
+
+const ApiCrmRouteChildren: ApiCrmRouteChildren = {
+  ApiCrmLeadIdRoute: ApiCrmLeadIdRoute,
+  ApiCrmRadarRoute: ApiCrmRadarRoute,
+}
+
+const ApiCrmRouteWithChildren =
+  ApiCrmRoute._addFileChildren(ApiCrmRouteChildren)
+
+interface ApiTemplatesRouteChildren {
+  ApiTemplatesTemplateIdRoute: typeof ApiTemplatesTemplateIdRoute
+}
+
+const ApiTemplatesRouteChildren: ApiTemplatesRouteChildren = {
+  ApiTemplatesTemplateIdRoute: ApiTemplatesTemplateIdRoute,
+}
+
+const ApiTemplatesRouteWithChildren = ApiTemplatesRoute._addFileChildren(
+  ApiTemplatesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
@@ -1827,6 +2197,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
   AgendarSlugRoute: AgendarSlugRoute,
+  ApiAuditRoute: ApiAuditRoute,
   ApiAutoLikeRoute: ApiAutoLikeRoute,
   ApiAutomationsRoute: ApiAutomationsRouteWithChildren,
   ApiCalendarRoute: ApiCalendarRouteWithChildren,
@@ -1834,14 +2205,19 @@ const rootRouteChildren: RootRouteChildren = {
   ApiContactTagsRoute: ApiContactTagsRoute,
   ApiContactsRoute: ApiContactsRouteWithChildren,
   ApiContentRoute: ApiContentRoute,
+  ApiCrmRoute: ApiCrmRouteWithChildren,
   ApiDashboardRoute: ApiDashboardRoute,
   ApiDataDeletionRoute: ApiDataDeletionRoute,
+  ApiGovernanceRoute: ApiGovernanceRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiInboxRoute: ApiInboxRoute,
   ApiInsightsRoute: ApiInsightsRoute,
   ApiReadyRoute: ApiReadyRoute,
   ApiSequencesRoute: ApiSequencesRoute,
+  ApiTeamRoute: ApiTeamRoute,
+  ApiTemplatesRoute: ApiTemplatesRouteWithChildren,
   ApiTriggersRoute: ApiTriggersRoute,
+  ApiWebhookSourcesRoute: ApiWebhookSourcesRoute,
   ApiWorkspacesRoute: ApiWorkspacesRoute,
   ApiAiAgentsRoute: ApiAiAgentsRoute,
   ApiAiKnowledgeRoute: ApiAiKnowledgeRoute,
@@ -1882,6 +2258,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiIntegrationsMetaWhatsappTemplatesRoute,
   ApiIntegrationsMetaWhatsappValidateRoute:
     ApiIntegrationsMetaWhatsappValidateRoute,
+  ApiPublicWebhooksLeadsTokenRoute: ApiPublicWebhooksLeadsTokenRoute,
   ApiPublicWebhooksN8nConnectionIdRoute: ApiPublicWebhooksN8nConnectionIdRoute,
   ApiIntegrationsMetaWhatsappMediaMediaIdRoute:
     ApiIntegrationsMetaWhatsappMediaMediaIdRoute,

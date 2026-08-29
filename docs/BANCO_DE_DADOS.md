@@ -67,18 +67,35 @@ erDiagram
 
 ### CRM e Inbox
 
-| Tabela                | Responsabilidade                                                                   |
-| --------------------- | ---------------------------------------------------------------------------------- |
-| `contacts`            | Identidade Meta e perfil CRM: estágio, score, responsável, consentimento e arquivo |
-| `tags`                | Taxonomia manual/automática, descrição e arquivamento reversível                   |
-| `contact_tags`        | Relação N:N com origem manual, gatilho, sequência, importação ou sistema           |
-| `contact_notes`       | Notas internas por contato, com autoria e pin                                      |
-| `contact_audit_log`   | Trilha imutável das ações manuais do CRM                                           |
-| `conversations`       | Caixa, status da janela e atribuição                                               |
-| `messages`            | Mensagens visíveis na conversa                                                     |
-| `interactions_log`    | Auditoria normalizada de entrada, saída e bloqueios                                |
-| `outbound_deliveries` | Claim persistente e resultado de cada DM externa                                   |
-| `conversation_notes`  | Notas internas da equipe, sem envio ao Instagram                                   |
+| Tabela                   | Responsabilidade                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| `contacts`               | Identidade Meta e perfil CRM: estágio, score, responsável, consentimento e arquivo |
+| `tags`                   | Taxonomia manual/automática, descrição e arquivamento reversível                   |
+| `contact_tags`           | Relação N:N com origem manual, gatilho, sequência, importação ou sistema           |
+| `contact_notes`          | Notas internas por contato, com autoria e pin                                      |
+| `contact_audit_log`      | Trilha imutável das ações manuais do CRM                                           |
+| `conversations`          | Caixa, status da janela e atribuição                                               |
+| `messages`               | Mensagens visíveis na conversa                                                     |
+| `interactions_log`       | Auditoria normalizada de entrada, saída e bloqueios                                |
+| `outbound_deliveries`    | Claim persistente e resultado de cada DM externa                                   |
+| `conversation_notes`     | Notas internas da equipe, sem envio ao Instagram                                   |
+| `crm_pipelines`          | Funis comerciais isolados por workspace                                            |
+| `crm_stages`             | Etapas ordenadas e estados terminais do pipeline                                   |
+| `crm_leads`              | Oportunidades, valores, responsáveis, próxima ação e revisão otimista              |
+| `crm_lead_activities`    | Histórico comercial da oportunidade                                                |
+| `crm_lead_scores`        | Probabilidade e faixa calculada da oportunidade                                    |
+| `crm_lead_risk_states`   | Estado materializado de risco por inatividade                                      |
+| `message_templates`      | Respostas rápidas pessoais e compartilhadas                                        |
+| `attendant_availability` | Disponibilidade e capacidade por membro                                            |
+| `webhook_sources`        | Fonte de captação com token irreversível                                           |
+| `webhook_lead_captures`  | Recebimentos externos e estado de processamento                                    |
+| `ai_budgets`             | Limite mensal e política de bloqueio de IA                                         |
+| `ai_agent_versions`      | Snapshots imutáveis das configurações de agentes                                   |
+| `ai_routers`             | Estratégias de roteamento entre agentes                                            |
+| `org_memory_entries`     | Memórias organizacionais curtas e auditáveis                                       |
+| `agent_cases`            | Casos escalados para revisão humana                                                |
+| `ai_execution_log`       | Tokens, latência e resultado sem armazenar conteúdo                                |
+| `api_audit_log`          | Trilha unificada de mutações administrativas                                       |
 
 ### Conteúdo e Insights
 

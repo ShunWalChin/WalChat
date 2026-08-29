@@ -4,10 +4,13 @@ import {
   BarChart3,
   BookOpenCheck,
   Bot,
+  BriefcaseBusiness,
   Cable,
   CalendarDays,
   ChevronDown,
+  ClipboardList,
   ContactRound,
+  GitBranch,
   Heart,
   Inbox,
   LayoutDashboard,
@@ -19,9 +22,12 @@ import {
   Gauge,
   Plus,
   Radio,
+  Radar,
   Send,
   Settings,
   Sparkles,
+  UsersRound,
+  Webhook,
   Workflow,
   X,
   Zap,
@@ -38,7 +44,20 @@ const groups = [
       { to: '/dashboard', label: 'Visão geral', icon: LayoutDashboard },
       { to: '/operacoes', label: 'Operação & Go-Live', icon: Gauge },
       { to: '/inbox', label: 'Inbox', icon: Inbox },
+    ],
+  },
+  {
+    label: 'CRM',
+    items: [
+      { to: '/crm', label: 'Pipeline', icon: BriefcaseBusiness },
+      { to: '/radar', label: 'Radar de risco', icon: Radar },
       { to: '/contatos', label: 'Contatos & tags', icon: ContactRound },
+      {
+        to: '/respostas',
+        label: 'Respostas rápidas',
+        icon: MessageCircleReply,
+      },
+      { to: '/equipe', label: 'Equipe', icon: UsersRound },
     ],
   },
   {
@@ -52,6 +71,7 @@ const groups = [
       },
       { to: '/sequencias', label: 'Sequências', icon: Workflow },
       { to: '/agentes', label: 'Agentes de IA', icon: Bot },
+      { to: '/governanca', label: 'Governança de IA', icon: GitBranch },
       { to: '/reengajamento', label: 'Reengajamento', icon: Megaphone },
       { to: '/auto-like', label: 'Auto-like', icon: Heart },
     ],
@@ -66,7 +86,11 @@ const groups = [
   },
   {
     label: 'SISTEMA',
-    items: [{ to: '/integracoes', label: 'Integrações', icon: Cable }],
+    items: [
+      { to: '/integracoes', label: 'Integrações', icon: Cable },
+      { to: '/webhooks', label: 'Webhooks de leads', icon: Webhook },
+      { to: '/auditoria', label: 'Auditoria', icon: ClipboardList },
+    ],
   },
 ] as const
 
@@ -75,6 +99,13 @@ const titles: Record<string, { eyebrow: string; title: string }> = {
   '/operacoes': { eyebrow: 'PRONTIDÃO E TELEMETRIA', title: 'Operação' },
   '/inbox': { eyebrow: 'CONVERSAS EM TEMPO REAL', title: 'Inbox unificada' },
   '/contatos': { eyebrow: 'BASE DE RELACIONAMENTO', title: 'Contatos & tags' },
+  '/crm': { eyebrow: 'FUNIL COMERCIAL', title: 'Pipeline CRM' },
+  '/radar': { eyebrow: 'OPORTUNIDADES EM RISCO', title: 'Radar comercial' },
+  '/respostas': {
+    eyebrow: 'ATENDIMENTO CONSISTENTE',
+    title: 'Respostas rápidas',
+  },
+  '/equipe': { eyebrow: 'CAPACIDADE E DISTRIBUIÇÃO', title: 'Equipe' },
   '/gatilhos': { eyebrow: 'AUTOMAÇÃO INTELIGENTE', title: 'Gatilhos' },
   '/comment-to-dm': {
     eyebrow: 'CRESCIMENTO COM COMPLIANCE',
@@ -82,6 +113,10 @@ const titles: Record<string, { eyebrow: string; title: string }> = {
   },
   '/sequencias': { eyebrow: 'FUNIS DE DM', title: 'Sequências' },
   '/agentes': { eyebrow: 'OPENAI + GEMINI', title: 'Agentes de IA' },
+  '/governanca': {
+    eyebrow: 'CONTROLE E OBSERVABILIDADE',
+    title: 'Governança de IA',
+  },
   '/reengajamento': { eyebrow: 'CAMPANHAS META-SAFE', title: 'Reengajamento' },
   '/auto-like': { eyebrow: 'ENGAJAMENTO AUTOMÁTICO', title: 'Auto-like' },
   '/calendario': { eyebrow: 'PLANEJAMENTO EDITORIAL', title: 'Calendário' },
@@ -91,6 +126,8 @@ const titles: Record<string, { eyebrow: string; title: string }> = {
     eyebrow: 'ECOSSISTEMA E AUTOMAÇÕES',
     title: 'Integrações',
   },
+  '/webhooks': { eyebrow: 'CAPTAÇÃO EXTERNA', title: 'Webhooks de leads' },
+  '/auditoria': { eyebrow: 'RASTREABILIDADE', title: 'Auditoria' },
   '/configuracoes': { eyebrow: 'CONTA E INTEGRAÇÕES', title: 'Configurações' },
   '/manual': { eyebrow: 'ACESSOS, OPERAÇÃO E CONFIGURAÇÃO', title: 'Manual' },
 }

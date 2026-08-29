@@ -9,6 +9,7 @@ import { isOptOutKeyword } from './compliance'
 import { getServerEnv } from './env.server'
 import { assertRateLimit } from './rate-limit.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
+import { assignConversationByRouting } from './team-routing.server'
 
 type MetaChange = { field?: string; value?: Record<string, unknown> }
 type MetaMessage = {
@@ -218,6 +219,13 @@ async function ingestInbound(input: {
 
   // Reações são telemetria da mensagem existente, não uma nova conversa na inbox.
   if (input.channel === 'reaction' || !ingested.conversation_id) return
+
+  if (ingested.interaction_inserted)
+    await assignConversationByRouting({
+      admin: input.supabase,
+      workspaceId: input.workspaceId,
+      conversationId: ingested.conversation_id,
+    })
 
   // Um fluxo parado esperando resposta tem precedência: a pessoa está no meio
   // de um menu ou de uma pergunta e disparar um gatilho novo aqui atropelaria a

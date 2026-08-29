@@ -37,6 +37,7 @@ import {
 import { n8nDispatchSchema } from '../server/n8n-contract'
 import { sendN8nEvent } from '../server/n8n-integration.server'
 import { syncWorkspaceInstagramInsights } from '../server/insights-sync.server'
+import { reconcileCrmRiskStates } from '../server/crm-pipeline.server'
 
 /**
  * Prazo de resposta vencido.
@@ -74,6 +75,14 @@ const supabase = requireSupabase()
 let lastTokenRefreshSweep = 0
 let lastRecoverySweep = 0
 let lastGoogleCalendarSweep = 0
+let lastCrmRiskSweep = 0
+
+/** Materializa somente mudanças de faixa para o Radar, sem tocar o lead. */
+async function refreshCrmRiskStates() {
+  if (Date.now() - lastCrmRiskSweep < 5 * 60_000) return
+  lastCrmRiskSweep = Date.now()
+  await reconcileCrmRiskStates({ admin: supabase })
+}
 
 /**
  * Recupera locks abandonados após crash. Claims externos antigos viram
@@ -955,6 +964,7 @@ async function tick() {
     await recoverStaleWork()
     await refreshDueMetaTokens()
     await syncDueGoogleCalendars()
+    await refreshCrmRiskStates()
     await processDueJobs()
     await writeWorkerHeartbeat('scheduler', 'healthy')
   } catch (error) {

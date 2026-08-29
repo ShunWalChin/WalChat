@@ -9,6 +9,11 @@ import { getServerEnv } from './env.server'
 import { getAiApiKey } from './integration-credentials.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
 import { getActiveBookingLink } from './booking-links.server'
+import {
+  aiErrorCode,
+  assertAiTokenBudget,
+  writeAiExecution,
+} from './ai-governance.server'
 
 export type AiHistoryItem = {
   role: 'user' | 'assistant'
@@ -217,6 +222,9 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
     }
   }
 
+  await assertAiTokenBudget(input.workspaceId)
+  const startedAt = Date.now()
+
   if (agent.provider === 'openai') {
     const client = new OpenAI({
       apiKey,
@@ -225,43 +233,89 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
       timeout: AI_PROVIDER_TIMEOUT_MS,
       maxRetries: AI_PROVIDER_MAX_RETRIES,
     })
-    const response = await client.responses.create({
-      model: agent.model,
-      instructions: buildInstructions(agent),
-      input: history,
-      max_output_tokens: agent.maxOutputTokens,
-      reasoning: { effort: agent.reasoningEffort },
-      text: { verbosity: agent.responseVerbosity },
-      safety_identifier: createHash('sha256')
-        .update(input.safetyIdentifier)
-        .digest('hex'),
-      store: false,
-    })
-    return {
-      suggestion: finishSuggestion(response.output_text, agent.maxReplyChars),
-      provider: 'openai' as const,
-      model: agent.model,
-      responseId: response.id,
-      sources: agent.knowledgeSources,
-      agent,
+    try {
+      const response = await client.responses.create({
+        model: agent.model,
+        instructions: buildInstructions(agent),
+        input: history,
+        max_output_tokens: agent.maxOutputTokens,
+        reasoning: { effort: agent.reasoningEffort },
+        text: { verbosity: agent.responseVerbosity },
+        safety_identifier: createHash('sha256')
+          .update(input.safetyIdentifier)
+          .digest('hex'),
+        store: false,
+      })
+      await writeAiExecution({
+        workspaceId: input.workspaceId,
+        agentId: agent.id,
+        provider: 'openai',
+        model: agent.model,
+        status: 'completed',
+        inputTokens: response.usage?.input_tokens,
+        outputTokens: response.usage?.output_tokens,
+        latencyMs: Date.now() - startedAt,
+      })
+      return {
+        suggestion: finishSuggestion(response.output_text, agent.maxReplyChars),
+        provider: 'openai' as const,
+        model: agent.model,
+        responseId: response.id,
+        sources: agent.knowledgeSources,
+        agent,
+      }
+    } catch (error) {
+      await writeAiExecution({
+        workspaceId: input.workspaceId,
+        agentId: agent.id,
+        provider: 'openai',
+        model: agent.model,
+        status: 'failed',
+        latencyMs: Date.now() - startedAt,
+        errorCode: aiErrorCode(error),
+      })
+      throw error
     }
   }
 
   const googleProvider = createGoogleGenerativeAI({ apiKey })
-  const { text } = await generateText({
-    model: googleProvider(agent.model),
-    system: buildInstructions(agent),
-    messages: history,
-    temperature: 0.6,
-    maxOutputTokens: agent.maxOutputTokens,
-    maxRetries: AI_PROVIDER_MAX_RETRIES,
-    abortSignal: AbortSignal.timeout(AI_PROVIDER_TIMEOUT_MS),
-  })
-  return {
-    suggestion: finishSuggestion(text, agent.maxReplyChars),
-    provider: 'google' as const,
-    model: agent.model,
-    sources: agent.knowledgeSources,
-    agent,
+  try {
+    const { text, usage } = await generateText({
+      model: googleProvider(agent.model),
+      system: buildInstructions(agent),
+      messages: history,
+      temperature: 0.6,
+      maxOutputTokens: agent.maxOutputTokens,
+      maxRetries: AI_PROVIDER_MAX_RETRIES,
+      abortSignal: AbortSignal.timeout(AI_PROVIDER_TIMEOUT_MS),
+    })
+    await writeAiExecution({
+      workspaceId: input.workspaceId,
+      agentId: agent.id,
+      provider: 'google',
+      model: agent.model,
+      status: 'completed',
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      latencyMs: Date.now() - startedAt,
+    })
+    return {
+      suggestion: finishSuggestion(text, agent.maxReplyChars),
+      provider: 'google' as const,
+      model: agent.model,
+      sources: agent.knowledgeSources,
+      agent,
+    }
+  } catch (error) {
+    await writeAiExecution({
+      workspaceId: input.workspaceId,
+      agentId: agent.id,
+      provider: 'google',
+      model: agent.model,
+      status: 'failed',
+      latencyMs: Date.now() - startedAt,
+      errorCode: aiErrorCode(error),
+    })
+    throw error
   }
 }

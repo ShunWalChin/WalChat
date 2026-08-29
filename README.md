@@ -22,6 +22,8 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | OpenAI / Gemini        | Responses API + Gemini opcional, configuráveis por workspace                |
 | Google Workspace       | OAuth PKCE, Calendar, Meet, Tasks, Free/Busy e links públicos implementados |
 | Integração n8n         | Gateway, comandos CRM/automação, health, HMAC e idempotência                |
+| CRM comercial          | Pipeline Kanban, radar de risco, equipe, respostas rápidas e captação       |
+| Governança de IA       | Orçamento, versões, roteadores, memória, casos e log de execução            |
 | Site público e SEO     | 404, CTA, FAQ, provas técnicas, sitemap, robots, OG e JSON-LD               |
 | LGPD e Analytics       | Pedido de exclusão persistido e GA4 bloqueado até consentimento             |
 | Modo atual da produção | `DEMO_MODE=false`; kill switches do workspace desligados                    |
@@ -38,6 +40,14 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 - CRM de Contatos & Tags com perfil 360º, contatos manuais, filtros, score,
   estágio, responsável, campos personalizados, notas fixáveis, auditoria, ações
   em lote, elegibilidade e CSV.
+- Pipeline comercial com múltiplas etapas, drag-and-drop, concorrência otimista,
+  motivos de perda, próximas ações e radar de oportunidades inativas.
+- Operação de equipe com disponibilidade, capacidade e distribuição por rodízio,
+  menor carga ou atribuição manual, além de respostas rápidas compartilháveis.
+- Governança de IA com orçamento mensal, snapshots de agentes, roteamento,
+  memória organizacional, casos para revisão humana e telemetria sem prompts.
+- Captação externa por webhooks isolados, com tokens irreversíveis, limites,
+  sanitização e criação direta de contatos e oportunidades no CRM.
 - Gatilhos por comentário, DM, resposta de story ou mensagem do WhatsApp.
 - Embedded Signup do WhatsApp, registro do telefone, sincronização de templates e mídia autenticada.
 - Automation Studio v2: editor visual ligado ao DAG versionado com mensagem e
@@ -310,6 +320,15 @@ chaves administrativas ou credenciais de IA.
 | `GET/POST`  | `/api/integrations/meta/media`               | Cache e sincronização de publicações reais     |
 | `GET/PATCH` | `/api/inbox`                                 | Conversas reais, mensagens, leitura e IA       |
 | `GET`       | `/api/contacts`                              | CRM multicanal e elegibilidade                 |
+| `GET/POST`  | `/api/crm`                                   | Pipelines, etapas, contatos e oportunidades    |
+| `PATCH`     | `/api/crm/:leadId`                           | Move/edita lead com concorrência otimista      |
+| `GET`       | `/api/crm/radar`                             | Oportunidades ordenadas por risco              |
+| `GET/PATCH` | `/api/team`                                  | Capacidade, disponibilidade e distribuição     |
+| `GET/POST`  | `/api/templates`                             | Respostas rápidas pessoais e compartilhadas    |
+| `GET/POST`  | `/api/governance`                            | Governança, orçamento e casos de IA            |
+| `GET/POST`  | `/api/webhook-sources`                       | Fontes seguras de captação externa             |
+| `POST`      | `/api/public/webhooks/leads/:token`          | Entrada pública limitada e isolada de leads    |
+| `GET`       | `/api/audit`                                 | Auditoria operacional e de integrações         |
 | `GET`       | `/api/dashboard`                             | Métricas operacionais reais                    |
 | `GET/*`     | `/api/triggers`                              | CRUD de gatilhos simples persistidos           |
 | `GET/POST`  | `/api/automations`                           | Catálogo e criação de jornadas DAG             |
@@ -341,6 +360,8 @@ Configuração, payloads e operação do n8n: [Integração n8n](docs/INTEGRACAO
 Suíte implantada e runbook: [Workflows n8n operacionais](docs/WORKFLOWS_N8N_OPERACIONAIS_2026-08-24.md).
 O escopo comparado com o produto de referência está em
 [Paridade Wal Chat × ManyChat — 25/08/2026](docs/PARIDADE_MANYCHAT_2026-08-25.md).
+A reengenharia funcional baseada no DeskcommCRM está documentada em
+[Integração DeskcommCRM → Wal Chat — 28/08/2026](docs/INTEGRACAO_DESKCOMM_2026-08-28.md).
 As evidências desta release estão no
 [Relatório de validação do n8n](docs/RELATORIO_VALIDACAO_N8N_2026-08-23.md).
 

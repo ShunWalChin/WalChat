@@ -9,6 +9,7 @@ import {
   Info,
   LoaderCircle,
   MessageCircle,
+  MessageSquareText,
   Paperclip,
   Search,
   Send,
@@ -84,6 +85,13 @@ type WhatsAppTemplate = {
   components: unknown[]
 }
 type ContactTag = { id: string; name: string; color: string }
+type QuickReply = {
+  id: string
+  title: string
+  body: string
+  shortcut: string | null
+  category: string
+}
 type InboxResponse = {
   conversations: Conversation[]
   selectedId: string | null
@@ -147,6 +155,7 @@ function InboxPage() {
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image')
   const [tagOpen, setTagOpen] = useState(false)
   const [catalogTags, setCatalogTags] = useState<ContactTag[]>([])
+  const [quickReplies, setQuickReplies] = useState<QuickReply[]>([])
   const [contactTagIds, setContactTagIds] = useState<string[]>([])
   const [tagsBusy, setTagsBusy] = useState(false)
   const [busy, setBusy] = useState<string | null>('load')
@@ -209,6 +218,12 @@ function InboxPage() {
     pendingSendKey.current = null
     void loadInbox(tab)
   }, [loadInbox, tab])
+
+  useEffect(() => {
+    void apiFetch<{ templates: QuickReply[] }>('/api/templates')
+      .then((result) => setQuickReplies(result.templates))
+      .catch(() => setQuickReplies([]))
+  }, [])
 
   useEffect(() => {
     const interval = window.setInterval(
@@ -353,6 +368,20 @@ function InboxPage() {
       setError(caught instanceof Error ? caught.message : 'Falha ao enviar.')
     } finally {
       setBusy(null)
+    }
+  }
+
+  async function useQuickReply(quickReplyId: string) {
+    const template = quickReplies.find((item) => item.id === quickReplyId)
+    if (!template) return
+    setDraft(template.body)
+    setDraftFromAi(false)
+    setAiSources([])
+    pendingSendKey.current = null
+    try {
+      await apiFetch(`/api/templates/${template.id}`, { method: 'POST' })
+    } catch {
+      // O texto continua disponível; a métrica de uso não bloqueia o atendimento.
     }
   }
 
@@ -663,6 +692,26 @@ function InboxPage() {
                       </option>
                     ))}
                   </select>
+                )}
+                {quickReplies.length > 0 && !requiresWhatsAppTemplate && (
+                  <label className="quick-reply-picker">
+                    <MessageSquareText size={15} />
+                    <span className="sr-only">Inserir resposta rápida</span>
+                    <select
+                      value=""
+                      onChange={(event) =>
+                        void useQuickReply(event.target.value)
+                      }
+                    >
+                      <option value="">Resposta rápida…</option>
+                      {quickReplies.map((reply) => (
+                        <option key={reply.id} value={reply.id}>
+                          {reply.shortcut ? `${reply.shortcut} · ` : ''}
+                          {reply.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 )}
                 {!selected.open24h &&
                   selected.platform === 'instagram' &&

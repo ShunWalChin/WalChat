@@ -1,0 +1,48 @@
+.ai-settings-save {
+  grid-column: 1 / -1;
+  min-height: 58px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ai-settings-save > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.ai-settings-save strong {
+  font-size: 12px;
+}
+
+.ai-settings-save small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ai-key-feedback {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+@media (max-width: 650px) {
+  .settings-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-settings-save {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ai-settings-save .button {
+    width: 100%;
+  }
+}

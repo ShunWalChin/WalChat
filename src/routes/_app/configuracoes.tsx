@@ -24,6 +24,7 @@ import {
   Switch,
 } from '../../components/ui'
 import { apiFetch } from '../../lib/api-client'
+import './configuracoes.css'
 
 type MetaAccount = {
   id: string
@@ -209,6 +210,10 @@ function SettingsPage() {
   const [whatsappPin, setWhatsAppPin] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
+  const [aiMessage, setAiMessage] = useState<{
+    tone: 'error' | 'success'
+    text: string
+  } | null>(null)
   const [message, setMessage] = useState<{
     tone: 'error' | 'success'
     text: string
@@ -525,17 +530,40 @@ function SettingsPage() {
 
   async function saveAiSettings() {
     if (!ai) return
+    const normalizedApiKey = apiKey.trim()
+    if (
+      normalizedApiKey &&
+      (normalizedApiKey.length < 20 || normalizedApiKey.length > 500)
+    ) {
+      setAiMessage({
+        tone: 'error',
+        text: 'A chave parece incompleta. Cole a API key inteira e tente novamente.',
+      })
+      return
+    }
     setBusy('ai-save')
+    setAiMessage(null)
     try {
-      await apiFetch('/api/ai/settings', {
+      const result = await apiFetch<{
+        ok: boolean
+        providerValidated: boolean
+      }>('/api/ai/settings', {
         method: 'PUT',
-        body: JSON.stringify({ ...ai.settings, apiKey: apiKey || undefined }),
+        body: JSON.stringify({
+          ...ai.settings,
+          apiKey: normalizedApiKey || undefined,
+        }),
       })
       setApiKey('')
-      setMessage({ tone: 'success', text: 'Configuração de IA salva.' })
       await loadStatus()
+      setAiMessage({
+        tone: 'success',
+        text: result.providerValidated
+          ? `Conexão com ${ai.settings.provider === 'openai' ? 'OpenAI' : 'Google Gemini'} validada${normalizedApiKey ? '; chave protegida e salva neste workspace.' : ' e configuração salva.'}`
+          : 'Configuração do provedor de IA salva.',
+      })
     } catch (error) {
-      setMessage({
+      setAiMessage({
         tone: 'error',
         text: error instanceof Error ? error.message : 'Falha ao salvar IA.',
       })
@@ -563,20 +591,6 @@ function SettingsPage() {
       <PageIntro
         title="Seu Wal Chat, bem amarrado."
         description="Conecte contas profissionais, valide webhooks e escolha o provedor dos agentes."
-        actions={
-          <button
-            className="button button-dark"
-            onClick={() => void saveAiSettings()}
-            disabled={!ai || Boolean(busy)}
-          >
-            {busy === 'ai-save' ? (
-              <LoaderCircle className="spin" size={16} />
-            ) : (
-              <Save size={16} />
-            )}
-            Salvar alterações
-          </button>
-        }
       />
       {message && (
         <div
@@ -1068,11 +1082,75 @@ function SettingsPage() {
                   <input
                     type="password"
                     value={apiKey}
-                    onChange={(event) => setApiKey(event.target.value)}
+                    onChange={(event) => {
+                      setApiKey(event.target.value)
+                      if (aiMessage?.tone === 'error') setAiMessage(null)
+                    }}
                     placeholder="Deixe vazio para usar a chave do servidor"
                     autoComplete="new-password"
+                    aria-describedby={
+                      aiMessage
+                        ? 'ai-api-key-help ai-api-key-feedback'
+                        : 'ai-api-key-help'
+                    }
+                    aria-invalid={
+                      apiKey.trim().length > 0 &&
+                      (apiKey.trim().length < 20 || apiKey.trim().length > 500)
+                    }
                   />
                 </label>
+                <div className="ai-settings-save">
+                  <div>
+                    <strong>
+                      {ai.providers[ai.settings.provider].configured
+                        ? 'Credencial cadastrada'
+                        : 'Credencial necessária'}
+                    </strong>
+                    <small id="ai-api-key-help">
+                      {ai.providers[ai.settings.provider].source === 'tenant'
+                        ? 'A chave cifrada deste workspace será mantida se o campo ficar vazio.'
+                        : ai.providers[ai.settings.provider].source === 'server'
+                          ? 'Este workspace usa a chave protegida do servidor.'
+                          : 'Cole a chave e confirme aqui; ela será cifrada antes de ir ao banco.'}
+                    </small>
+                  </div>
+                  <button
+                    type="button"
+                    className="button button-dark"
+                    onClick={() => void saveAiSettings()}
+                    disabled={Boolean(busy)}
+                  >
+                    {busy === 'ai-save' ? (
+                      <LoaderCircle className="spin" size={16} />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                    {busy === 'ai-save'
+                      ? 'Validando e salvando…'
+                      : apiKey.trim()
+                        ? 'Validar e salvar chave'
+                        : 'Salvar configurações'}
+                  </button>
+                </div>
+                {aiMessage && (
+                  <div
+                    id="ai-api-key-feedback"
+                    className={
+                      aiMessage.tone === 'error'
+                        ? 'form-error ai-key-feedback'
+                        : 'form-success ai-key-feedback'
+                    }
+                    role={aiMessage.tone === 'error' ? 'alert' : 'status'}
+                    aria-live="polite"
+                  >
+                    {aiMessage.tone === 'error' ? (
+                      <AlertTriangle size={16} />
+                    ) : (
+                      <CheckCircle2 size={16} />
+                    )}
+                    {aiMessage.text}
+                  </div>
+                )}
               </div>
             )}
           </article>

@@ -26,7 +26,12 @@ const findings = []
 
 for (const file of apiFiles) {
   const name = relative(file)
-  const source = await readFile(file, 'utf8')
+  const raw = await readFile(file, 'utf8')
+  // Comentários descrevem o que NÃO se deve fazer e citam os próprios padrões
+  // proibidos; varrê-los produziria falso positivo em cima da explicação.
+  const source = raw
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1')
   const isPublic =
     name.includes('/api/public/') ||
     name.includes('/api/privacy/') ||
@@ -60,11 +65,13 @@ for (const file of apiFiles) {
       file: name,
       code: 'mutation_without_origin_check',
     })
-  if (source.includes('request.json()'))
+  // `request.json()` e `request.text()` bufferizam o corpo inteiro antes de
+  // qualquer checagem de tamanho. Medir depois de ler já é tarde.
+  if (/request\.(json|text|arrayBuffer|formData)\(\)/.test(source))
     findings.push({
       severity: 'error',
       file: name,
-      code: 'unbounded_json_body',
+      code: 'unbounded_body_read',
     })
   // Endpoint anonimo sem cota vira amplificacao barata contra Postgres/Redis.
   if (

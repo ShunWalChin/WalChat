@@ -1,44 +1,21 @@
 /** Configuração do provedor de IA e armazenamento opcional de API key por tenant. */
 import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
 import {
+  ApiError,
   apiErrorResponse,
   assertTrustedOrigin,
   requireWorkspaceContext,
 } from '../../../server/api-auth.server'
+import { validateAiProviderCredential } from '../../../server/ai-provider-validation.server'
+import { aiSettingsSchema } from '../../../server/ai-settings-contract'
 import { getServerEnv } from '../../../server/env.server'
 import {
   deleteIntegrationCredential,
+  getAiApiKey,
   saveIntegrationCredential,
   writeIntegrationAudit,
 } from '../../../server/integration-credentials.server'
 import { readJsonBody } from '../../../server/request-body.server'
-
-const settingsSchema = z
-  .object({
-    provider: z.enum(['openai', 'google']),
-    model: z.string().min(2).max(80),
-    reasoningEffort: z.enum(['none', 'low', 'medium', 'high']),
-    responseVerbosity: z.enum(['low', 'medium', 'high']),
-    maxOutputTokens: z.number().int().min(100).max(2_000),
-    isEnabled: z.boolean(),
-    apiKey: z.string().min(20).max(500).optional(),
-    removeApiKey: z.boolean().optional(),
-  })
-  .superRefine((value, context) => {
-    if (value.provider === 'openai' && !value.model.startsWith('gpt-'))
-      context.addIssue({
-        code: 'custom',
-        path: ['model'],
-        message: 'Selecione um modelo OpenAI válido.',
-      })
-    if (value.provider === 'google' && !value.model.startsWith('gemini-'))
-      context.addIssue({
-        code: 'custom',
-        path: ['model'],
-        message: 'Selecione um modelo Gemini válido.',
-      })
-  })
 
 export const Route = createFileRoute('/api/ai/settings')({
   server: {
@@ -119,7 +96,24 @@ export const Route = createFileRoute('/api/ai/settings')({
             'owner',
             'admin',
           ])
-          const body = settingsSchema.parse(await readJsonBody(request))
+          const body = aiSettingsSchema.parse(await readJsonBody(request))
+          const apiKey = body.removeApiKey
+            ? undefined
+            : (body.apiKey ??
+              (body.isEnabled
+                ? await getAiApiKey(context.workspaceId, body.provider)
+                : undefined))
+          if ((body.apiKey || body.isEnabled) && !apiKey)
+            throw new ApiError(
+              422,
+              `Informe uma API key da ${body.provider === 'openai' ? 'OpenAI' : 'Google Gemini'}.`,
+            )
+          if (apiKey)
+            await validateAiProviderCredential({
+              provider: body.provider,
+              model: body.model,
+              apiKey,
+            })
           const { error } = await context.supabase
             .from('ai_provider_settings')
             .upsert({
@@ -139,6 +133,10 @@ export const Route = createFileRoute('/api/ai/settings')({
               credentialType: 'api_key',
               scopeKey: 'workspace',
               value: body.apiKey,
+              metadata: {
+                model: body.model,
+                validatedAt: new Date().toISOString(),
+              },
             })
           if (body.removeApiKey)
             await deleteIntegrationCredential({
@@ -153,9 +151,13 @@ export const Route = createFileRoute('/api/ai/settings')({
             provider: body.provider,
             action: 'ai_settings_updated',
             status: 'success',
-            details: { model: body.model, keyUpdated: Boolean(body.apiKey) },
+            details: {
+              model: body.model,
+              keyUpdated: Boolean(body.apiKey),
+              providerValidated: Boolean(apiKey),
+            },
           })
-          return Response.json({ ok: true })
+          return Response.json({ ok: true, providerValidated: Boolean(apiKey) })
         } catch (error) {
           return apiErrorResponse(
             error,
