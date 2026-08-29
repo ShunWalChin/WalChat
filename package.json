@@ -45,7 +45,7 @@
     "@tanstack/react-start": "latest",
     "@tanstack/router-plugin": "^1.132.0",
     "ai": "^7.0.33",
-    "bullmq": "^5.80.9",
+    "bullmq": "^6.3.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "ioredis": "^5.11.1",
