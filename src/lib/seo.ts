@@ -1,3 +1,9 @@
+/**
+ * Metadados das páginas públicas.
+ *
+ * Vive no cliente porque o SSR renderiza o `<head>` junto com a página; separar
+ * daria dois lugares para a mesma verdade.
+ */
 import { absoluteUrl, siteConfig } from './site-config'
 
 type SeoInput = {

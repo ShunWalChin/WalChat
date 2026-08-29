@@ -1,3 +1,10 @@
+/**
+ * Orçamento e observabilidade do provedor de IA por workspace.
+ *
+ * O limite existe porque a chave é do operador, não do produto: um fluxo em
+ * laço consumiria o orçamento dele sem aviso. O log registra tokens, latência,
+ * modelo e falha, mas nunca prompt nem resposta — são dados do contato.
+ */
 import '@tanstack/react-start/server-only'
 import { ApiError } from './api-auth.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
