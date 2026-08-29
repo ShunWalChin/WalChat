@@ -1,3 +1,9 @@
+/**
+ * Regras puras de campanha, sem rede nem banco.
+ *
+ * Separado do gateway de envio de propósito: a decisão sobre quem entra numa
+ * campanha precisa ser testável sem tocar na Meta.
+ */
 import { z } from 'zod'
 import {
   HUMAN_AGENT_WINDOW_MS,

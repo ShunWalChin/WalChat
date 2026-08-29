@@ -1,3 +1,9 @@
+/**
+ * Contrato do pipeline comercial, compartilhado entre servidor e interface.
+ *
+ * Fica isolado do `.server.ts` porque o editor também precisa dele; um contrato
+ * duplicado seria a primeira coisa a divergir.
+ */
 import { z } from 'zod'
 
 export const CRM_LEAD_STATUSES = ['open', 'won', 'lost'] as const

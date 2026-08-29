@@ -1,3 +1,9 @@
+/**
+ * Regras puras do estúdio de conteúdo.
+ *
+ * Valida o que a Instagram API exige de cada formato antes de qualquer
+ * container ser criado, para a recusa acontecer aqui e não no provedor.
+ */
 import { z } from 'zod'
 
 export const contentMediaSchema = z

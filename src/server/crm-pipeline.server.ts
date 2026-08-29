@@ -1,3 +1,10 @@
+/**
+ * Movimentação de oportunidades no pipeline.
+ *
+ * A concorrência é resolvida por `lock_version`: dois atendentes arrastando o
+ * mesmo lead precisam de uma recusa explícita, não do último a salvar vencendo
+ * em silêncio.
+ */
 import '@tanstack/react-start/server-only'
 import type { User } from '@supabase/supabase-js'
 import { classifyCrmRisk } from './crm-pipeline-contract'

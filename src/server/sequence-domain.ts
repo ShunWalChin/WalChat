@@ -1,3 +1,13 @@
+/**
+ * Regras puras da sequência linear — o motor antigo, anterior ao DAG.
+ *
+ * A validação carrega uma regra da Meta que não é óbvia: um bloco de mídia
+ * precisa ser seguido por texto, porque o rodapé obrigatório `Responda PARAR`
+ * viaja no texto e mídia sozinha sairia sem opt-out.
+ *
+ * Ver `docs/LOGICA_DE_NEGOCIO_SEQUENCIAS.md` para como isto se relaciona com o
+ * motor de jornadas.
+ */
 import { z } from 'zod'
 
 export const sequenceStepSchema = z
