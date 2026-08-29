@@ -66,10 +66,31 @@ export async function runDependencyProbe({
 }
 
 /** Readiness exige banco e Redis em live; em demo, dependências configuradas também são verificadas. */
+/**
+ * Descobre se algum workspace já guardou credencial deste provedor.
+ *
+ * O runtime resolve a chave pelo cofre cifrado do workspace e só cai na
+ * variável de ambiente como último recurso. Reportar apenas o ambiente fazia o
+ * readiness dizer "não configurado" para um provedor que estava funcionando —
+ * o oposto do que um check de go-live precisa dizer.
+ */
+async function hasStoredProviderCredential(provider: 'openai' | 'google') {
+  const client = getSupabaseAdmin()
+  if (!client) return false
+  const { count, error } = await client
+    .from('integration_credentials')
+    .select('id', { count: 'exact', head: true })
+    .eq('provider', provider)
+    .eq('credential_type', 'api_key')
+  return !error && (count ?? 0) > 0
+}
+
 export async function checkRuntimeReadiness(input?: {
   timeoutMs?: number
   supabaseProbe?: () => Promise<void>
   redisProbe?: () => Promise<void>
+  /** Permite ao teste evitar o banco ao verificar as capacidades. */
+  storedCredentialProbe?: (provider: 'openai' | 'google') => Promise<boolean>
 }) {
   const env = getServerEnv()
   const instagram = getInstagramAppConfig(env)
@@ -98,6 +119,27 @@ export async function checkRuntimeReadiness(input?: {
     }),
   ])
   const checks = { supabase, redis }
+  // Um provedor conta como configurado se o ambiente traz a chave OU se algum
+  // workspace já a guardou cifrada — que é exatamente a ordem que o runtime usa.
+  const storedCredential =
+    input?.storedCredentialProbe ?? hasStoredProviderCredential
+  // Um healthcheck que pendura é pior que um impreciso: na dúvida, responde
+  // `false` dentro do mesmo teto de tempo das outras sondas.
+  const comTeto = (promessa: Promise<boolean>) =>
+    Promise.race([
+      promessa,
+      new Promise<boolean>((resolve) =>
+        setTimeout(() => resolve(false), timeoutMs).unref(),
+      ),
+    ]).catch(() => false)
+  const [openaiStored, geminiStored] = await Promise.all([
+    env.OPENAI_API_KEY
+      ? Promise.resolve(true)
+      : comTeto(storedCredential('openai')),
+    env.GOOGLE_GENERATIVE_AI_API_KEY
+      ? Promise.resolve(true)
+      : comTeto(storedCredential('google')),
+  ])
   const ok = Object.values(checks).every(
     (check) =>
       check.status === 'up' || (!live && check.status === 'not_configured'),
@@ -123,8 +165,8 @@ export async function checkRuntimeReadiness(input?: {
         env.META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID,
       ),
       credentialEncryptionConfigured: hasValidCredentialEncryptionKey(),
-      openaiConfigured: Boolean(env.OPENAI_API_KEY),
-      geminiConfigured: Boolean(env.GOOGLE_GENERATIVE_AI_API_KEY),
+      openaiConfigured: openaiStored,
+      geminiConfigured: geminiStored,
       googleWorkspaceConfigured: Boolean(
         env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
       ),

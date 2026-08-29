@@ -112,3 +112,35 @@ describe('checkRuntimeReadiness', () => {
     expect(readiness.checks.redis.status).toBe('up')
   })
 })
+
+describe('capacidades de IA no readiness', () => {
+  const anterior = { ...process.env }
+  afterEach(() => {
+    process.env = { ...anterior }
+  })
+
+  it('reporta configurado quando a chave está guardada no cofre do workspace', async () => {
+    delete process.env.OPENAI_API_KEY
+    // O runtime resolve pelo cofre antes de olhar o ambiente; reportar só o
+    // ambiente fazia o readiness negar um provedor que estava funcionando.
+    const readiness = await checkRuntimeReadiness({
+      supabaseProbe: async () => undefined,
+      redisProbe: async () => undefined,
+      storedCredentialProbe: async (provider) => provider === 'openai',
+    })
+    expect(readiness.capabilities.openaiConfigured).toBe(true)
+    expect(readiness.capabilities.geminiConfigured).toBe(false)
+  })
+
+  it('não pendura o healthcheck quando a consulta ao cofre trava', async () => {
+    delete process.env.OPENAI_API_KEY
+    const readiness = await checkRuntimeReadiness({
+      timeoutMs: 30,
+      supabaseProbe: async () => undefined,
+      redisProbe: async () => undefined,
+      // Consulta que nunca resolve: o readiness precisa responder mesmo assim.
+      storedCredentialProbe: () => new Promise<boolean>(() => undefined),
+    })
+    expect(readiness.capabilities.openaiConfigured).toBe(false)
+  })
+})
