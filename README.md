@@ -360,6 +360,9 @@ Configuração, payloads e operação do n8n: [Integração n8n](docs/INTEGRACAO
 Suíte implantada e runbook: [Workflows n8n operacionais](docs/WORKFLOWS_N8N_OPERACIONAIS_2026-08-24.md).
 O escopo comparado com o produto de referência está em
 [Paridade Wal Chat × ManyChat — 25/08/2026](docs/PARIDADE_MANYCHAT_2026-08-25.md).
+
+A lógica de negócio de gatilhos, sequências e jornadas está em
+[Lógica de negócio das sequências](docs/LOGICA_DE_NEGOCIO_SEQUENCIAS.md).
 A reengenharia funcional baseada no DeskcommCRM está documentada em
 [Integração DeskcommCRM → Wal Chat — 28/08/2026](docs/INTEGRACAO_DESKCOMM_2026-08-28.md).
 As evidências desta release estão no
