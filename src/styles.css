@@ -1203,6 +1203,7 @@ select:focus {
 .conversation-list {
   border-right: 1px solid var(--line);
   min-width: 0;
+  min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   background: var(--surface);
@@ -1261,6 +1262,7 @@ select:focus {
 }
 .conversation-scroll {
   overflow-y: auto;
+  min-height: 0;
   padding-bottom: 12px;
 }
 
@@ -1375,6 +1377,10 @@ select:focus {
 
 .chat-panel {
   min-width: 0;
+  /* Sem `min-height: 0` um item de grid nunca encolhe abaixo do próprio
+     conteúdo: o painel esticava até 1200px dentro de uma casca de 949 e
+     empurrava o campo de escrever para fora da tela. */
+  min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   background: var(--paper);
@@ -1433,6 +1439,7 @@ select:focus {
 .messages-scroll {
   padding: 18px 22px 24px;
   overflow-y: auto;
+  min-height: 0;
 }
 /* A régua de leitura. Sem ela, numa tela de 1900px as bolhas encostam nas duas
    bordas e a conversa deixa de parecer uma conversa. */
@@ -1735,10 +1742,11 @@ select:focus {
 }
 .contact-panel {
   border-left: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   padding: 20px 16px;
-  text-align: center;
+  text-align: left;
   overflow-y: auto;
+  min-height: 0;
 }
 .contact-panel h3 {
   font-family: 'Archivo Black';
