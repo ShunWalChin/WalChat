@@ -7,8 +7,9 @@
 --
 -- Nenhum motor novo: a origem entra no mesmo `triggers`, aponta para o mesmo
 -- DAG e herda compliance, idempotência e versionamento já existentes.
-
-alter type public.trigger_source add value if not exists 'first_contact';
+--
+-- O valor de enum vem na migration anterior porque o Postgres exige que ele
+-- esteja comitado antes de ser referenciado por constraint ou índice.
 
 -- `keyword` existe porque toda origem anterior casa por palavra. O primeiro
 -- contato dispara pelo fato de ser o primeiro, não pelo que a pessoa escreveu.
