@@ -25,6 +25,7 @@ import type { BookingPageRecord } from './booking-service.server'
 import {
   bookingGuidance,
   formatSlotLabel,
+  parseSlotInstant,
   spreadSlots,
   toolFailure,
   toolSuccess,
@@ -142,14 +143,22 @@ export async function executeAgendaTool(input: {
       }
 
       case 'agendar_reuniao': {
-        const inicio = readString(args, 'inicio')
+        const inicio = parseSlotInstant(args.inicio)
         const nome = readString(args, 'nome')
         const email = readString(args, 'email')
-        if (!inicio || !nome || !email)
+        if (!nome || !email)
           return {
             output: toolFailure(
               'faltam_dados',
-              'Peça o nome, o e-mail e o horário escolhido antes de tentar de novo.',
+              'Peça o nome e o e-mail antes de tentar de novo.',
+            ),
+            effect: null,
+          }
+        if (!inicio)
+          return {
+            output: toolFailure(
+              'horario_sem_fuso',
+              'Use o valor exato do campo "inicio" que veio de consultar_horarios. Não escreva o horário por conta própria: sem o fuso, ele é lido três horas fora.',
             ),
             effect: null,
           }
@@ -159,7 +168,7 @@ export async function executeAgendaTool(input: {
           name: nome,
           email,
           notes: readString(args, 'observacao'),
-          startAt: new Date(inicio).toISOString(),
+          startAt: inicio,
           source: 'ai_agent',
           contactId: context.contactId,
         })
@@ -216,12 +225,12 @@ export async function executeAgendaTool(input: {
       }
 
       case 'remarcar_reuniao': {
-        const inicio = readString(args, 'inicio')
+        const inicio = parseSlotInstant(args.inicio)
         if (!context.contactId || !inicio)
           return {
             output: toolFailure(
               'faltam_dados',
-              'Confirme o novo horário com a pessoa, escolhido entre os de consultar_horarios.',
+              'Use o valor exato do campo "inicio" que veio de consultar_horarios; sem o fuso o horário é lido três horas fora.',
             ),
             effect: null,
           }
@@ -240,7 +249,7 @@ export async function executeAgendaTool(input: {
         const booking = await rescheduleBooking({
           workspaceId: context.workspaceId,
           bookingId: reuniao.id,
-          startAt: new Date(inicio).toISOString(),
+          startAt: inicio,
           reason: 'remarcado pela conversa',
         })
         return {

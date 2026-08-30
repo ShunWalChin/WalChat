@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AGENDA_TOOLS,
   bookingGuidance,
+  parseSlotInstant,
   MAX_SLOTS_OFFERED,
   formatSlotLabel,
   isToolName,
@@ -217,5 +218,43 @@ describe('bookingGuidance', () => {
       })
       expect(texto).not.toContain('segredo@example.com')
     }
+  })
+})
+
+describe('parseSlotInstant', () => {
+  /**
+   * Também veio de um teste em produção.
+   *
+   * O modelo escreveu um horário por conta própria em vez de copiar o que a
+   * ferramenta devolveu. O processo roda em UTC, então um texto sem fuso é lido
+   * como UTC: "13h" pedido em Brasília vira 10h. O que torna isso perigoso é
+   * que 10h também é um horário válido da agenda — a reserva não falha, ela
+   * acontece três horas fora e ninguém percebe até a reunião.
+   */
+  it('recusa horário sem fuso', () => {
+    expect(parseSlotInstant('2026-09-02T13:00:00')).toBeNull()
+    expect(parseSlotInstant('2026-09-02 13:00')).toBeNull()
+    expect(parseSlotInstant('02/09/2026 13:00')).toBeNull()
+    expect(parseSlotInstant('amanhã às 13h')).toBeNull()
+  })
+
+  it('aceita o formato que a própria ferramenta devolve', () => {
+    expect(parseSlotInstant('2026-09-02T13:00:00.000Z')).toBe(
+      '2026-09-02T13:00:00.000Z',
+    )
+  })
+
+  it('aceita deslocamento explícito e normaliza para UTC', () => {
+    // 10h em Brasília é 13h em UTC. As duas formas descrevem o mesmo instante,
+    // e é justamente por serem inequívocas que ambas são aceitas.
+    expect(parseSlotInstant('2026-09-02T10:00:00-03:00')).toBe(
+      '2026-09-02T13:00:00.000Z',
+    )
+  })
+
+  it('recusa o que não é texto ou não é data', () => {
+    expect(parseSlotInstant(null)).toBeNull()
+    expect(parseSlotInstant(1_756_819_200_000)).toBeNull()
+    expect(parseSlotInstant('2026-13-45T99:00:00Z')).toBeNull()
   })
 })

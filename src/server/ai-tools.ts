@@ -264,3 +264,27 @@ export function bookingGuidance(input: {
       : 'Nenhum convite foi enviado por e-mail; não diga que a pessoa vai receber um.',
   ].join(' ')
 }
+
+/**
+ * Um instante só é aceito com fuso explícito.
+ *
+ * O modelo deve copiar o valor que veio de `consultar_horarios`, mas nada o
+ * impede de escrever um horário por conta própria. E `new Date('2026-09-02T13:00:00')`
+ * — sem `Z` nem `-03:00` — é interpretado no fuso do processo, que aqui é UTC.
+ * O pedido "13h" viraria 13:00Z, ou seja, 10h em São Paulo.
+ *
+ * O detalhe que torna isso perigoso é que 10h também é um horário válido da
+ * agenda: a reserva não falha, ela acontece três horas fora. Sem fuso não há
+ * como distinguir as duas leituras, então a resposta certa é recusar e mandar o
+ * modelo consultar de novo — errar alto é melhor que errar quieto.
+ */
+const INSTANTE_COM_FUSO =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/
+
+export function parseSlotInstant(valor: unknown): string | null {
+  if (typeof valor !== 'string') return null
+  const limpo = valor.trim()
+  if (!INSTANTE_COM_FUSO.test(limpo)) return null
+  const data = new Date(limpo)
+  return Number.isNaN(data.getTime()) ? null : data.toISOString()
+}
