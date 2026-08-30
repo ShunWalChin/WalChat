@@ -1,4 +1,11 @@
-/** Operação interna de agendamentos: confirmar, concluir, cancelar ou no-show. */
+/**
+ * Operação interna de agendamentos: confirmar, concluir, cancelar ou no-show.
+ *
+ * O cancelamento delega para `booking-service.server`, que é o mesmo caminho da
+ * IA e da página pública. Manter uma segunda cópia aqui significaria que um dia
+ * uma delas apagaria o evento no Google e a outra não — e a diferença só
+ * apareceria quando alguém entrasse numa reunião cancelada.
+ */
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import {
@@ -7,7 +14,7 @@ import {
   assertTrustedOrigin,
   requireWorkspaceContext,
 } from '../../../server/api-auth.server'
-import { deleteGoogleEvent } from '../../../server/google-calendar.server'
+import { cancelBooking } from '../../../server/booking-service.server'
 import { readJsonBody } from '../../../server/request-body.server'
 
 const schema = z.object({
@@ -27,47 +34,26 @@ export const Route = createFileRoute('/api/calendar/bookings')({
             'agent',
           ])
           const body = schema.parse(await readJsonBody(request))
-          const booking = await context.admin
-            .from('bookings')
-            .select(
-              'id,calendar_event_id,calendar_events(calendar_connection_id,provider_event_id,calendar_id)',
-            )
-            .eq('workspace_id', context.workspaceId)
-            .eq('id', body.id)
-            .maybeSingle()
-          if (booking.error) throw booking.error
-          if (!booking.data)
-            throw new ApiError(404, 'Agendamento não encontrado.')
-          const event = booking.data.calendar_events as unknown as {
-            calendar_connection_id?: string
-            provider_event_id?: string
-            calendar_id?: string
-          } | null
-          if (
-            body.status === 'cancelled' &&
-            event?.calendar_connection_id &&
-            event.provider_event_id &&
-            event.calendar_id
-          )
-            await deleteGoogleEvent({
+
+          if (body.status === 'cancelled') {
+            const resultado = await cancelBooking({
               workspaceId: context.workspaceId,
-              connectionId: event.calendar_connection_id,
-              providerEventId: event.provider_event_id,
-              calendarId: event.calendar_id,
+              bookingId: body.id,
             })
-          const { error } = await context.admin
+            return Response.json({ ok: true, ...resultado })
+          }
+
+          const booking = await context.admin
             .from('bookings')
             .update({ status: body.status })
             .eq('workspace_id', context.workspaceId)
             .eq('id', body.id)
-          if (error) throw error
-          if (booking.data.calendar_event_id && body.status === 'cancelled')
-            await context.admin
-              .from('calendar_events')
-              .update({ status: 'cancelled' })
-              .eq('workspace_id', context.workspaceId)
-              .eq('id', booking.data.calendar_event_id)
-          return Response.json({ ok: true })
+            .select('id')
+            .maybeSingle()
+          if (booking.error) throw booking.error
+          if (!booking.data)
+            throw new ApiError(404, 'Agendamento não encontrado.')
+          return Response.json({ ok: true, id: booking.data.id })
         } catch (error) {
           return apiErrorResponse(error, 'Falha ao atualizar agendamento.')
         }
