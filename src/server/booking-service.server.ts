@@ -520,8 +520,15 @@ async function loadBookingWithEvent(input: {
 }) {
   const { data, error } = await requireAdmin()
     .from('bookings')
+    // A chave é nomeada porque existem duas entre estas tabelas: `bookings`
+    // aponta para o evento e o evento aponta de volta para a reserva. Sem dizer
+    // qual delas, o PostgREST recusa a consulta inteira por ambiguidade — e o
+    // efeito era um 500 em todo cancelamento.
+    //
+    // A escolhida é a que sai da reserva para o evento: é uma relação para um,
+    // então a resposta vem como objeto e não como lista.
     .select(
-      'id,status,start_at,end_at,timezone,guest_name,guest_email,guest_phone,contact_id,booking_page_id,calendar_event_id,calendar_events(id,calendar_connection_id,provider_event_id,calendar_id)',
+      'id,status,start_at,end_at,timezone,guest_name,guest_email,guest_phone,contact_id,booking_page_id,calendar_event_id,calendar_events!bookings_calendar_event_id_fkey(id,calendar_connection_id,provider_event_id,calendar_id)',
     )
     .eq('workspace_id', input.workspaceId)
     .eq('id', input.bookingId)
