@@ -30,6 +30,37 @@ function redis() {
   return redisClient
 }
 
+/**
+ * Espera o cliente ficar pronto, no arranque.
+ *
+ * `enableOfflineQueue: false` é proposital: com o Redis fora, os comandos devem
+ * falhar na hora em vez de empilhar. Só que a mesma regra vale enquanto a
+ * conexão ainda está sendo aberta — e aí ela pune o caso errado. Como a política
+ * é falhar fechada, a primeira requisição depois de cada deploy levava 503 sem
+ * que nada estivesse quebrado.
+ *
+ * A espera é curta e só acontece quando o cliente ainda não ficou pronto uma
+ * vez. Com o Redis realmente fora, o estado é `end` ou `close` e a função
+ * devolve na hora, preservando a falha rápida.
+ */
+async function esperarConexao(client: IORedis) {
+  if (client.status === 'ready') return true
+  if (client.status === 'end' || client.status === 'close') return false
+  return new Promise<boolean>((resolve) => {
+    const encerrar = (pronto: boolean) => {
+      clearTimeout(prazo)
+      client.off('ready', aoConectar)
+      client.off('error', aoFalhar)
+      resolve(pronto)
+    }
+    const aoConectar = () => encerrar(true)
+    const aoFalhar = () => encerrar(false)
+    const prazo = setTimeout(() => encerrar(false), 2_000)
+    client.once('ready', aoConectar)
+    client.once('error', aoFalhar)
+  })
+}
+
 function opaqueKey(input: LimitInput) {
   const identityHash = createHash('sha256').update(input.identity).digest('hex')
   return `walchat:limit:${input.namespace}:${identityHash}`
@@ -41,6 +72,9 @@ export async function assertRateLimit(input: LimitInput) {
   const client = redis()
   let count: number
   if (client) {
+    // No arranque a conexão ainda está abrindo; contar antes disso seria
+    // recusar tráfego legítimo por um motivo que não existe.
+    if (client.status !== 'ready') await esperarConexao(client)
     try {
       count = Number(
         await client.eval(
