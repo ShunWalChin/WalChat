@@ -43,45 +43,79 @@ const serverEnvSchema = z.object({
   DEMO_MODE: z.enum(['true', 'false']).default('true'),
 })
 
+/**
+ * Trata variável vazia como ausente.
+ *
+ * `CHAVE=` num arquivo `.env` chega como string vazia, não como indefinido, e
+ * bate de frente com regras como `.min(8)`. O efeito é desproporcional: uma
+ * linha deixada em branco enquanto se prepara uma integração derruba o processo
+ * inteiro no boot, e a mensagem fala de validação, não do que a pessoa fez.
+ * Escrever a chave sem o valor é exatamente o mesmo que não a ter.
+ */
+function blankAsUndefined(value: string | undefined) {
+  return value?.trim() ? value : undefined
+}
+
 /** Lê e valida o ambiente a cada processo, aplicando defaults seguros para o MVP. */
 export function getServerEnv() {
   return serverEnvSchema.parse({
-    SUPABASE_URL: process.env.SUPABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_URL: blankAsUndefined(process.env.SUPABASE_URL),
+    SUPABASE_SERVICE_ROLE_KEY: blankAsUndefined(
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+    ),
     SUPABASE_PUBLISHABLE_KEY:
-      process.env.SUPABASE_PUBLISHABLE_KEY ??
+      blankAsUndefined(process.env.SUPABASE_PUBLISHABLE_KEY) ??
       process.env.VITE_SUPABASE_ANON_KEY,
-    REDIS_URL: process.env.REDIS_URL,
-    META_INSTAGRAM_APP_ID: process.env.META_INSTAGRAM_APP_ID,
-    META_INSTAGRAM_APP_SECRET: process.env.META_INSTAGRAM_APP_SECRET,
-    META_INSTAGRAM_VERIFY_TOKEN: process.env.META_INSTAGRAM_VERIFY_TOKEN,
-    META_WHATSAPP_APP_ID: process.env.META_WHATSAPP_APP_ID,
-    META_WHATSAPP_APP_SECRET: process.env.META_WHATSAPP_APP_SECRET,
-    META_WHATSAPP_VERIFY_TOKEN: process.env.META_WHATSAPP_VERIFY_TOKEN,
-    META_APP_ID: process.env.META_APP_ID,
-    META_APP_SECRET: process.env.META_APP_SECRET,
-    META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN,
-    META_PUBLISH_TOKEN: process.env.META_PUBLISH_TOKEN,
-    META_VERIFY_TOKEN: process.env.META_VERIFY_TOKEN,
-    META_OAUTH_REDIRECT_URI: process.env.META_OAUTH_REDIRECT_URI,
-    META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID:
+    REDIS_URL: blankAsUndefined(process.env.REDIS_URL),
+    META_INSTAGRAM_APP_ID: blankAsUndefined(process.env.META_INSTAGRAM_APP_ID),
+    META_INSTAGRAM_APP_SECRET: blankAsUndefined(
+      process.env.META_INSTAGRAM_APP_SECRET,
+    ),
+    META_INSTAGRAM_VERIFY_TOKEN: blankAsUndefined(
+      process.env.META_INSTAGRAM_VERIFY_TOKEN,
+    ),
+    META_WHATSAPP_APP_ID: blankAsUndefined(process.env.META_WHATSAPP_APP_ID),
+    META_WHATSAPP_APP_SECRET: blankAsUndefined(
+      process.env.META_WHATSAPP_APP_SECRET,
+    ),
+    META_WHATSAPP_VERIFY_TOKEN: blankAsUndefined(
+      process.env.META_WHATSAPP_VERIFY_TOKEN,
+    ),
+    META_APP_ID: blankAsUndefined(process.env.META_APP_ID),
+    META_APP_SECRET: blankAsUndefined(process.env.META_APP_SECRET),
+    META_ACCESS_TOKEN: blankAsUndefined(process.env.META_ACCESS_TOKEN),
+    META_PUBLISH_TOKEN: blankAsUndefined(process.env.META_PUBLISH_TOKEN),
+    META_VERIFY_TOKEN: blankAsUndefined(process.env.META_VERIFY_TOKEN),
+    META_OAUTH_REDIRECT_URI: blankAsUndefined(
+      process.env.META_OAUTH_REDIRECT_URI,
+    ),
+    META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID: blankAsUndefined(
       process.env.META_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID,
-    META_GRAPH_VERSION: process.env.META_GRAPH_VERSION,
-    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
-    GOOGLE_OAUTH_REDIRECT_URI: process.env.GOOGLE_OAUTH_REDIRECT_URI,
-    GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    OPENAI_MODEL: process.env.OPENAI_MODEL,
-    OPENAI_PROJECT: process.env.OPENAI_PROJECT,
-    OPENAI_ORGANIZATION: process.env.OPENAI_ORGANIZATION,
-    N8N_BASE_URL: process.env.N8N_BASE_URL,
-    N8N_API_KEY: process.env.N8N_API_KEY,
-    N8N_WEBHOOK_SIGNING_SECRET: process.env.N8N_WEBHOOK_SIGNING_SECRET,
-    N8N_ALLOWED_HOSTS: process.env.N8N_ALLOWED_HOSTS,
-    CREDENTIALS_ENCRYPTION_KEY: process.env.CREDENTIALS_ENCRYPTION_KEY,
-    APP_ORIGIN: process.env.APP_ORIGIN,
-    DEMO_MODE: process.env.DEMO_MODE,
+    ),
+    META_GRAPH_VERSION: blankAsUndefined(process.env.META_GRAPH_VERSION),
+    GOOGLE_CLIENT_ID: blankAsUndefined(process.env.GOOGLE_CLIENT_ID),
+    GOOGLE_CLIENT_SECRET: blankAsUndefined(process.env.GOOGLE_CLIENT_SECRET),
+    GOOGLE_OAUTH_REDIRECT_URI: blankAsUndefined(
+      process.env.GOOGLE_OAUTH_REDIRECT_URI,
+    ),
+    GOOGLE_GENERATIVE_AI_API_KEY: blankAsUndefined(
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    ),
+    OPENAI_API_KEY: blankAsUndefined(process.env.OPENAI_API_KEY),
+    OPENAI_MODEL: blankAsUndefined(process.env.OPENAI_MODEL),
+    OPENAI_PROJECT: blankAsUndefined(process.env.OPENAI_PROJECT),
+    OPENAI_ORGANIZATION: blankAsUndefined(process.env.OPENAI_ORGANIZATION),
+    N8N_BASE_URL: blankAsUndefined(process.env.N8N_BASE_URL),
+    N8N_API_KEY: blankAsUndefined(process.env.N8N_API_KEY),
+    N8N_WEBHOOK_SIGNING_SECRET: blankAsUndefined(
+      process.env.N8N_WEBHOOK_SIGNING_SECRET,
+    ),
+    N8N_ALLOWED_HOSTS: blankAsUndefined(process.env.N8N_ALLOWED_HOSTS),
+    CREDENTIALS_ENCRYPTION_KEY: blankAsUndefined(
+      process.env.CREDENTIALS_ENCRYPTION_KEY,
+    ),
+    APP_ORIGIN: blankAsUndefined(process.env.APP_ORIGIN),
+    DEMO_MODE: blankAsUndefined(process.env.DEMO_MODE),
   })
 }
 
