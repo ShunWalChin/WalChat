@@ -44,3 +44,40 @@ export async function apiFetch<T>(
     throw new Error(payload?.error ?? `Falha HTTP ${response.status}.`)
   return payload as T
 }
+
+/**
+ * Versão que devolve texto cru, para respostas que não são JSON.
+ *
+ * O QR chega como SVG; passá-lo por `response.json()` quebraria. Reaproveita a
+ * mesma autenticação e o mesmo portão de workspace.
+ */
+export async function apiFetchText(path: string, init: RequestInit = {}) {
+  const supabase = getBrowserSupabase()
+  const token = supabase
+    ? (await supabase.auth.getSession()).data.session?.access_token
+    : null
+  if (!token) throw new Error('Entre com uma conta Supabase real.')
+
+  const headers = new Headers(init.headers)
+  headers.set('Authorization', `Bearer ${token}`)
+  await whenWorkspaceReady()
+  const workspaceId = getActiveWorkspaceId()
+  if (workspaceId) headers.set('X-Workspace-Id', workspaceId)
+
+  const response = await fetch(path, { ...init, headers })
+  const texto = await response.text()
+  if (!response.ok) {
+    // O erro do backend vem em JSON mesmo quando o sucesso não vem.
+    try {
+      throw new Error(
+        (JSON.parse(texto) as { error?: string }).error ??
+          `Falha HTTP ${response.status}.`,
+      )
+    } catch (causa) {
+      if (causa instanceof Error && causa.message !== 'Unexpected token')
+        throw causa
+      throw new Error(`Falha HTTP ${response.status}.`)
+    }
+  }
+  return texto
+}

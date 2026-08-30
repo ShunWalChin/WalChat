@@ -55,6 +55,7 @@ import { Route as ApiDataDeletionRouteImport } from './routes/api/data-deletion'
 import { Route as ApiGovernanceRouteImport } from './routes/api/governance'
 import { Route as ApiGrowthLinksRouteImport } from './routes/api/growth-links'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiIcebreakersRouteImport } from './routes/api/icebreakers'
 import { Route as ApiInboxRouteImport } from './routes/api/inbox'
 import { Route as ApiInsightsRouteImport } from './routes/api/insights'
 import { Route as ApiReadyRouteImport } from './routes/api/ready'
@@ -78,6 +79,7 @@ import { Route as ApiContactsContactIdRouteImport } from './routes/api/contacts/
 import { Route as ApiContactsBulkRouteImport } from './routes/api/contacts/bulk'
 import { Route as ApiCrmLeadIdRouteImport } from './routes/api/crm/$leadId'
 import { Route as ApiCrmRadarRouteImport } from './routes/api/crm/radar'
+import { Route as ApiGrowthLinksQrcodeRouteImport } from './routes/api/growth-links/qrcode'
 import { Route as ApiMessagesSendRouteImport } from './routes/api/messages/send'
 import { Route as ApiOperationsGoLiveRouteImport } from './routes/api/operations/go-live'
 import { Route as ApiOperationsWebhooksRouteImport } from './routes/api/operations/webhooks'
@@ -344,6 +346,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIcebreakersRoute = ApiIcebreakersRouteImport.update({
+  id: '/api/icebreakers',
+  path: '/api/icebreakers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiInboxRoute = ApiInboxRouteImport.update({
   id: '/api/inbox',
   path: '/api/inbox',
@@ -458,6 +465,11 @@ const ApiCrmRadarRoute = ApiCrmRadarRouteImport.update({
   id: '/radar',
   path: '/radar',
   getParentRoute: () => ApiCrmRoute,
+} as any)
+const ApiGrowthLinksQrcodeRoute = ApiGrowthLinksQrcodeRouteImport.update({
+  id: '/qrcode',
+  path: '/qrcode',
+  getParentRoute: () => ApiGrowthLinksRoute,
 } as any)
 const ApiMessagesSendRoute = ApiMessagesSendRouteImport.update({
   id: '/api/messages/send',
@@ -713,8 +725,9 @@ export interface FileRoutesByFullPath {
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/governance': typeof ApiGovernanceRoute
-  '/api/growth-links': typeof ApiGrowthLinksRoute
+  '/api/growth-links': typeof ApiGrowthLinksRouteWithChildren
   '/api/health': typeof ApiHealthRoute
+  '/api/icebreakers': typeof ApiIcebreakersRoute
   '/api/inbox': typeof ApiInboxRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/ready': typeof ApiReadyRoute
@@ -738,6 +751,7 @@ export interface FileRoutesByFullPath {
   '/api/contacts/bulk': typeof ApiContactsBulkRoute
   '/api/crm/$leadId': typeof ApiCrmLeadIdRoute
   '/api/crm/radar': typeof ApiCrmRadarRoute
+  '/api/growth-links/qrcode': typeof ApiGrowthLinksQrcodeRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
@@ -819,8 +833,9 @@ export interface FileRoutesByTo {
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/governance': typeof ApiGovernanceRoute
-  '/api/growth-links': typeof ApiGrowthLinksRoute
+  '/api/growth-links': typeof ApiGrowthLinksRouteWithChildren
   '/api/health': typeof ApiHealthRoute
+  '/api/icebreakers': typeof ApiIcebreakersRoute
   '/api/inbox': typeof ApiInboxRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/ready': typeof ApiReadyRoute
@@ -844,6 +859,7 @@ export interface FileRoutesByTo {
   '/api/contacts/bulk': typeof ApiContactsBulkRoute
   '/api/crm/$leadId': typeof ApiCrmLeadIdRoute
   '/api/crm/radar': typeof ApiCrmRadarRoute
+  '/api/growth-links/qrcode': typeof ApiGrowthLinksQrcodeRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
@@ -927,8 +943,9 @@ export interface FileRoutesById {
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/governance': typeof ApiGovernanceRoute
-  '/api/growth-links': typeof ApiGrowthLinksRoute
+  '/api/growth-links': typeof ApiGrowthLinksRouteWithChildren
   '/api/health': typeof ApiHealthRoute
+  '/api/icebreakers': typeof ApiIcebreakersRoute
   '/api/inbox': typeof ApiInboxRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/ready': typeof ApiReadyRoute
@@ -952,6 +969,7 @@ export interface FileRoutesById {
   '/api/contacts/bulk': typeof ApiContactsBulkRoute
   '/api/crm/$leadId': typeof ApiCrmLeadIdRoute
   '/api/crm/radar': typeof ApiCrmRadarRoute
+  '/api/growth-links/qrcode': typeof ApiGrowthLinksQrcodeRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
@@ -1037,6 +1055,7 @@ export interface FileRouteTypes {
     | '/api/governance'
     | '/api/growth-links'
     | '/api/health'
+    | '/api/icebreakers'
     | '/api/inbox'
     | '/api/insights'
     | '/api/ready'
@@ -1060,6 +1079,7 @@ export interface FileRouteTypes {
     | '/api/contacts/bulk'
     | '/api/crm/$leadId'
     | '/api/crm/radar'
+    | '/api/growth-links/qrcode'
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
@@ -1143,6 +1163,7 @@ export interface FileRouteTypes {
     | '/api/governance'
     | '/api/growth-links'
     | '/api/health'
+    | '/api/icebreakers'
     | '/api/inbox'
     | '/api/insights'
     | '/api/ready'
@@ -1166,6 +1187,7 @@ export interface FileRouteTypes {
     | '/api/contacts/bulk'
     | '/api/crm/$leadId'
     | '/api/crm/radar'
+    | '/api/growth-links/qrcode'
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
@@ -1250,6 +1272,7 @@ export interface FileRouteTypes {
     | '/api/governance'
     | '/api/growth-links'
     | '/api/health'
+    | '/api/icebreakers'
     | '/api/inbox'
     | '/api/insights'
     | '/api/ready'
@@ -1273,6 +1296,7 @@ export interface FileRouteTypes {
     | '/api/contacts/bulk'
     | '/api/crm/$leadId'
     | '/api/crm/radar'
+    | '/api/growth-links/qrcode'
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
@@ -1331,8 +1355,9 @@ export interface RootRouteChildren {
   ApiDashboardRoute: typeof ApiDashboardRoute
   ApiDataDeletionRoute: typeof ApiDataDeletionRoute
   ApiGovernanceRoute: typeof ApiGovernanceRoute
-  ApiGrowthLinksRoute: typeof ApiGrowthLinksRoute
+  ApiGrowthLinksRoute: typeof ApiGrowthLinksRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiIcebreakersRoute: typeof ApiIcebreakersRoute
   ApiInboxRoute: typeof ApiInboxRoute
   ApiInsightsRoute: typeof ApiInsightsRoute
   ApiReadyRoute: typeof ApiReadyRoute
@@ -1706,6 +1731,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/icebreakers': {
+      id: '/api/icebreakers'
+      path: '/api/icebreakers'
+      fullPath: '/api/icebreakers'
+      preLoaderRoute: typeof ApiIcebreakersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/inbox': {
       id: '/api/inbox'
       path: '/api/inbox'
@@ -1866,6 +1898,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/crm/radar'
       preLoaderRoute: typeof ApiCrmRadarRouteImport
       parentRoute: typeof ApiCrmRoute
+    }
+    '/api/growth-links/qrcode': {
+      id: '/api/growth-links/qrcode'
+      path: '/qrcode'
+      fullPath: '/api/growth-links/qrcode'
+      preLoaderRoute: typeof ApiGrowthLinksQrcodeRouteImport
+      parentRoute: typeof ApiGrowthLinksRoute
     }
     '/api/messages/send': {
       id: '/api/messages/send'
@@ -2259,6 +2298,18 @@ const ApiCrmRouteChildren: ApiCrmRouteChildren = {
 const ApiCrmRouteWithChildren =
   ApiCrmRoute._addFileChildren(ApiCrmRouteChildren)
 
+interface ApiGrowthLinksRouteChildren {
+  ApiGrowthLinksQrcodeRoute: typeof ApiGrowthLinksQrcodeRoute
+}
+
+const ApiGrowthLinksRouteChildren: ApiGrowthLinksRouteChildren = {
+  ApiGrowthLinksQrcodeRoute: ApiGrowthLinksQrcodeRoute,
+}
+
+const ApiGrowthLinksRouteWithChildren = ApiGrowthLinksRoute._addFileChildren(
+  ApiGrowthLinksRouteChildren,
+)
+
 interface ApiTemplatesRouteChildren {
   ApiTemplatesTemplateIdRoute: typeof ApiTemplatesTemplateIdRoute
 }
@@ -2291,8 +2342,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDashboardRoute: ApiDashboardRoute,
   ApiDataDeletionRoute: ApiDataDeletionRoute,
   ApiGovernanceRoute: ApiGovernanceRoute,
-  ApiGrowthLinksRoute: ApiGrowthLinksRoute,
+  ApiGrowthLinksRoute: ApiGrowthLinksRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
+  ApiIcebreakersRoute: ApiIcebreakersRoute,
   ApiInboxRoute: ApiInboxRoute,
   ApiInsightsRoute: ApiInsightsRoute,
   ApiReadyRoute: ApiReadyRoute,

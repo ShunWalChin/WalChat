@@ -2,6 +2,7 @@
 import '@tanstack/react-start/server-only'
 import { suggestInstagramReply } from './ai.server'
 import { extractReferral } from './growth-links'
+import { refFromIcebreakerPayload } from './icebreakers'
 import { isFirstContact } from './welcome-domain'
 import {
   resumeAutomationAfterReply,
@@ -231,7 +232,9 @@ async function ingestInbound(input: {
 
   // A origem vem antes de tudo: ela decide qual fluxo recebe a pessoa e precisa
   // ficar no contato mesmo que nenhuma automação dispare depois.
-  const growthRef = extractReferral(input.raw)
+  const growthRef =
+    extractReferral(input.raw) ??
+    refFromIcebreakerPayload(postbackPayload(input.raw))
   const growthLink = growthRef
     ? await registerGrowthVisit({
         supabase: input.supabase,

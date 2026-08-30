@@ -13,12 +13,15 @@ import {
   Info,
   Link2,
   LoaderCircle,
+  MessageCircleQuestion,
   Plus,
+  QrCode,
   Trash2,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { PageIntro } from '../../components/ui'
-import { apiFetch } from '../../lib/api-client'
+import { apiFetch, apiFetchText } from '../../lib/api-client'
+import { refFromName } from '../../server/growth-links'
 
 export const Route = createFileRoute('/_app/captacao')({
   component: GrowthLinksScreen,
@@ -91,6 +94,30 @@ function GrowthLinksScreen() {
       setErro(causa instanceof Error ? causa.message : 'Falha ao desativar.')
     } finally {
       setBusy(null)
+    }
+  }
+
+  /**
+   * Abre o QR numa aba própria.
+   *
+   * Não dá para usar um link direto: o endpoint exige o token no cabeçalho, e
+   * um `href` não o carrega. Buscar e abrir como blob resolve sem expor o token
+   * na URL.
+   */
+  async function abrirQrCode(ref: string) {
+    try {
+      const svg = await apiFetchText(
+        `/api/growth-links/qrcode?ref=${encodeURIComponent(ref)}`,
+      )
+      const blob = new Blob([svg], { type: 'image/svg+xml' })
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank', 'noopener')
+      // A revogação espera a aba ler o blob; imediata deixaria a janela vazia.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (causa) {
+      setErro(
+        causa instanceof Error ? causa.message : 'Falha ao gerar o QR code.',
+      )
     }
   }
 
@@ -197,6 +224,14 @@ function GrowthLinksScreen() {
                       <Copy size={14} />
                     )}
                   </button>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Ver QR code de ${link.name}`}
+                    onClick={() => void abrirQrCode(link.ref)}
+                  >
+                    <QrCode size={14} />
+                  </button>
                 </div>
               )}
 
@@ -223,10 +258,170 @@ function GrowthLinksScreen() {
         </ul>
       )}
 
+      <IcebreakersSection />
+
       <p className="growth-footnote">
         A contagem é de conversas atribuídas, não de toques no link: a Meta só
         avisa quando a conversa abre.
       </p>
     </div>
+  )
+}
+
+/** Máximo que a Meta aceita no perfil de mensagens. */
+const MAX_ICEBREAKERS = 4
+
+type Icebreaker = { question: string; ref: string }
+
+/**
+ * Perguntas prontas do direct.
+ *
+ * Ficam nesta tela porque são a outra metade da captação: o link traz alguém
+ * até a porta, a pergunta dá a ela uma frase para começar em vez de uma caixa
+ * em branco. E cada uma carrega a mesma origem de um link, então a atribuição é
+ * a mesma.
+ */
+function IcebreakersSection() {
+  const [perguntas, setPerguntas] = useState<Array<Icebreaker>>([])
+  const [busy, setBusy] = useState<string | null>('load')
+  const [aviso, setAviso] = useState<string | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
+
+  const carregar = useCallback(async () => {
+    try {
+      const dados = await apiFetch<{ icebreakers: Array<Icebreaker> }>(
+        '/api/icebreakers',
+      )
+      setPerguntas(dados.icebreakers)
+      setErro(null)
+    } catch (causa) {
+      setErro(causa instanceof Error ? causa.message : 'Falha ao carregar.')
+    } finally {
+      setBusy(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    void carregar()
+  }, [carregar])
+
+  async function publicar() {
+    setBusy('save')
+    try {
+      await apiFetch('/api/icebreakers', {
+        method: 'PUT',
+        body: JSON.stringify(perguntas.filter((p) => p.question.trim())),
+      })
+      setAviso(
+        perguntas.length
+          ? 'Perguntas publicadas no seu direct.'
+          : 'Perguntas removidas do seu direct.',
+      )
+      setErro(null)
+      await carregar()
+    } catch (causa) {
+      setErro(causa instanceof Error ? causa.message : 'Falha ao publicar.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <section className="growth-block">
+      <div className="growth-block-head">
+        <h2>Perguntas prontas</h2>
+        <span>
+          {perguntas.length} de {MAX_ICEBREAKERS}
+        </span>
+      </div>
+      <p className="growth-hint">
+        Aparecem no seu direct antes de a pessoa digitar. Cada uma tem sua
+        própria origem, então você sabe qual assunto trouxe cada conversa. Não
+        aparecem no Instagram para computador.
+      </p>
+
+      {busy === 'load' ? (
+        <p className="growth-empty">
+          <LoaderCircle className="spin" size={16} /> Carregando…
+        </p>
+      ) : (
+        <>
+          <div className="growth-questions">
+            {perguntas.map((pergunta, index) => (
+              <div className="growth-question" key={index}>
+                <input
+                  value={pergunta.question}
+                  maxLength={80}
+                  placeholder="Ex: Como funciona?"
+                  aria-label={`Pergunta ${index + 1}`}
+                  onChange={(event) =>
+                    setPerguntas(
+                      perguntas.map((item, i) =>
+                        i === index
+                          ? {
+                              question: event.target.value,
+                              // A origem sai do texto: pedir as duas coisas
+                              // obrigaria a entender o mecanismo.
+                              ref: refFromName(
+                                event.target.value,
+                                perguntas
+                                  .filter((_, j) => j !== index)
+                                  .map((item2) => item2.ref),
+                              ),
+                            }
+                          : item,
+                      ),
+                    )
+                  }
+                />
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label={`Remover pergunta ${index + 1}`}
+                  onClick={() =>
+                    setPerguntas(perguntas.filter((_, i) => i !== index))
+                  }
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="growth-actions">
+            {perguntas.length < MAX_ICEBREAKERS && (
+              <button
+                type="button"
+                className="button button-outline"
+                onClick={() =>
+                  setPerguntas([...perguntas, { question: '', ref: 'nova' }])
+                }
+              >
+                <Plus size={14} /> Adicionar pergunta
+              </button>
+            )}
+            <button
+              type="button"
+              className="button button-orange"
+              disabled={
+                Boolean(busy) ||
+                perguntas.some((p) => p.question.trim().length < 2)
+              }
+              onClick={() => void publicar()}
+            >
+              {busy === 'save' ? (
+                <LoaderCircle className="spin" size={15} />
+              ) : (
+                <MessageCircleQuestion size={15} />
+              )}{' '}
+              Publicar no direct
+            </button>
+          </div>
+        </>
+      )}
+
+      {aviso && <p className="growth-ok">{aviso}</p>}
+      {erro && <p className="growth-error">{erro}</p>}
+    </section>
   )
 }

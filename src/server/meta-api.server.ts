@@ -3,6 +3,11 @@ import '@tanstack/react-start/server-only'
 import { createHash, randomBytes } from 'node:crypto'
 import { getInstagramAppConfig, getServerEnv } from './env.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
+import {
+  buildIcebreakersDeletePayload,
+  buildIcebreakersPayload,
+  readIcebreakersPayload,
+} from './icebreakers'
 
 export const META_REQUIRED_SCOPES = [
   'instagram_business_basic',
@@ -439,6 +444,51 @@ export async function getMetaMediaInsights(input: {
     headers: { Authorization: `Bearer ${input.accessToken}` },
   })
   return parseMetaResponse<{ data?: MetaInsightMetric[] }>(response)
+}
+
+/**
+ * Publica as perguntas prontas no perfil de mensagens da conta.
+ *
+ * Uma lista vazia apaga em vez de publicar nada: a Meta mantém o que já está lá
+ * se receber um array vazio, então desligar precisa ser um DELETE explícito.
+ */
+export async function setInstagramIcebreakers(input: {
+  instagramUserId: string
+  accessToken: string
+  icebreakers: Array<{ question: string; ref: string }>
+}) {
+  const url = `${graphBase()}/${encodeURIComponent(input.instagramUserId)}/messenger_profile`
+  const headers = {
+    Authorization: `Bearer ${input.accessToken}`,
+    'Content-Type': 'application/json',
+  }
+  const response = await fetchMeta(url, {
+    method: input.icebreakers.length ? 'POST' : 'DELETE',
+    headers,
+    body: JSON.stringify(
+      input.icebreakers.length
+        ? buildIcebreakersPayload(input.icebreakers)
+        : buildIcebreakersDeletePayload(),
+    ),
+  })
+  return parseMetaResponse<{ result?: string }>(response)
+}
+
+/** Lê o que está publicado hoje, para a tela reabrir o que foi salvo. */
+export async function getInstagramIcebreakers(input: {
+  instagramUserId: string
+  accessToken: string
+}) {
+  const url = new URL(
+    `${graphBase()}/${encodeURIComponent(input.instagramUserId)}/messenger_profile`,
+  )
+  url.searchParams.set('platform', 'instagram')
+  url.searchParams.set('fields', 'ice_breakers')
+  const response = await fetchMeta(url.toString(), {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${input.accessToken}` },
+  })
+  return readIcebreakersPayload(await parseMetaResponse<unknown>(response))
 }
 
 export async function subscribeMetaWebhooks(input: {

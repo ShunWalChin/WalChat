@@ -10513,3 +10513,58 @@ select,
   color: var(--red);
   font-size: var(--text-xs);
 }
+
+/* Perguntas prontas do direct. */
+.growth-block {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+.growth-block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.growth-block-head h2 {
+  margin: 0;
+  font-size: var(--text-base);
+}
+.growth-block-head span {
+  color: var(--muted);
+  font-size: var(--text-2xs);
+}
+.growth-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+.growth-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.growth-question {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.growth-question input {
+  flex: 1;
+  min-width: 0;
+}
+.growth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.growth-ok {
+  margin: 0;
+  padding: 10px 13px;
+  border: 1px solid var(--green);
+  border-radius: var(--radius-md);
+  color: var(--green);
+  font-size: var(--text-xs);
+}
