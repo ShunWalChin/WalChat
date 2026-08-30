@@ -10402,3 +10402,114 @@ select,
   flex-wrap: wrap;
   gap: 9px;
 }
+
+/* Links de captação. */
+.growth-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 760px;
+}
+.growth-note {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--blue);
+  border-radius: var(--radius-md);
+  background: var(--card);
+}
+.growth-note strong {
+  display: block;
+  font-size: var(--text-sm);
+  margin-bottom: 3px;
+}
+.growth-note p {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+.growth-warning {
+  color: var(--orange-text);
+}
+.growth-create {
+  display: flex;
+  gap: 8px;
+}
+.growth-create input {
+  flex: 1;
+  min-width: 0;
+}
+.growth-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.growth-item {
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.growth-item.is-off {
+  opacity: 0.6;
+}
+.growth-item-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--text-sm);
+}
+.growth-tag {
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--muted);
+  font-size: var(--text-2xs);
+}
+.growth-url {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+.growth-url code {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-2xs);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.growth-item-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: var(--text-2xs);
+}
+.growth-empty,
+.growth-footnote {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+.growth-error {
+  margin: 0;
+  padding: 10px 13px;
+  border: 1px solid var(--red);
+  border-radius: var(--radius-md);
+  color: var(--red);
+  font-size: var(--text-xs);
+}

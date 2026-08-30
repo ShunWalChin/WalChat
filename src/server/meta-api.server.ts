@@ -17,6 +17,9 @@ export const META_WEBHOOK_FIELDS = [
   'messaging_postbacks',
   'messaging_seen',
   'message_reactions',
+  // Sem este campo, um link ig.me com origem abre a conversa mas o evento de
+  // referral nunca chega — a captação funcionaria e a atribuição não.
+  'messaging_referral',
   'comments',
   'live_comments',
   'mentions',

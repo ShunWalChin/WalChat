@@ -15,6 +15,7 @@ import {
   Heart,
   Inbox,
   LayoutDashboard,
+  Link2,
   LogOut,
   Menu,
   Megaphone,
@@ -66,6 +67,7 @@ const groups = [
     items: [
       { to: '/gatilhos', label: 'Gatilhos', icon: Zap },
       { to: '/boas-vindas', label: 'Boas-vindas', icon: HandHeart },
+      { to: '/captacao', label: 'Captação', icon: Link2 },
       {
         to: '/comment-to-dm',
         label: 'Comment-to-DM',
@@ -113,6 +115,7 @@ const titles: Record<string, { eyebrow: string; title: string }> = {
     eyebrow: 'RECEPÇÃO',
     title: 'Boas-vindas',
   },
+  '/captacao': { eyebrow: 'CRESCIMENTO', title: 'Captação' },
   '/comment-to-dm': {
     eyebrow: 'CRESCIMENTO COM COMPLIANCE',
     title: 'Comment-to-DM',

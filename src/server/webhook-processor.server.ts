@@ -1,6 +1,7 @@
 /** Normaliza webhooks Meta, persiste a inbox e agenda automações elegíveis. */
 import '@tanstack/react-start/server-only'
 import { suggestInstagramReply } from './ai.server'
+import { extractReferral } from './growth-links'
 import { isFirstContact } from './welcome-domain'
 import {
   resumeAutomationAfterReply,
@@ -228,6 +229,18 @@ async function ingestInbound(input: {
       conversationId: ingested.conversation_id,
     })
 
+  // A origem vem antes de tudo: ela decide qual fluxo recebe a pessoa e precisa
+  // ficar no contato mesmo que nenhuma automação dispare depois.
+  const growthRef = extractReferral(input.raw)
+  const growthLink = growthRef
+    ? await registerGrowthVisit({
+        supabase: input.supabase,
+        workspaceId: input.workspaceId,
+        contactId: ingested.contact_id,
+        ref: growthRef,
+      })
+    : null
+
   // Um fluxo parado esperando resposta tem precedência: a pessoa está no meio
   // de um menu ou de uma pergunta e disparar um gatilho novo aqui atropelaria a
   // conversa em andamento.
@@ -247,6 +260,7 @@ async function ingestInbound(input: {
     contactId: ingested.contact_id,
     interactionId: ingested.interaction_id,
     receivedAt,
+    growthLink,
   })
   if (!scheduledByTrigger && ingested.contact_ai_enabled)
     await maybeScheduleAutonomousAgent({
@@ -277,6 +291,56 @@ function postbackPayload(raw: unknown): string | null {
   if (typeof fromPostback === 'string') return fromPostback
   const fromQuickReply = event.message?.quick_reply?.payload
   return typeof fromQuickReply === 'string' ? fromQuickReply : null
+}
+
+/**
+ * Registra a visita vinda de um link de captação.
+ *
+ * A contagem é de visitas atribuídas, não de cliques: a Meta só avisa quando a
+ * conversa abre, então quem toca no link e desiste antes de enviar não aparece.
+ * Chamar isso de "cliques" na tela seria prometer uma métrica que não existe.
+ *
+ * A origem só é gravada no contato quando ele ainda não tem uma. A primeira
+ * origem é a que explica como a pessoa chegou; sobrescrever a cada visita
+ * transformaria o campo em "última campanha que ela tocou", que é outra coisa.
+ */
+async function registerGrowthVisit(input: {
+  supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>
+  workspaceId: string
+  contactId: string
+  ref: string
+}) {
+  const { data: link, error } = await input.supabase
+    .from('growth_links')
+    .select('id,ref,flow_id,is_active,clicks')
+    .eq('workspace_id', input.workspaceId)
+    .eq('ref', input.ref)
+    .maybeSingle()
+  if (error) throw error
+
+  // Link desconhecido ainda merece registro no contato: pode ser uma campanha
+  // criada fora do produto, e perder a origem seria perder a informação.
+  const { error: contactError } = await input.supabase
+    .from('contacts')
+    .update({ growth_ref: input.ref })
+    .eq('workspace_id', input.workspaceId)
+    .eq('id', input.contactId)
+    .is('growth_ref', null)
+  if (contactError) throw contactError
+
+  if (!link) return null
+
+  const { error: countError } = await input.supabase
+    .from('growth_links')
+    .update({
+      clicks: link.clicks + 1,
+      last_click_at: new Date().toISOString(),
+    })
+    .eq('workspace_id', input.workspaceId)
+    .eq('id', link.id)
+  if (countError) throw countError
+
+  return link.is_active ? link : null
 }
 
 /**
@@ -339,6 +403,8 @@ async function matchAndScheduleTrigger(input: {
   channel: string
   raw: unknown
   receivedAt: string
+  /** Link de captação que trouxe esta pessoa, quando houve um. */
+  growthLink?: { id: string; flow_id: string | null } | null
 }) {
   const source =
     input.channel === 'comment'
@@ -361,13 +427,28 @@ async function matchAndScheduleTrigger(input: {
   // A saudação de primeiro contato concorre com os gatilhos por palavra, e vem
   // antes: quem chega agora precisa ser recebido antes de cair numa automação
   // que pressupõe conversa em andamento.
-  const welcome = await matchWelcomeTrigger({
-    supabase: input.supabase,
-    workspaceId: input.workspaceId,
-    contactId: input.contactId,
-    interactionId: input.interactionId,
-    channel: input.channel,
-  })
+  // Link com fluxo próprio ganha da saudação geral: quem veio por uma campanha
+  // específica precisa receber a mensagem daquela campanha, não a genérica.
+  const welcome = input.growthLink?.flow_id
+    ? {
+        id: `growth:${input.growthLink.id}`,
+        keyword: null,
+        match_mode: 'contains' as const,
+        response_text: null,
+        sequence_id: null,
+        flow_id: input.growthLink.flow_id,
+        post_id: null,
+        cooldown_hours: 168,
+        auto_tag_id: null,
+        booking_page_id: null,
+      }
+    : await matchWelcomeTrigger({
+        supabase: input.supabase,
+        workspaceId: input.workspaceId,
+        contactId: input.contactId,
+        interactionId: input.interactionId,
+        channel: input.channel,
+      })
 
   const { data: keywordTriggers, error } = await input.supabase
     .from('triggers')

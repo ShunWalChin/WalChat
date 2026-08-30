@@ -20,6 +20,7 @@ import { Route as AppAuditoriaRouteImport } from './routes/_app/auditoria'
 import { Route as AppAutoLikeRouteImport } from './routes/_app/auto-like'
 import { Route as AppBoasVindasRouteImport } from './routes/_app/boas-vindas'
 import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
+import { Route as AppCaptacaoRouteImport } from './routes/_app/captacao'
 import { Route as AppCommentToDmRouteImport } from './routes/_app/comment-to-dm'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app/configuracoes'
 import { Route as AppContatosRouteImport } from './routes/_app/contatos'
@@ -52,6 +53,7 @@ import { Route as ApiCrmRouteImport } from './routes/api/crm'
 import { Route as ApiDashboardRouteImport } from './routes/api/dashboard'
 import { Route as ApiDataDeletionRouteImport } from './routes/api/data-deletion'
 import { Route as ApiGovernanceRouteImport } from './routes/api/governance'
+import { Route as ApiGrowthLinksRouteImport } from './routes/api/growth-links'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiInboxRouteImport } from './routes/api/inbox'
 import { Route as ApiInsightsRouteImport } from './routes/api/insights'
@@ -165,6 +167,11 @@ const AppBoasVindasRoute = AppBoasVindasRouteImport.update({
 const AppCalendarioRoute = AppCalendarioRouteImport.update({
   id: '/calendario',
   path: '/calendario',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCaptacaoRoute = AppCaptacaoRouteImport.update({
+  id: '/captacao',
+  path: '/captacao',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCommentToDmRoute = AppCommentToDmRouteImport.update({
@@ -325,6 +332,11 @@ const ApiDataDeletionRoute = ApiDataDeletionRouteImport.update({
 const ApiGovernanceRoute = ApiGovernanceRouteImport.update({
   id: '/api/governance',
   path: '/api/governance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGrowthLinksRoute = ApiGrowthLinksRouteImport.update({
+  id: '/api/growth-links',
+  path: '/api/growth-links',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -668,6 +680,7 @@ export interface FileRoutesByFullPath {
   '/auto-like': typeof AppAutoLikeRoute
   '/boas-vindas': typeof AppBoasVindasRoute
   '/calendario': typeof AppCalendarioRoute
+  '/captacao': typeof AppCaptacaoRoute
   '/comment-to-dm': typeof AppCommentToDmRoute
   '/configuracoes': typeof AppConfiguracoesRoute
   '/contatos': typeof AppContatosRoute
@@ -700,6 +713,7 @@ export interface FileRoutesByFullPath {
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/governance': typeof ApiGovernanceRoute
+  '/api/growth-links': typeof ApiGrowthLinksRoute
   '/api/health': typeof ApiHealthRoute
   '/api/inbox': typeof ApiInboxRoute
   '/api/insights': typeof ApiInsightsRoute
@@ -772,6 +786,7 @@ export interface FileRoutesByTo {
   '/auto-like': typeof AppAutoLikeRoute
   '/boas-vindas': typeof AppBoasVindasRoute
   '/calendario': typeof AppCalendarioRoute
+  '/captacao': typeof AppCaptacaoRoute
   '/comment-to-dm': typeof AppCommentToDmRoute
   '/configuracoes': typeof AppConfiguracoesRoute
   '/contatos': typeof AppContatosRoute
@@ -804,6 +819,7 @@ export interface FileRoutesByTo {
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/governance': typeof ApiGovernanceRoute
+  '/api/growth-links': typeof ApiGrowthLinksRoute
   '/api/health': typeof ApiHealthRoute
   '/api/inbox': typeof ApiInboxRoute
   '/api/insights': typeof ApiInsightsRoute
@@ -878,6 +894,7 @@ export interface FileRoutesById {
   '/_app/auto-like': typeof AppAutoLikeRoute
   '/_app/boas-vindas': typeof AppBoasVindasRoute
   '/_app/calendario': typeof AppCalendarioRoute
+  '/_app/captacao': typeof AppCaptacaoRoute
   '/_app/comment-to-dm': typeof AppCommentToDmRoute
   '/_app/configuracoes': typeof AppConfiguracoesRoute
   '/_app/contatos': typeof AppContatosRoute
@@ -910,6 +927,7 @@ export interface FileRoutesById {
   '/api/dashboard': typeof ApiDashboardRoute
   '/api/data-deletion': typeof ApiDataDeletionRoute
   '/api/governance': typeof ApiGovernanceRoute
+  '/api/growth-links': typeof ApiGrowthLinksRoute
   '/api/health': typeof ApiHealthRoute
   '/api/inbox': typeof ApiInboxRoute
   '/api/insights': typeof ApiInsightsRoute
@@ -984,6 +1002,7 @@ export interface FileRouteTypes {
     | '/auto-like'
     | '/boas-vindas'
     | '/calendario'
+    | '/captacao'
     | '/comment-to-dm'
     | '/configuracoes'
     | '/contatos'
@@ -1016,6 +1035,7 @@ export interface FileRouteTypes {
     | '/api/dashboard'
     | '/api/data-deletion'
     | '/api/governance'
+    | '/api/growth-links'
     | '/api/health'
     | '/api/inbox'
     | '/api/insights'
@@ -1088,6 +1108,7 @@ export interface FileRouteTypes {
     | '/auto-like'
     | '/boas-vindas'
     | '/calendario'
+    | '/captacao'
     | '/comment-to-dm'
     | '/configuracoes'
     | '/contatos'
@@ -1120,6 +1141,7 @@ export interface FileRouteTypes {
     | '/api/dashboard'
     | '/api/data-deletion'
     | '/api/governance'
+    | '/api/growth-links'
     | '/api/health'
     | '/api/inbox'
     | '/api/insights'
@@ -1193,6 +1215,7 @@ export interface FileRouteTypes {
     | '/_app/auto-like'
     | '/_app/boas-vindas'
     | '/_app/calendario'
+    | '/_app/captacao'
     | '/_app/comment-to-dm'
     | '/_app/configuracoes'
     | '/_app/contatos'
@@ -1225,6 +1248,7 @@ export interface FileRouteTypes {
     | '/api/dashboard'
     | '/api/data-deletion'
     | '/api/governance'
+    | '/api/growth-links'
     | '/api/health'
     | '/api/inbox'
     | '/api/insights'
@@ -1307,6 +1331,7 @@ export interface RootRouteChildren {
   ApiDashboardRoute: typeof ApiDashboardRoute
   ApiDataDeletionRoute: typeof ApiDataDeletionRoute
   ApiGovernanceRoute: typeof ApiGovernanceRoute
+  ApiGrowthLinksRoute: typeof ApiGrowthLinksRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiInboxRoute: typeof ApiInboxRoute
   ApiInsightsRoute: typeof ApiInsightsRoute
@@ -1434,6 +1459,13 @@ declare module '@tanstack/react-router' {
       path: '/calendario'
       fullPath: '/calendario'
       preLoaderRoute: typeof AppCalendarioRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/captacao': {
+      id: '/_app/captacao'
+      path: '/captacao'
+      fullPath: '/captacao'
+      preLoaderRoute: typeof AppCaptacaoRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/comment-to-dm': {
@@ -1658,6 +1690,13 @@ declare module '@tanstack/react-router' {
       path: '/api/governance'
       fullPath: '/api/governance'
       preLoaderRoute: typeof ApiGovernanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/growth-links': {
+      id: '/api/growth-links'
+      path: '/api/growth-links'
+      fullPath: '/api/growth-links'
+      preLoaderRoute: typeof ApiGrowthLinksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -2089,6 +2128,7 @@ interface AppRouteChildren {
   AppAutoLikeRoute: typeof AppAutoLikeRoute
   AppBoasVindasRoute: typeof AppBoasVindasRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
+  AppCaptacaoRoute: typeof AppCaptacaoRoute
   AppCommentToDmRoute: typeof AppCommentToDmRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
   AppContatosRoute: typeof AppContatosRoute
@@ -2116,6 +2156,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAutoLikeRoute: AppAutoLikeRoute,
   AppBoasVindasRoute: AppBoasVindasRoute,
   AppCalendarioRoute: AppCalendarioRoute,
+  AppCaptacaoRoute: AppCaptacaoRoute,
   AppCommentToDmRoute: AppCommentToDmRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
   AppContatosRoute: AppContatosRoute,
@@ -2250,6 +2291,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDashboardRoute: ApiDashboardRoute,
   ApiDataDeletionRoute: ApiDataDeletionRoute,
   ApiGovernanceRoute: ApiGovernanceRoute,
+  ApiGrowthLinksRoute: ApiGrowthLinksRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiInboxRoute: ApiInboxRoute,
   ApiInsightsRoute: ApiInsightsRoute,
