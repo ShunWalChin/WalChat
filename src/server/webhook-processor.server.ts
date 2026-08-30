@@ -1,6 +1,7 @@
 /** Normaliza webhooks Meta, persiste a inbox e agenda automações elegíveis. */
 import '@tanstack/react-start/server-only'
 import { suggestInstagramReply } from './ai.server'
+import { isFirstContact } from './welcome-domain'
 import {
   resumeAutomationAfterReply,
   startAutomationExecution,
@@ -278,6 +279,53 @@ function postbackPayload(raw: unknown): string | null {
   return typeof fromQuickReply === 'string' ? fromQuickReply : null
 }
 
+/**
+ * Busca a saudação de boas-vindas quando esta é a primeira vez que a pessoa fala.
+ *
+ * A contagem exclui a interação atual de propósito: incluí-la faria todo contato
+ * parecer veterano e a saudação nunca dispararia. O `neq` no id da interação é o
+ * que garante isso mesmo com a linha já gravada pela ingestão.
+ *
+ * Devolve `null` — e não lança — quando não é primeiro contato, porque a ausência
+ * de saudação é o caminho normal, não um erro.
+ */
+async function matchWelcomeTrigger(input: {
+  supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>
+  workspaceId: string
+  contactId: string
+  interactionId: string
+  channel: string
+}) {
+  const { data: trigger, error } = await input.supabase
+    .from('triggers')
+    .select(
+      'id,keyword,match_mode,response_text,sequence_id,flow_id,post_id,cooldown_hours,auto_tag_id,booking_page_id,first_contact_channels',
+    )
+    .eq('workspace_id', input.workspaceId)
+    .eq('source', 'first_contact')
+    .eq('is_active', true)
+    .maybeSingle()
+  if (error) throw error
+  if (!trigger) return null
+
+  const { count, error: countError } = await input.supabase
+    .from('interactions_log')
+    .select('id', { count: 'exact', head: true })
+    .eq('workspace_id', input.workspaceId)
+    .eq('contact_id', input.contactId)
+    .eq('direction', 'inbound')
+    .neq('id', input.interactionId)
+  if (countError) throw countError
+
+  return isFirstContact({
+    previousInboundCount: count ?? 0,
+    channel: input.channel,
+    enabledChannels: trigger.first_contact_channels ?? ['dm'],
+  })
+    ? trigger
+    : null
+}
+
 /** Aplica opt-out, match e cooldown; no máximo um gatilho agenda resposta por evento. */
 async function matchAndScheduleTrigger(input: {
   supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>
@@ -310,7 +358,18 @@ async function matchAndScheduleTrigger(input: {
     return true
   }
 
-  const { data: triggers, error } = await input.supabase
+  // A saudação de primeiro contato concorre com os gatilhos por palavra, e vem
+  // antes: quem chega agora precisa ser recebido antes de cair numa automação
+  // que pressupõe conversa em andamento.
+  const welcome = await matchWelcomeTrigger({
+    supabase: input.supabase,
+    workspaceId: input.workspaceId,
+    contactId: input.contactId,
+    interactionId: input.interactionId,
+    channel: input.channel,
+  })
+
+  const { data: keywordTriggers, error } = await input.supabase
     .from('triggers')
     .select(
       'id,keyword,match_mode,response_text,sequence_id,flow_id,post_id,cooldown_hours,auto_tag_id,booking_page_id',
@@ -320,6 +379,7 @@ async function matchAndScheduleTrigger(input: {
     .eq('is_active', true)
     .order('created_at')
   if (error) throw error
+  const triggers = welcome ? [welcome, ...keywordTriggers] : keywordTriggers
   const configuredPostIds = Array.from(
     new Set(triggers.map((trigger) => trigger.post_id).filter(Boolean)),
   ) as string[]
@@ -337,11 +397,16 @@ async function matchAndScheduleTrigger(input: {
   const incomingMediaId = extractInstagramMediaId(input.raw)
   const normalized = input.text.trim().toLocaleLowerCase('pt-BR')
   for (const trigger of triggers) {
-    const keyword = String(trigger.keyword).toLocaleLowerCase('pt-BR')
+    // Gatilho sem palavra é a saudação: ela já foi qualificada por ser o
+    // primeiro contato, então não há texto a casar.
     const matches =
-      trigger.match_mode === 'exact'
-        ? normalized === keyword
-        : normalized.includes(keyword)
+      trigger.keyword === null
+        ? true
+        : trigger.match_mode === 'exact'
+          ? normalized === String(trigger.keyword).toLocaleLowerCase('pt-BR')
+          : normalized.includes(
+              String(trigger.keyword).toLocaleLowerCase('pt-BR'),
+            )
     if (!matches) continue
     if (
       trigger.post_id &&

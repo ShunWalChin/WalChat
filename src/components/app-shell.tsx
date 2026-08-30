@@ -2,6 +2,7 @@
 import { Link, Navigate, Outlet, useRouterState } from '@tanstack/react-router'
 import {
   BarChart3,
+  HandHeart,
   BookOpenCheck,
   Bot,
   BriefcaseBusiness,
@@ -64,6 +65,7 @@ const groups = [
     label: 'AUTOMAÇÃO',
     items: [
       { to: '/gatilhos', label: 'Gatilhos', icon: Zap },
+      { to: '/boas-vindas', label: 'Boas-vindas', icon: HandHeart },
       {
         to: '/comment-to-dm',
         label: 'Comment-to-DM',
@@ -107,6 +109,10 @@ const titles: Record<string, { eyebrow: string; title: string }> = {
   },
   '/equipe': { eyebrow: 'CAPACIDADE E DISTRIBUIÇÃO', title: 'Equipe' },
   '/gatilhos': { eyebrow: 'AUTOMAÇÃO INTELIGENTE', title: 'Gatilhos' },
+  '/boas-vindas': {
+    eyebrow: 'RECEPÇÃO',
+    title: 'Boas-vindas',
+  },
   '/comment-to-dm': {
     eyebrow: 'CRESCIMENTO COM COMPLIANCE',
     title: 'Comment-to-DM',

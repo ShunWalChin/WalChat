@@ -18,6 +18,7 @@ import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AppAgentesRouteImport } from './routes/_app/agentes'
 import { Route as AppAuditoriaRouteImport } from './routes/_app/auditoria'
 import { Route as AppAutoLikeRouteImport } from './routes/_app/auto-like'
+import { Route as AppBoasVindasRouteImport } from './routes/_app/boas-vindas'
 import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppCommentToDmRouteImport } from './routes/_app/comment-to-dm'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app/configuracoes'
@@ -60,6 +61,7 @@ import { Route as ApiTeamRouteImport } from './routes/api/team'
 import { Route as ApiTemplatesRouteImport } from './routes/api/templates'
 import { Route as ApiTriggersRouteImport } from './routes/api/triggers'
 import { Route as ApiWebhookSourcesRouteImport } from './routes/api/webhook-sources'
+import { Route as ApiWelcomeRouteImport } from './routes/api/welcome'
 import { Route as ApiWorkspacesRouteImport } from './routes/api/workspaces'
 import { Route as ApiAiAgentsRouteImport } from './routes/api/ai/agents'
 import { Route as ApiAiKnowledgeRouteImport } from './routes/api/ai/knowledge'
@@ -153,6 +155,11 @@ const AppAuditoriaRoute = AppAuditoriaRouteImport.update({
 const AppAutoLikeRoute = AppAutoLikeRouteImport.update({
   id: '/auto-like',
   path: '/auto-like',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBoasVindasRoute = AppBoasVindasRouteImport.update({
+  id: '/boas-vindas',
+  path: '/boas-vindas',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCalendarioRoute = AppCalendarioRouteImport.update({
@@ -363,6 +370,11 @@ const ApiTriggersRoute = ApiTriggersRouteImport.update({
 const ApiWebhookSourcesRoute = ApiWebhookSourcesRouteImport.update({
   id: '/api/webhook-sources',
   path: '/api/webhook-sources',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWelcomeRoute = ApiWelcomeRouteImport.update({
+  id: '/api/welcome',
+  path: '/api/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspacesRoute = ApiWorkspacesRouteImport.update({
@@ -654,6 +666,7 @@ export interface FileRoutesByFullPath {
   '/agentes': typeof AppAgentesRoute
   '/auditoria': typeof AppAuditoriaRoute
   '/auto-like': typeof AppAutoLikeRoute
+  '/boas-vindas': typeof AppBoasVindasRoute
   '/calendario': typeof AppCalendarioRoute
   '/comment-to-dm': typeof AppCommentToDmRoute
   '/configuracoes': typeof AppConfiguracoesRoute
@@ -696,6 +709,7 @@ export interface FileRoutesByFullPath {
   '/api/templates': typeof ApiTemplatesRouteWithChildren
   '/api/triggers': typeof ApiTriggersRoute
   '/api/webhook-sources': typeof ApiWebhookSourcesRoute
+  '/api/welcome': typeof ApiWelcomeRoute
   '/api/workspaces': typeof ApiWorkspacesRoute
   '/api/ai/agents': typeof ApiAiAgentsRoute
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
@@ -756,6 +770,7 @@ export interface FileRoutesByTo {
   '/agentes': typeof AppAgentesRoute
   '/auditoria': typeof AppAuditoriaRoute
   '/auto-like': typeof AppAutoLikeRoute
+  '/boas-vindas': typeof AppBoasVindasRoute
   '/calendario': typeof AppCalendarioRoute
   '/comment-to-dm': typeof AppCommentToDmRoute
   '/configuracoes': typeof AppConfiguracoesRoute
@@ -798,6 +813,7 @@ export interface FileRoutesByTo {
   '/api/templates': typeof ApiTemplatesRouteWithChildren
   '/api/triggers': typeof ApiTriggersRoute
   '/api/webhook-sources': typeof ApiWebhookSourcesRoute
+  '/api/welcome': typeof ApiWelcomeRoute
   '/api/workspaces': typeof ApiWorkspacesRoute
   '/api/ai/agents': typeof ApiAiAgentsRoute
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
@@ -860,6 +876,7 @@ export interface FileRoutesById {
   '/_app/agentes': typeof AppAgentesRoute
   '/_app/auditoria': typeof AppAuditoriaRoute
   '/_app/auto-like': typeof AppAutoLikeRoute
+  '/_app/boas-vindas': typeof AppBoasVindasRoute
   '/_app/calendario': typeof AppCalendarioRoute
   '/_app/comment-to-dm': typeof AppCommentToDmRoute
   '/_app/configuracoes': typeof AppConfiguracoesRoute
@@ -902,6 +919,7 @@ export interface FileRoutesById {
   '/api/templates': typeof ApiTemplatesRouteWithChildren
   '/api/triggers': typeof ApiTriggersRoute
   '/api/webhook-sources': typeof ApiWebhookSourcesRoute
+  '/api/welcome': typeof ApiWelcomeRoute
   '/api/workspaces': typeof ApiWorkspacesRoute
   '/api/ai/agents': typeof ApiAiAgentsRoute
   '/api/ai/knowledge': typeof ApiAiKnowledgeRoute
@@ -964,6 +982,7 @@ export interface FileRouteTypes {
     | '/agentes'
     | '/auditoria'
     | '/auto-like'
+    | '/boas-vindas'
     | '/calendario'
     | '/comment-to-dm'
     | '/configuracoes'
@@ -1006,6 +1025,7 @@ export interface FileRouteTypes {
     | '/api/templates'
     | '/api/triggers'
     | '/api/webhook-sources'
+    | '/api/welcome'
     | '/api/workspaces'
     | '/api/ai/agents'
     | '/api/ai/knowledge'
@@ -1066,6 +1086,7 @@ export interface FileRouteTypes {
     | '/agentes'
     | '/auditoria'
     | '/auto-like'
+    | '/boas-vindas'
     | '/calendario'
     | '/comment-to-dm'
     | '/configuracoes'
@@ -1108,6 +1129,7 @@ export interface FileRouteTypes {
     | '/api/templates'
     | '/api/triggers'
     | '/api/webhook-sources'
+    | '/api/welcome'
     | '/api/workspaces'
     | '/api/ai/agents'
     | '/api/ai/knowledge'
@@ -1169,6 +1191,7 @@ export interface FileRouteTypes {
     | '/_app/agentes'
     | '/_app/auditoria'
     | '/_app/auto-like'
+    | '/_app/boas-vindas'
     | '/_app/calendario'
     | '/_app/comment-to-dm'
     | '/_app/configuracoes'
@@ -1211,6 +1234,7 @@ export interface FileRouteTypes {
     | '/api/templates'
     | '/api/triggers'
     | '/api/webhook-sources'
+    | '/api/welcome'
     | '/api/workspaces'
     | '/api/ai/agents'
     | '/api/ai/knowledge'
@@ -1292,6 +1316,7 @@ export interface RootRouteChildren {
   ApiTemplatesRoute: typeof ApiTemplatesRouteWithChildren
   ApiTriggersRoute: typeof ApiTriggersRoute
   ApiWebhookSourcesRoute: typeof ApiWebhookSourcesRoute
+  ApiWelcomeRoute: typeof ApiWelcomeRoute
   ApiWorkspacesRoute: typeof ApiWorkspacesRoute
   ApiAiAgentsRoute: typeof ApiAiAgentsRoute
   ApiAiKnowledgeRoute: typeof ApiAiKnowledgeRoute
@@ -1395,6 +1420,13 @@ declare module '@tanstack/react-router' {
       path: '/auto-like'
       fullPath: '/auto-like'
       preLoaderRoute: typeof AppAutoLikeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/boas-vindas': {
+      id: '/_app/boas-vindas'
+      path: '/boas-vindas'
+      fullPath: '/boas-vindas'
+      preLoaderRoute: typeof AppBoasVindasRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/calendario': {
@@ -1689,6 +1721,13 @@ declare module '@tanstack/react-router' {
       path: '/api/webhook-sources'
       fullPath: '/api/webhook-sources'
       preLoaderRoute: typeof ApiWebhookSourcesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/welcome': {
+      id: '/api/welcome'
+      path: '/api/welcome'
+      fullPath: '/api/welcome'
+      preLoaderRoute: typeof ApiWelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/workspaces': {
@@ -2048,6 +2087,7 @@ interface AppRouteChildren {
   AppAgentesRoute: typeof AppAgentesRoute
   AppAuditoriaRoute: typeof AppAuditoriaRoute
   AppAutoLikeRoute: typeof AppAutoLikeRoute
+  AppBoasVindasRoute: typeof AppBoasVindasRoute
   AppCalendarioRoute: typeof AppCalendarioRoute
   AppCommentToDmRoute: typeof AppCommentToDmRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
@@ -2074,6 +2114,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAgentesRoute: AppAgentesRoute,
   AppAuditoriaRoute: AppAuditoriaRoute,
   AppAutoLikeRoute: AppAutoLikeRoute,
+  AppBoasVindasRoute: AppBoasVindasRoute,
   AppCalendarioRoute: AppCalendarioRoute,
   AppCommentToDmRoute: AppCommentToDmRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
@@ -2218,6 +2259,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTemplatesRoute: ApiTemplatesRouteWithChildren,
   ApiTriggersRoute: ApiTriggersRoute,
   ApiWebhookSourcesRoute: ApiWebhookSourcesRoute,
+  ApiWelcomeRoute: ApiWelcomeRoute,
   ApiWorkspacesRoute: ApiWorkspacesRoute,
   ApiAiAgentsRoute: ApiAiAgentsRoute,
   ApiAiKnowledgeRoute: ApiAiKnowledgeRoute,
