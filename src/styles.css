@@ -1170,59 +1170,86 @@ select:focus {
   margin-top: 3px;
 }
 
-/* Inbox */
+/* Inbox
+   ---------------------------------------------------------------------------
+   O Inbox é o único módulo que a pessoa usa o dia inteiro, e um cliente de chat
+   não tem título de página: o nome da conversa já diz onde você está. Por isso
+   ele come a barra superior e ocupa a altura toda — cada pixel devolvido aqui é
+   uma mensagem a mais visível sem rolar.
+
+   O painel do meio limita a largura do texto. Numa tela larga, sem esse limite,
+   uma bolha vai para a extrema esquerda e a resposta para a extrema direita, e
+   ler a conversa vira um exercício de virar a cabeça. */
+.main-panel:has(.inbox-shell) > .topbar {
+  display: none;
+}
 .page-content:has(.inbox-shell) {
   padding: 0;
   max-width: none;
 }
 .inbox-shell {
-  height: calc(100vh - 78px);
+  height: 100vh;
   display: grid;
-  grid-template-columns: 290px minmax(360px, 1fr) 300px;
-  background: #fff;
+  grid-template-columns: minmax(290px, 330px) minmax(0, 1fr) minmax(
+      300px,
+      360px
+    );
+  background: var(--surface);
+  overflow: hidden;
 }
+
+/* ---- coluna 1: conversas ---- */
+
 .conversation-list {
   border-right: 1px solid var(--line);
   min-width: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  background: var(--surface);
 }
 .inbox-tabs {
-  height: 51px;
-  padding: 0 10px;
+  padding: 14px 12px 0;
   display: flex;
   align-items: end;
-  gap: 3px;
+  gap: 2px;
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
+  scrollbar-width: none;
+}
+.inbox-tabs::-webkit-scrollbar {
+  display: none;
 }
 .inbox-tabs button {
   border: 0;
   background: none;
-  padding: 0 8px 12px;
+  padding: 0 9px 11px;
   color: var(--muted);
-  text-transform: capitalize;
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.inbox-tabs button:hover {
+  color: var(--ink);
 }
 .inbox-tabs button.active {
   color: var(--ink);
-  border-bottom: 2px solid var(--orange);
+  border-bottom-color: var(--orange);
 }
 .conversation-list > .search-field {
-  margin: 10px;
+  margin: 11px 12px;
 }
 .search-field {
   min-height: 38px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--surface-raised);
-  padding: 0 10px;
+  padding: 0 11px;
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
 }
 .search-field input {
   border: 0;
@@ -1230,9 +1257,11 @@ select:focus {
   padding: 0;
   box-shadow: none;
   min-width: 0;
+  font-size: 13px;
 }
 .conversation-scroll {
   overflow-y: auto;
+  padding-bottom: 12px;
 }
 
 .inbox-empty,
@@ -1245,34 +1274,48 @@ select:focus {
   padding: 2rem 1rem;
   text-align: center;
 }
-
 .inbox-no-selection {
   min-height: 100%;
   flex-direction: column;
 }
-
 .inbox-no-selection h3,
 .inbox-no-selection p {
   margin: 0;
 }
+
 .conversation-row {
   width: 100%;
   border: 0;
-  border-bottom: 1px solid var(--surface-sunk);
-  background: #fff;
-  padding: 12px 10px;
+  background: none;
+  padding: 11px 12px;
   display: flex;
   align-items: flex-start;
   text-align: left;
-  gap: 9px;
+  gap: 10px;
   cursor: pointer;
+  position: relative;
 }
-.conversation-row:hover,
-.conversation-row.active {
-  background: #f7f3ed;
+.conversation-row + .conversation-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 54px;
+  right: 12px;
+  height: 1px;
+  background: var(--line-soft);
+}
+.conversation-row:hover {
+  background: var(--surface-raised);
 }
 .conversation-row.active {
-  box-shadow: inset 3px 0 var(--orange);
+  background: var(--surface-sunk);
+}
+.conversation-row.active::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--orange);
 }
 .conversation-copy {
   flex: 1;
@@ -1280,58 +1323,79 @@ select:focus {
 }
 .conversation-copy strong {
   display: flex;
-  font-size: 12px;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+.conversation-copy strong > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .conversation-copy time {
   margin-left: auto;
   color: var(--muted);
   font-size: 11px;
   font-weight: 500;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .conversation-copy small {
   color: var(--muted);
   font-size: 11px;
 }
 .conversation-copy p {
-  margin-top: 5px;
+  margin-top: 4px;
   font-size: 12px;
+  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.conversation-row.unread .conversation-copy p {
+  color: var(--ink);
+  font-weight: 500;
+}
 .conversation-row > em {
   align-self: center;
-  min-width: 17px;
-  height: 17px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  border-radius: 99px;
   background: var(--orange-strong);
   color: #fff;
   font-size: 11px;
+  font-weight: 700;
   font-style: normal;
 }
+
+/* ---- coluna 2: a conversa ---- */
+
 .chat-panel {
   min-width: 0;
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
-  background: #f8f7f3;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  background: var(--paper);
 }
 .chat-header {
-  min-height: 61px;
-  padding: 9px 15px;
-  background: #fff;
+  min-height: 58px;
+  padding: 10px 18px;
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
+  flex-wrap: wrap;
 }
 .chat-header > div {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 .chat-header strong {
-  font-size: 13px;
+  font-size: 14px;
 }
 .chat-header small {
   color: var(--muted);
@@ -1340,12 +1404,13 @@ select:focus {
 .window-badge {
   margin-left: auto;
   border-radius: 99px;
-  padding: 6px 9px;
+  padding: 6px 10px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font-size: 11px;
   font-weight: 800;
+  white-space: nowrap;
 }
 .window-badge.open {
   color: var(--green);
@@ -1356,7 +1421,7 @@ select:focus {
   background: #fff0df;
 }
 .window-warning {
-  padding: 8px 14px;
+  padding: 9px 18px;
   background: #fff0df;
   color: #8d552a;
   display: flex;
@@ -1364,9 +1429,17 @@ select:focus {
   font-size: 12px;
   align-items: center;
 }
+
 .messages-scroll {
-  padding: 17px 19px;
+  padding: 18px 22px 24px;
   overflow-y: auto;
+}
+/* A régua de leitura. Sem ela, numa tela de 1900px as bolhas encostam nas duas
+   bordas e a conversa deixa de parecer uma conversa. */
+.messages-scroll > * {
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .day-separator {
   display: flex;
@@ -1374,7 +1447,7 @@ select:focus {
   gap: 10px;
   color: var(--ink-faint);
   font-size: 11px;
-  margin: 5px 0 16px;
+  margin: 4px auto 18px;
 }
 .day-separator::before,
 .day-separator::after {
@@ -1385,26 +1458,26 @@ select:focus {
 }
 .bubble-row {
   display: flex;
-  margin: 9px 0;
+  margin: 10px auto;
 }
 .bubble-row.me,
 .bubble-row.bot {
   justify-content: flex-end;
 }
 .message-bubble {
-  max-width: min(75%, 520px);
-  border-radius: 12px 12px 12px 3px;
-  background: #fff;
+  max-width: 74%;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--surface);
   border: 1px solid var(--line);
-  padding: 9px 11px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.03);
+  padding: 10px 13px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.035);
 }
 .me .message-bubble,
 .bot .message-bubble {
   background: var(--ink);
   color: #fff;
   border: 0;
-  border-radius: 12px 12px 3px 12px;
+  border-radius: 14px 14px 4px 14px;
 }
 .bot .message-bubble {
   background: #fff2e9;
@@ -1413,18 +1486,19 @@ select:focus {
 }
 .message-bubble p {
   white-space: pre-line;
-  line-height: 1.5;
-  font-size: 12px;
+  line-height: 1.55;
+  font-size: 13px;
 }
 .message-bubble time {
   display: block;
   text-align: right;
   color: var(--muted);
-  margin-top: 5px;
+  margin-top: 6px;
   font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 .me .message-bubble time {
-  color: #aaa;
+  color: #a9a69f;
 }
 .bot-label {
   display: inline-flex;
@@ -1435,26 +1509,147 @@ select:focus {
   font-weight: 800;
   margin-bottom: 5px;
 }
+
+/* ---- barra de ferramentas + composer ---- */
+
 .composer {
-  padding: 10px 13px 12px;
-  background: #fff;
+  padding: 0;
+  background: var(--surface);
   border-top: 1px solid var(--line);
 }
+.composer > * {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
 .composer-actions {
-  min-height: 27px;
+  min-height: 44px;
+  padding: 7px 18px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line-soft);
 }
-
 .composer-actions select {
-  max-width: 180px;
-  padding: 0.45rem 0.6rem;
+  max-width: 190px;
+  padding: 0.4rem 0.55rem;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 0.75rem;
+}
+.composer-box {
+  padding: 11px 18px 14px;
+}
+
+/* Cada ferramenta do sistema vira um botão daqui: etiquetar, responder rápido,
+   mandar um modelo, agendar. Antes elas moravam em telas separadas, e sair da
+   conversa para usá-las é exatamente o que faz ninguém usá-las. */
+.inbox-tool-rail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.inbox-tool {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 99px;
+  padding: 6px 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.inbox-tool:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--ink-faint);
+}
+.inbox-tool.active {
+  color: var(--orange-text);
+  border-color: var(--orange);
+  background: #fff4ee;
+}
+.inbox-tool:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.inbox-tool.destaque {
+  color: var(--orange-text);
+  border-color: var(--orange);
+}
+
+/* Painel de agenda dentro da conversa. Fica entre as ações e o campo de texto
+   porque é ali que a decisão acontece: escolher o horário e já escrever o
+   recado, sem trocar de tela no meio. */
+.inbox-agenda-panel {
+  padding: 12px 18px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--surface-raised);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.inbox-agenda-campos {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 10px;
+}
+.inbox-agenda-campos label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.inbox-agenda-campos span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.inbox-agenda-campos input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--surface);
+  min-width: 0;
+}
+.inbox-agenda-slots {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-height: 108px;
+  overflow-y: auto;
+}
+.inbox-agenda-panel > .button {
+  align-self: flex-start;
+}
+.inbox-agenda-vazio,
+.inbox-agenda-ok {
+  font-size: 12.5px;
+  margin: 0;
+}
+.inbox-agenda-vazio {
+  color: var(--muted);
+}
+.inbox-agenda-ok {
+  color: var(--green);
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .inbox-agenda-campos {
+    grid-template-columns: 1fr;
+  }
 }
 
 .human-agent-toggle {
@@ -1469,7 +1664,6 @@ select:focus {
   font-weight: 800;
   cursor: pointer;
 }
-
 .human-agent-toggle.active {
   background: #80540b;
   color: #fff;
@@ -5312,8 +5506,13 @@ select:focus {
   .page-content:has(.inbox-shell) {
     padding: 0;
   }
+  /* No celular a barra superior volta: é por ela que se abre o menu, e sem
+     menu a pessoa fica presa dentro do Inbox. */
+  .main-panel:has(.inbox-shell) > .topbar {
+    display: flex;
+  }
   .inbox-shell {
-    height: calc(100vh - 68px);
+    height: calc(100dvh - 68px);
     display: block;
   }
   .conversation-list {

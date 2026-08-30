@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import {
   Bot,
   BookOpen,
+  CalendarClock,
   CheckCircle2,
   Clock3,
   Flag,
@@ -85,6 +86,7 @@ type WhatsAppTemplate = {
   components: unknown[]
 }
 type ContactTag = { id: string; name: string; color: string }
+type AgendaSlot = { inicio: string; quando: string }
 type QuickReply = {
   id: string
   title: string
@@ -159,6 +161,15 @@ function InboxPage() {
   const [contactTagIds, setContactTagIds] = useState<string[]>([])
   const [tagsBusy, setTagsBusy] = useState(false)
   const [busy, setBusy] = useState<string | null>('load')
+  // Agendamento dentro da conversa. `null` mantém o painel fechado; a lista de
+  // horários só é buscada quando ele abre, para não gastar chamada à agenda em
+  // toda conversa que alguém abre.
+  const [agendaAberta, setAgendaAberta] = useState(false)
+  const [horarios, setHorarios] = useState<Array<AgendaSlot>>([])
+  const [agendaNome, setAgendaNome] = useState('')
+  const [agendaEmail, setAgendaEmail] = useState('')
+  const [agendaEscolhido, setAgendaEscolhido] = useState('')
+  const [agendaAviso, setAgendaAviso] = useState<string | null>(null)
   const [error, setError] = useState('')
   const pendingSendKey = useRef<string | null>(null)
 
@@ -282,6 +293,81 @@ function InboxPage() {
   }
 
   /** Gera texto no composer; nunca envia automaticamente. */
+  /**
+   * Abre o painel de agenda e busca os horários livres.
+   *
+   * Os horários vêm do mesmo serviço que a página pública usa, então o que
+   * aparece aqui já está descontado do que foi vendido em qualquer outro lugar.
+   */
+  async function abrirAgenda() {
+    if (agendaAberta) {
+      setAgendaAberta(false)
+      return
+    }
+    setAgendaAberta(true)
+    setAgendaAviso(null)
+    setBusy('agenda')
+    try {
+      const dados = await apiFetch<{ horarios: Array<AgendaSlot> }>(
+        '/api/inbox/agendar?dias=7',
+      )
+      setHorarios(dados.horarios)
+      // O nome da conversa é o melhor palpite que temos; o e-mail quase nunca
+      // existe num contato de direct, então ele é pedido em vez de adivinhado.
+      if (selected && !agendaNome) setAgendaNome(selected.name.replace('@', ''))
+      setError('')
+    } catch (causa) {
+      setError(
+        causa instanceof Error ? causa.message : 'Falha ao consultar a agenda.',
+      )
+      setAgendaAberta(false)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function agendarReuniao() {
+    if (!selected || !agendaEscolhido) return
+    setBusy('agendar')
+    try {
+      const dados = await apiFetch<{
+        reuniao: {
+          quando: string
+          linkMeet: string | null
+          aviso: string | null
+        }
+      }>('/api/inbox/agendar', {
+        method: 'POST',
+        body: JSON.stringify({
+          contactId: selected.contactId,
+          startAt: agendaEscolhido,
+          name: agendaNome.trim(),
+          email: agendaEmail.trim(),
+        }),
+      })
+      const { quando, linkMeet, aviso } = dados.reuniao
+      setAgendaAviso(
+        aviso ??
+          `Marcado para ${quando}.${linkMeet ? '' : ' Sem link de vídeo.'}`,
+      )
+      // O link entra no rascunho em vez de ser enviado: quem manda a mensagem
+      // continua sendo a pessoa, e ela pode escrever o recado antes.
+      setDraft(
+        linkMeet
+          ? `Marcado para ${quando}. O link da nossa call: ${linkMeet}`
+          : `Marcado para ${quando}. Te confirmo os detalhes por aqui.`,
+      )
+      setDraftFromAi(false)
+      setAgendaEscolhido('')
+      setError('')
+      await loadInbox(tab, selected.id, true)
+    } catch (causa) {
+      setError(causa instanceof Error ? causa.message : 'Falha ao agendar.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   async function suggest() {
     if (!selected || !agentId || !selected.open24h) return
     setBusy('suggest')
@@ -540,7 +626,7 @@ function InboxPage() {
           {visible.map((conversation, index) => (
             <button
               key={conversation.id}
-              className={`conversation-row ${selectedId === conversation.id ? 'active' : ''}`}
+              className={`conversation-row ${selectedId === conversation.id ? 'active' : ''} ${conversation.unread > 0 ? 'unread' : ''}`}
               onClick={() => void selectConversation(conversation.id)}
             >
               <span
@@ -551,7 +637,7 @@ function InboxPage() {
               </span>
               <span className="conversation-copy">
                 <strong>
-                  {conversation.name}
+                  <span>{conversation.name}</span>
                   <time>{timeLabel(conversation.lastMessageAt)}</time>
                 </strong>
                 <small>
@@ -713,6 +799,19 @@ function InboxPage() {
                     </select>
                   </label>
                 )}
+                <button
+                  type="button"
+                  className={`inbox-tool ${agendaAberta ? 'active' : ''}`}
+                  onClick={() => void abrirAgenda()}
+                  disabled={busy === 'agenda'}
+                >
+                  {busy === 'agenda' ? (
+                    <LoaderCircle className="spin" size={14} />
+                  ) : (
+                    <CalendarClock size={14} />
+                  )}
+                  Agendar
+                </button>
                 {!selected.open24h &&
                   selected.platform === 'instagram' &&
                   selected.humanAgentEligible &&
@@ -733,6 +832,75 @@ function InboxPage() {
                     </button>
                   )}
               </div>
+              {agendaAberta && (
+                <div className="inbox-agenda-panel">
+                  {horarios.length === 0 ? (
+                    <p className="inbox-agenda-vazio">
+                      Nenhum horário livre nos próximos 7 dias, ou nenhuma
+                      agenda de reuniões está ativa.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="inbox-agenda-campos">
+                        <label>
+                          <span>Nome</span>
+                          <input
+                            value={agendaNome}
+                            maxLength={120}
+                            onChange={(event) =>
+                              setAgendaNome(event.target.value)
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>E-mail para o convite</span>
+                          <input
+                            type="email"
+                            value={agendaEmail}
+                            placeholder="nome@email.com"
+                            onChange={(event) =>
+                              setAgendaEmail(event.target.value)
+                            }
+                          />
+                        </label>
+                      </div>
+                      <div className="inbox-agenda-slots">
+                        {horarios.map((slot) => (
+                          <button
+                            key={slot.inicio}
+                            type="button"
+                            className={`inbox-tool ${agendaEscolhido === slot.inicio ? 'active' : ''}`}
+                            onClick={() => setAgendaEscolhido(slot.inicio)}
+                          >
+                            {slot.quando}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        className="button button-orange"
+                        disabled={
+                          busy === 'agendar' ||
+                          !agendaEscolhido ||
+                          agendaNome.trim().length < 2 ||
+                          !agendaEmail.includes('@')
+                        }
+                        onClick={() => void agendarReuniao()}
+                      >
+                        {busy === 'agendar' ? (
+                          <LoaderCircle className="spin" size={15} />
+                        ) : (
+                          <CalendarClock size={15} />
+                        )}{' '}
+                        Confirmar reunião
+                      </button>
+                    </>
+                  )}
+                  {agendaAviso && (
+                    <p className="inbox-agenda-ok">{agendaAviso}</p>
+                  )}
+                </div>
+              )}
               {requiresWhatsAppTemplate && (
                 <div className="whatsapp-template-composer">
                   <label>

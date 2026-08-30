@@ -80,6 +80,7 @@ import { Route as ApiContactsBulkRouteImport } from './routes/api/contacts/bulk'
 import { Route as ApiCrmLeadIdRouteImport } from './routes/api/crm/$leadId'
 import { Route as ApiCrmRadarRouteImport } from './routes/api/crm/radar'
 import { Route as ApiGrowthLinksQrcodeRouteImport } from './routes/api/growth-links/qrcode'
+import { Route as ApiInboxAgendarRouteImport } from './routes/api/inbox/agendar'
 import { Route as ApiMessagesSendRouteImport } from './routes/api/messages/send'
 import { Route as ApiOperationsGoLiveRouteImport } from './routes/api/operations/go-live'
 import { Route as ApiOperationsWebhooksRouteImport } from './routes/api/operations/webhooks'
@@ -471,6 +472,11 @@ const ApiGrowthLinksQrcodeRoute = ApiGrowthLinksQrcodeRouteImport.update({
   path: '/qrcode',
   getParentRoute: () => ApiGrowthLinksRoute,
 } as any)
+const ApiInboxAgendarRoute = ApiInboxAgendarRouteImport.update({
+  id: '/agendar',
+  path: '/agendar',
+  getParentRoute: () => ApiInboxRoute,
+} as any)
 const ApiMessagesSendRoute = ApiMessagesSendRouteImport.update({
   id: '/api/messages/send',
   path: '/api/messages/send',
@@ -728,7 +734,7 @@ export interface FileRoutesByFullPath {
   '/api/growth-links': typeof ApiGrowthLinksRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/api/icebreakers': typeof ApiIcebreakersRoute
-  '/api/inbox': typeof ApiInboxRoute
+  '/api/inbox': typeof ApiInboxRouteWithChildren
   '/api/insights': typeof ApiInsightsRoute
   '/api/ready': typeof ApiReadyRoute
   '/api/sequences': typeof ApiSequencesRoute
@@ -752,6 +758,7 @@ export interface FileRoutesByFullPath {
   '/api/crm/$leadId': typeof ApiCrmLeadIdRoute
   '/api/crm/radar': typeof ApiCrmRadarRoute
   '/api/growth-links/qrcode': typeof ApiGrowthLinksQrcodeRoute
+  '/api/inbox/agendar': typeof ApiInboxAgendarRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
@@ -836,7 +843,7 @@ export interface FileRoutesByTo {
   '/api/growth-links': typeof ApiGrowthLinksRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/api/icebreakers': typeof ApiIcebreakersRoute
-  '/api/inbox': typeof ApiInboxRoute
+  '/api/inbox': typeof ApiInboxRouteWithChildren
   '/api/insights': typeof ApiInsightsRoute
   '/api/ready': typeof ApiReadyRoute
   '/api/sequences': typeof ApiSequencesRoute
@@ -860,6 +867,7 @@ export interface FileRoutesByTo {
   '/api/crm/$leadId': typeof ApiCrmLeadIdRoute
   '/api/crm/radar': typeof ApiCrmRadarRoute
   '/api/growth-links/qrcode': typeof ApiGrowthLinksQrcodeRoute
+  '/api/inbox/agendar': typeof ApiInboxAgendarRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
@@ -946,7 +954,7 @@ export interface FileRoutesById {
   '/api/growth-links': typeof ApiGrowthLinksRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/api/icebreakers': typeof ApiIcebreakersRoute
-  '/api/inbox': typeof ApiInboxRoute
+  '/api/inbox': typeof ApiInboxRouteWithChildren
   '/api/insights': typeof ApiInsightsRoute
   '/api/ready': typeof ApiReadyRoute
   '/api/sequences': typeof ApiSequencesRoute
@@ -970,6 +978,7 @@ export interface FileRoutesById {
   '/api/crm/$leadId': typeof ApiCrmLeadIdRoute
   '/api/crm/radar': typeof ApiCrmRadarRoute
   '/api/growth-links/qrcode': typeof ApiGrowthLinksQrcodeRoute
+  '/api/inbox/agendar': typeof ApiInboxAgendarRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
@@ -1080,6 +1089,7 @@ export interface FileRouteTypes {
     | '/api/crm/$leadId'
     | '/api/crm/radar'
     | '/api/growth-links/qrcode'
+    | '/api/inbox/agendar'
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
@@ -1188,6 +1198,7 @@ export interface FileRouteTypes {
     | '/api/crm/$leadId'
     | '/api/crm/radar'
     | '/api/growth-links/qrcode'
+    | '/api/inbox/agendar'
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
@@ -1297,6 +1308,7 @@ export interface FileRouteTypes {
     | '/api/crm/$leadId'
     | '/api/crm/radar'
     | '/api/growth-links/qrcode'
+    | '/api/inbox/agendar'
     | '/api/messages/send'
     | '/api/operations/go-live'
     | '/api/operations/webhooks'
@@ -1358,7 +1370,7 @@ export interface RootRouteChildren {
   ApiGrowthLinksRoute: typeof ApiGrowthLinksRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
   ApiIcebreakersRoute: typeof ApiIcebreakersRoute
-  ApiInboxRoute: typeof ApiInboxRoute
+  ApiInboxRoute: typeof ApiInboxRouteWithChildren
   ApiInsightsRoute: typeof ApiInsightsRoute
   ApiReadyRoute: typeof ApiReadyRoute
   ApiSequencesRoute: typeof ApiSequencesRoute
@@ -1906,6 +1918,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGrowthLinksQrcodeRouteImport
       parentRoute: typeof ApiGrowthLinksRoute
     }
+    '/api/inbox/agendar': {
+      id: '/api/inbox/agendar'
+      path: '/agendar'
+      fullPath: '/api/inbox/agendar'
+      preLoaderRoute: typeof ApiInboxAgendarRouteImport
+      parentRoute: typeof ApiInboxRoute
+    }
     '/api/messages/send': {
       id: '/api/messages/send'
       path: '/api/messages/send'
@@ -2310,6 +2329,18 @@ const ApiGrowthLinksRouteWithChildren = ApiGrowthLinksRoute._addFileChildren(
   ApiGrowthLinksRouteChildren,
 )
 
+interface ApiInboxRouteChildren {
+  ApiInboxAgendarRoute: typeof ApiInboxAgendarRoute
+}
+
+const ApiInboxRouteChildren: ApiInboxRouteChildren = {
+  ApiInboxAgendarRoute: ApiInboxAgendarRoute,
+}
+
+const ApiInboxRouteWithChildren = ApiInboxRoute._addFileChildren(
+  ApiInboxRouteChildren,
+)
+
 interface ApiTemplatesRouteChildren {
   ApiTemplatesTemplateIdRoute: typeof ApiTemplatesTemplateIdRoute
 }
@@ -2345,7 +2376,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGrowthLinksRoute: ApiGrowthLinksRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
   ApiIcebreakersRoute: ApiIcebreakersRoute,
-  ApiInboxRoute: ApiInboxRoute,
+  ApiInboxRoute: ApiInboxRouteWithChildren,
   ApiInsightsRoute: ApiInsightsRoute,
   ApiReadyRoute: ApiReadyRoute,
   ApiSequencesRoute: ApiSequencesRoute,
