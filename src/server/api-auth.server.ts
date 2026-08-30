@@ -99,6 +99,17 @@ export function apiErrorResponse(error: unknown, fallback: string) {
     )
   if (error instanceof Error && error.name === 'MetaApiError')
     return Response.json({ error: error.message }, { status: 502 })
+  // Comparado pelo nome, e não por `instanceof`, para não criar um ciclo de
+  // importação: o serviço de agendamento já importa daqui.
+  if (
+    error instanceof Error &&
+    error.name === 'BookingError' &&
+    typeof (error as { status?: unknown }).status === 'number'
+  )
+    return Response.json(
+      { error: error.message, code: (error as { code?: string }).code },
+      { status: (error as unknown as { status: number }).status },
+    )
   console.error(
     JSON.stringify({
       event: 'private_api_failed',

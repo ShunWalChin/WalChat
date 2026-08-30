@@ -49,15 +49,20 @@ export const Route = createFileRoute('/api/ai/suggest')({
           })
           const parsed = bodySchema.parse(await readJsonBody(request))
           let history = parsed.history
+          // Sem conversa não há contato, e as ferramentas de agenda ficam
+          // restritas a consultar — que é o certo: não dá para remarcar a
+          // reunião de alguém que não se sabe quem é.
+          let contactId: string | null = null
           if (parsed.conversationId) {
             const { data: conversation, error: conversationError } =
               await context.supabase
                 .from('conversations')
-                .select('id')
+                .select('id,contact_id')
                 .eq('workspace_id', context.workspaceId)
                 .eq('id', parsed.conversationId)
                 .maybeSingle()
             if (conversationError) throw conversationError
+            contactId = conversation?.contact_id ?? null
             if (!conversation)
               return Response.json(
                 { error: 'Conversa não encontrada.' },
@@ -96,6 +101,7 @@ export const Route = createFileRoute('/api/ai/suggest')({
             agentId: parsed.agentId,
             history,
             safetyIdentifier: `${context.workspaceId}:${context.user.id}`,
+            contactId,
           })
           return Response.json(
             {

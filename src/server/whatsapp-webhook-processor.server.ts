@@ -536,6 +536,8 @@ async function maybeScheduleWhatsAppAgent(input: {
         content: String(item.message_text),
       })),
       safetyIdentifier: `${input.workspaceId}:${input.contactId}`,
+      // Mesmo escopo do Instagram: a agenda é a mesma, o contato também.
+      contactId: input.contactId,
     })
     const { error: jobError } = await input.supabase
       .from('scheduled_jobs')

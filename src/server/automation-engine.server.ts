@@ -334,6 +334,7 @@ export async function processAutomationStep(
         agentId: node.config.agentId,
         history: [...history, { role: 'user', content: prompt }],
         safetyIdentifier: `${job.workspace_id}:${execution.contact_id}`,
+        contactId: execution.contact_id,
       })
       if (generated.agent.mode !== 'autonomous')
         throw new Error('automation_ai_agent_requires_autonomous_mode')

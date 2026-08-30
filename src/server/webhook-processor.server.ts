@@ -763,6 +763,9 @@ async function maybeScheduleAutonomousAgent(input: {
       agentId: agent.id,
       history,
       safetyIdentifier: `${input.workspaceId}:${input.contactId}`,
+      // Dá escopo às ferramentas de agenda: a IA só mexe na reunião de quem
+      // está nesta conversa.
+      contactId: input.contactId,
     })
     const { error: jobError } = await input.supabase
       .from('scheduled_jobs')
