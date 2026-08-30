@@ -1,5 +1,5 @@
 /** Componentes pequenos e consistentes compartilhados entre os módulos do painel. */
-import { ShieldCheck, TriangleAlert } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
 
 /** Cabeçalho padrão das páginas internas. */
 export function PageIntro({
@@ -64,25 +64,6 @@ export function ComplianceBanner({ compact = false }: { compact?: boolean }) {
         </p>
       </div>
       <span className="safe-label">META-SAFE</span>
-    </div>
-  )
-}
-
-/** Evita que uma superfície de design seja confundida com automação ativa. */
-export function PrototypeNotice({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="prototype-notice" role="status">
-      <TriangleAlert size={20} />
-      <div>
-        <strong>{title}</strong>
-        <p>{children}</p>
-      </div>
     </div>
   )
 }

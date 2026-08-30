@@ -184,7 +184,6 @@ export async function replayMetaWebhook(input: {
 }
 
 /** @deprecated Use replayMetaWebhook; mantido para compatibilidade de imports internos. */
-export const replayInstagramWebhook = replayMetaWebhook
 
 function extractMetaWebhookIdentity(
   provider: MetaWebhookProvider,

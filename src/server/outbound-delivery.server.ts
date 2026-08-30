@@ -265,9 +265,3 @@ export async function markOutboundDeliveryFailed(
     .eq('id', deliveryId)
     .eq('status', 'claimed')
 }
-
-export function isTerminalOutboundDeliveryError(
-  error: unknown,
-): error is OutboundDeliveryError {
-  return error instanceof OutboundDeliveryError && error.terminal
-}

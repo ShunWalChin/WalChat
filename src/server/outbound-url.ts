@@ -68,7 +68,7 @@ export function isPublicAddress(address: string): boolean {
  * A checagem ainda vale: ela barra o caso comum, que é apontar direto para
  * `169.254.169.254` ou para um host interno.
  */
-export async function assertPublicHost(
+async function assertPublicHost(
   hostname: string,
   resolveHost: typeof lookup = lookup,
 ) {

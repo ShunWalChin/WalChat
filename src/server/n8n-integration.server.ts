@@ -193,7 +193,7 @@ export function sanitizedN8nHost(value: string) {
   }
 }
 
-export async function testN8nApi(input: {
+async function testN8nApi(input: {
   baseUrl: string
   apiKey: string
   fetcher?: typeof fetch

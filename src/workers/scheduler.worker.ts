@@ -78,6 +78,36 @@ let lastGoogleCalendarSweep = 0
 let lastCrmRiskSweep = 0
 
 /** Materializa somente mudanças de faixa para o Radar, sem tocar o lead. */
+/**
+ * Grava o desfecho de um run de automação.
+ *
+ * O estado do run é o que impede um retry de reenviar a mesma mensagem. Perder
+ * essa escrita em silêncio deixa o run parado em `matched`, elegível de novo —
+ * e a pessoa recebe a mesma automação outra vez.
+ */
+async function marcarRun(
+  cliente: ReturnType<typeof requireSupabase>,
+  input: {
+    automationRunId: string
+    workspaceId: string
+    sent: boolean
+    policy: string | null
+    /** A política pode não ter motivo quando o envio foi aceito. */
+    reason: string | null | undefined
+  },
+) {
+  const { error } = await cliente
+    .from('automation_runs')
+    .update({
+      status: input.sent ? 'sent' : 'blocked',
+      policy_used: input.policy,
+      reason: input.sent ? null : (input.reason ?? null),
+    })
+    .eq('id', input.automationRunId)
+    .eq('workspace_id', input.workspaceId)
+  if (error) throw error
+}
+
 async function refreshCrmRiskStates() {
   if (Date.now() - lastCrmRiskSweep < 5 * 60_000) return
   lastCrmRiskSweep = Date.now()
@@ -832,15 +862,13 @@ async function processSequenceJob(job: {
     )
     if (messageError) throw messageError
     if (automationRunId)
-      await supabase
-        .from('automation_runs')
-        .update({
-          status: result.sent ? 'sent' : 'blocked',
-          policy_used: result.decision.policy,
-          reason: result.sent ? null : result.decision.reason,
-        })
-        .eq('id', automationRunId)
-        .eq('workspace_id', job.workspace_id)
+      await marcarRun(supabase, {
+        automationRunId,
+        workspaceId: job.workspace_id,
+        sent: result.sent,
+        policy: result.decision.policy,
+        reason: result.decision.reason,
+      })
     await supabase
       .from('contacts')
       .update({
@@ -876,7 +904,7 @@ async function processSequenceJob(job: {
     // A Meta permite uma única Private Reply; uma sequência só continua após
     // uma nova mensagem inbound do contato abrir a janela padrão de 24h.
     if (commentId && enrollmentId) {
-      await supabase
+      const concluiu = await supabase
         .from('sequence_enrollments')
         .update({
           status: 'completed',
@@ -884,6 +912,9 @@ async function processSequenceJob(job: {
           next_run_at: null,
         })
         .eq('id', enrollmentId)
+      // Sem esta checagem, uma inscrição "concluída" que não foi gravada volta
+      // a ser elegível e a pessoa recebe a sequência inteira de novo.
+      if (concluiu.error) throw concluiu.error
       return { sent: true }
     }
   }
@@ -907,11 +938,15 @@ async function processSequenceJob(job: {
       const runAt = new Date(
         Date.now() + nextStep.data.delay_seconds * 1_000,
       ).toISOString()
-      await supabase
+      const avancou = await supabase
         .from('sequence_enrollments')
         .update({ current_position: nextPosition, next_run_at: runAt })
         .eq('id', enrollmentId)
-      await supabase.from('scheduled_jobs').upsert(
+      if (avancou.error) throw avancou.error
+      // Estas duas escritas são a continuidade da sequência. Falhando em
+      // silêncio, a inscrição fica parada num passo que já foi entregue e
+      // ninguém descobre: não há erro, não há job, não há próxima mensagem.
+      const agendou = await supabase.from('scheduled_jobs').upsert(
         {
           workspace_id: job.workspace_id,
           kind: 'sequence_step',
@@ -935,6 +970,7 @@ async function processSequenceJob(job: {
         },
         { onConflict: 'workspace_id,dedupe_key', ignoreDuplicates: true },
       )
+      if (agendou.error) throw agendou.error
     } else {
       await supabase
         .from('sequence_enrollments')

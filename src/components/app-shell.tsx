@@ -19,7 +19,6 @@ import {
   LogOut,
   Menu,
   Megaphone,
-  MessageSquareText,
   MessageCircleReply,
   Gauge,
   Plus,
@@ -27,7 +26,6 @@ import {
   Radar,
   Send,
   Settings,
-  Sparkles,
   UsersRound,
   Webhook,
   Workflow,
@@ -348,34 +346,6 @@ export function AppShell() {
           <Outlet />
         </div>
       </main>
-    </div>
-  )
-}
-
-/** Estado vazio reutilizável para módulos sem dados. */
-export function EmptyState({
-  icon = 'spark',
-  title,
-  text,
-  action,
-}: {
-  icon?: 'spark' | 'message'
-  title: string
-  text: string
-  action: string
-}) {
-  const Icon = icon === 'message' ? MessageSquareText : Sparkles
-  return (
-    <div className="empty-state">
-      <span>
-        <Icon size={25} />
-      </span>
-      <h3>{title}</h3>
-      <p>{text}</p>
-      <button className="button button-dark">
-        <Plus size={16} />
-        {action}
-      </button>
     </div>
   )
 }

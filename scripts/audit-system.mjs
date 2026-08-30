@@ -158,6 +158,57 @@ for (const file of await filesBelow(path.join(root, 'supabase/migrations'))) {
   }
 }
 
+// O cliente do Supabase não lança: ele devolve `{ data, error }`. Uma escrita
+// cujo retorno é descartado falha em silêncio — a tela mostra sucesso e nada foi
+// gravado. Vários defeitos já encontrados aqui tinham exatamente esse formato.
+//
+// Corrigir os 58 pontos de uma vez seria uma mudança grande e sem urgência:
+// nenhum produziu falha observada em produção, e alguns são deliberados —
+// escrita dentro de `catch`, onde lançar de novo esconderia o erro original.
+//
+// Por isso o teto em vez de zero: a dívida fica visível, uma escrita nova sem
+// verificação quebra o portão, e baixar o número é um passo consciente.
+const NL = String.fromCharCode(10)
+const TETO_ESCRITAS_SEM_VERIFICACAO = 58
+const escritasSemVerificacao = []
+for (const file of [
+  ...(await filesBelow(path.join(root, 'src/server'))),
+  ...(await filesBelow(path.join(root, 'src/routes'))),
+  ...(await filesBelow(path.join(root, 'src/workers'))),
+]) {
+  if (!/\.(ts|tsx)$/.test(file) || file.includes('.test.')) continue
+  const linhas = (await readFile(file, 'utf8')).split(NL)
+  linhas.forEach((linha, i) => {
+    // So o caso inequivoco: a instrucao comeca com `await` solto no inicio da
+    // linha, sem nada a esquerda para receber `{ data, error }`.
+    if (!/^\s*await\s/.test(linha)) return
+    // A instrucao e a linha do `await` mais as continuacoes, que sao as
+    // linhas com indentacao maior. Uma janela de tamanho fixo invadiria o
+    // codigo seguinte e acusaria escritas que nao existem ali.
+    const recuo = linha.length - linha.trimStart().length
+    const partes = [linha]
+    for (let j = i + 1; j < linhas.length; j++) {
+      const seguinte = linhas[j]
+      if (!seguinte.trim()) break
+      if (seguinte.length - seguinte.trimStart().length <= recuo) break
+      partes.push(seguinte)
+    }
+    const corpo = partes.join(NL)
+    if (!corpo.includes('.from(')) return
+    if (!/\.(insert|upsert|update|delete)\(/.test(corpo)) return
+    if (/error/.test(corpo)) return
+    escritasSemVerificacao.push(`${relative(file)}:${i + 1}`)
+  })
+}
+if (escritasSemVerificacao.length > TETO_ESCRITAS_SEM_VERIFICACAO)
+  findings.push({
+    severity: 'error',
+    file: 'src',
+    code: 'escrita_sem_verificacao_acima_do_teto',
+    detail: `${escritasSemVerificacao.length} > ${TETO_ESCRITAS_SEM_VERIFICACAO}`,
+    novas: escritasSemVerificacao.slice(TETO_ESCRITAS_SEM_VERIFICACAO),
+  })
+
 const productionOnlyPlaceholders = []
 const productionModuleGaps = []
 for (const file of await filesBelow(path.join(root, 'src/routes/_app'))) {
@@ -179,6 +230,7 @@ console.log(
       ok: errors.length === 0,
       apiFiles: apiFiles.length,
       findings,
+      escritasSemVerificacao: escritasSemVerificacao.length,
       modulesStillUsingDemoData: productionOnlyPlaceholders,
       productionModuleGaps,
     },
