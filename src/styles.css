@@ -317,6 +317,10 @@ select:focus-visible {
   border-radius: 11px;
   display: inline-grid;
   place-items: center;
+  /* O fundo padrão existe porque a cor do texto é branca: sem ele, todo avatar
+     que não recebe cor por fora fica branco no branco e some. Era o caso do
+     painel de contato do Inbox. */
+  background: var(--ink);
   color: #fff;
   font-size: 13px;
   font-weight: 800;
