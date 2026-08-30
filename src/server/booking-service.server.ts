@@ -300,6 +300,15 @@ export type BookingResult = {
   status: string
   /** Preenchido quando a reserva vale mas o convite Google não saiu. */
   warning: string | null
+  /**
+   * Se o convidado realmente recebeu convite por e-mail.
+   *
+   * Só é verdadeiro quando o evento entrou no Google com o convidado anexado —
+   * é o Google quem envia. Sem conexão, ou com a sincronização falhando, a
+   * reserva vale mas ninguém foi avisado, e quem conta isso para a pessoa
+   * precisa saber a diferença.
+   */
+  invited: boolean
   reused: boolean
 }
 
@@ -323,7 +332,9 @@ export async function createBooking(
   const idempotencyKey = input.idempotencyKey ?? randomUUID()
   const existing = await admin
     .from('bookings')
-    .select('id,guest_email,start_at,end_at,timezone,meet_url,status')
+    .select(
+      'id,guest_email,start_at,end_at,timezone,meet_url,status,google_event_id',
+    )
     .eq('workspace_id', page.workspace_id)
     .eq('idempotency_key', idempotencyKey)
     .maybeSingle()
@@ -349,6 +360,8 @@ export async function createBooking(
       meetUrl: existing.data.meet_url,
       status: existing.data.status,
       warning: null,
+      // Reserva reaproveitada: o convite, se houve, saiu na primeira vez.
+      invited: Boolean(existing.data.google_event_id),
       reused: true,
     }
   }
@@ -421,6 +434,7 @@ export async function createBooking(
 
   let meetUrl: string | null = null
   let warning: string | null = null
+  let invited = false
   if (page.calendar_connection_id) {
     try {
       const google = await upsertGoogleEvent({
@@ -460,6 +474,10 @@ export async function createBooking(
         .from('bookings')
         .update({ google_event_id: google.id, meet_url: meetUrl })
         .eq('id', bookingId)
+      // O Google só dispara o convite porque o evento foi criado com o
+      // convidado anexado; é este ponto, e nenhum outro, que autoriza dizer
+      // à pessoa que ela vai receber alguma coisa.
+      invited = true
     } catch {
       warning =
         'Sua reserva foi confirmada, mas o convite Google será sincronizado pela equipe.'
@@ -482,6 +500,7 @@ export async function createBooking(
     meetUrl: meetUrl ?? bookingResult.data.meet_url,
     status: bookingResult.data.status,
     warning,
+    invited,
     reused: false,
   }
 }

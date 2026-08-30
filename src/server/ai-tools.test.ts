@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   AGENDA_TOOLS,
+  bookingGuidance,
   MAX_SLOTS_OFFERED,
   formatSlotLabel,
   isToolName,
@@ -164,5 +165,57 @@ describe('formatSlotLabel', () => {
     expect(formatSlotLabel('2026-09-01T14:00:00.000Z', 'UTC')).toContain(
       '14:00',
     )
+  })
+})
+
+describe('bookingGuidance', () => {
+  /**
+   * Este caso saiu de um teste em produção.
+   *
+   * Sem Google conectado, a IA marcou a reunião e escreveu "o convite foi
+   * enviado para joana.ribeiro@example.com". Nenhum convite existiu: sem
+   * conexão, nada é enviado. A pessoa procuraria um e-mail que nunca chegaria.
+   */
+  it('não afirma convite quando nenhum foi enviado', () => {
+    const texto = bookingGuidance({
+      meetUrl: null,
+      invited: false,
+      email: 'joana@example.com',
+    })
+    expect(texto).not.toContain('joana@example.com')
+    expect(texto).toContain('Nenhum convite foi enviado')
+  })
+
+  it('afirma o convite quando ele saiu de verdade', () => {
+    const texto = bookingGuidance({
+      meetUrl: 'https://meet.google.com/abc-defg-hij',
+      invited: true,
+      email: 'joana@example.com',
+    })
+    expect(texto).toContain('O convite foi enviado para joana@example.com')
+    expect(texto).toContain('Mande o link do Meet')
+  })
+
+  it('proíbe prometer link quando o Meet não saiu', () => {
+    const texto = bookingGuidance({
+      meetUrl: null,
+      invited: true,
+      email: 'joana@example.com',
+    })
+    expect(texto).toContain('não prometa nenhum')
+    // O convite pode existir sem Meet: um evento no Google sem videoconferência
+    // ainda avisa o convidado. As duas afirmações são independentes.
+    expect(texto).toContain('O convite foi enviado')
+  })
+
+  it('nunca vaza o e-mail numa reserva sem convite', () => {
+    for (const meetUrl of [null, 'https://meet.google.com/x']) {
+      const texto = bookingGuidance({
+        meetUrl,
+        invited: false,
+        email: 'segredo@example.com',
+      })
+      expect(texto).not.toContain('segredo@example.com')
+    }
   })
 })

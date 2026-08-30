@@ -135,6 +135,29 @@ for (const route of ['/', '/privacidade', '/termos', '/exclusao-de-dados'])
       code: `missing_${route}`,
     })
 
+// O motor de regex do Postgres recusa contagem de repetição acima de 255, e a
+// expressão só é compilada quando alguém insere. Uma migration com `{1,2083}`
+// cria a tabela sem reclamar e derruba todo insert depois — foi assim que a
+// tabela de links de captação passou dias aceitando zero registros. O limite é
+// invisível na revisão, então fica aqui.
+const POSTGRES_MAX_REPETICAO = 255
+for (const file of await filesBelow(path.join(root, 'supabase/migrations'))) {
+  if (!file.endsWith('.sql')) continue
+  // Comentário é prosa: a explicação do problema cita o número que o
+  // auditor procura, e sem tirar os comentários ela mesma vira achado.
+  const source = (await readFile(file, 'utf8')).replace(/--[^\n]*/g, '')
+  for (const match of source.matchAll(/\{(\d+)(?:,(\d+))?\}/g)) {
+    const maior = Number(match[2] ?? match[1])
+    if (maior > POSTGRES_MAX_REPETICAO)
+      findings.push({
+        severity: 'error',
+        file: relative(file),
+        code: `regex_repetition_above_${POSTGRES_MAX_REPETICAO}`,
+        detail: match[0],
+      })
+  }
+}
+
 const productionOnlyPlaceholders = []
 const productionModuleGaps = []
 for (const file of await filesBelow(path.join(root, 'src/routes/_app'))) {

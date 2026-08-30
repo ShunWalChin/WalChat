@@ -23,6 +23,7 @@ import {
 } from './booking-service.server'
 import type { BookingPageRecord } from './booking-service.server'
 import {
+  bookingGuidance,
   formatSlotLabel,
   spreadSlots,
   toolFailure,
@@ -166,14 +167,13 @@ export async function executeAgendaTool(input: {
           output: toolSuccess({
             quando: formatSlotLabel(booking.startAt, booking.timezone),
             linkMeet: booking.meetUrl,
-            // Sem o Meet a reunião existe, mas o modelo não pode prometer o
-            // link. Dizer isso aqui evita uma promessa que não se cumpre.
-            aviso:
-              booking.warning ??
-              (booking.meetUrl
-                ? null
-                : 'A reunião foi criada sem link de vídeo. Não prometa um link.'),
-            orientacao: `Confirme para a pessoa que está marcado, diga o horário e envie o link${booking.meetUrl ? '' : ' apenas se existir'}. O convite também foi enviado para ${email}.`,
+            conviteEnviado: booking.invited,
+            aviso: booking.warning,
+            orientacao: bookingGuidance({
+              meetUrl: booking.meetUrl,
+              invited: booking.invited,
+              email,
+            }),
           }),
           effect: { kind: 'booked', bookingId: booking.id },
         }
@@ -247,9 +247,11 @@ export async function executeAgendaTool(input: {
           output: toolSuccess({
             quando: formatSlotLabel(booking.startAt, booking.timezone),
             linkMeet: booking.meetUrl,
+            conviteEnviado: booking.invited,
             aviso: booking.warning,
-            orientacao:
-              'Confirme o horário novo e avise que o convite anterior foi cancelado.',
+            orientacao: booking.invited
+              ? 'Confirme o horário novo e avise que o convite anterior foi cancelado e substituído.'
+              : 'Confirme o horário novo. Nenhum convite sai por e-mail; não mencione convite.',
           }),
           effect: { kind: 'rescheduled', bookingId: booking.id },
         }

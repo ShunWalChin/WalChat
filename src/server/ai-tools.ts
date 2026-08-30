@@ -235,3 +235,32 @@ export function toolsForMode(mode: 'copilot' | 'autonomous') {
     ? AGENDA_TOOLS
     : AGENDA_TOOLS.filter((tool) => READ_ONLY_TOOLS.includes(tool.name))
 }
+
+/**
+ * O que o modelo pode afirmar depois de marcar uma reunião.
+ *
+ * Mora no módulo puro porque é um contrato, não um detalhe: cada frase que o
+ * modelo vai repetir para o cliente precisa de um fato por trás. Dizer que "o
+ * convite foi enviado" quando ninguém enviou nada é pior do que não dizer — a
+ * pessoa procura um e-mail que nunca vai chegar e conclui que o problema é
+ * dela. O mesmo vale para o link de vídeo.
+ *
+ * Sem conexão com o Google não há convite nem Meet: a reserva existe só aqui
+ * dentro, e é isso que o modelo precisa saber para não prometer o que não
+ * acontece.
+ */
+export function bookingGuidance(input: {
+  meetUrl: string | null
+  invited: boolean
+  email: string
+}) {
+  return [
+    'Confirme que está marcado e diga o horário.',
+    input.meetUrl
+      ? 'Mande o link do Meet.'
+      : 'Não existe link de vídeo: não prometa nenhum.',
+    input.invited
+      ? `O convite foi enviado para ${input.email}.`
+      : 'Nenhum convite foi enviado por e-mail; não diga que a pessoa vai receber um.',
+  ].join(' ')
+}

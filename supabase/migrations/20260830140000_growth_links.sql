@@ -14,7 +14,13 @@ create table if not exists public.growth_links (
   name text not null check (char_length(name) between 2 and 80),
   -- A Meta aceita até 2.083 caracteres, alfanumérico com hífen, sublinhado e
   -- igual. O check reproduz a regra dela para o banco recusar antes da API.
-  ref text not null check (ref ~ '^[A-Za-z0-9_=-]{1,2083}$'),
+  -- O alfabeto e o tamanho são checados separados de propósito: o motor de
+  -- regex do Postgres recusa contagem de repetição acima de 255, e a
+  -- expressão só é compilada na primeira inserção — um teto grande dentro
+  -- das chaves cria a tabela sem reclamar e derruba todo insert depois.
+  ref text not null check (
+    ref ~ '^[A-Za-z0-9_=-]+$' and char_length(ref) <= 2083
+  ),
   is_active boolean not null default true,
   -- Fluxo próprio deste link. Sem ele, a visita cai na saudação geral.
   flow_id uuid references public.automation_flows(id) on delete set null,
