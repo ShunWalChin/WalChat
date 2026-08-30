@@ -42,6 +42,15 @@ export async function apiFetch<T>(
     (T & { error?: string }) | null
   if (!response.ok)
     throw new Error(payload?.error ?? `Falha HTTP ${response.status}.`)
+  // Uma rota chamada com método que ela não implementa cai no catch-all da
+  // aplicação e devolve a página HTML com status 200. Sem esta checagem o
+  // `payload` vira `null`, a resposta passa por sucesso e quem chamou segue
+  // como se a escrita tivesse acontecido. Aconteceu duas vezes durante os
+  // testes de hoje, e nas duas o sinal foi indistinguível de um 200 legítimo.
+  if (payload === null)
+    throw new Error(
+      `Resposta inesperada de ${path}: o servidor não devolveu JSON. Verifique o método HTTP da chamada.`,
+    )
   return payload as T
 }
 
