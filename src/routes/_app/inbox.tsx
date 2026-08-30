@@ -1102,17 +1102,21 @@ function InboxPage() {
       <aside className="contact-panel">
         {selected ? (
           <>
-            <span className="avatar avatar-xl">{initials(selected.name)}</span>
-            <h3>{selected.name}</h3>
-            <p>
-              {selected.platform === 'whatsapp'
-                ? selected.username
-                : `@${selected.username}`}
-            </p>
-            <div className="contact-status">
-              <StatusDot tone={selected.open24h ? 'green' : 'orange'}>
-                {selected.open24h ? 'Janela aberta' : 'Fora de 24h'}
-              </StatusDot>
+            <div className="contact-identity">
+              <span className="avatar avatar-xl">
+                {initials(selected.name)}
+              </span>
+              <h3>{selected.name}</h3>
+              <p>
+                {selected.platform === 'whatsapp'
+                  ? selected.username
+                  : `@${selected.username}`}
+              </p>
+              <div className="contact-status">
+                <StatusDot tone={selected.open24h ? 'green' : 'orange'}>
+                  {selected.open24h ? 'Janela aberta' : 'Fora de 24h'}
+                </StatusDot>
+              </div>
             </div>
             <div className="conversation-controls">
               <label>
