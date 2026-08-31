@@ -162,14 +162,14 @@ for (const file of await filesBelow(path.join(root, 'supabase/migrations'))) {
 // cujo retorno é descartado falha em silêncio — a tela mostra sucesso e nada foi
 // gravado. Vários defeitos já encontrados aqui tinham exatamente esse formato.
 //
-// Corrigir os 58 pontos de uma vez seria uma mudança grande e sem urgência:
+// Corrigir os 56 pontos de uma vez seria uma mudança grande e sem urgência:
 // nenhum produziu falha observada em produção, e alguns são deliberados —
 // escrita dentro de `catch`, onde lançar de novo esconderia o erro original.
 //
 // Por isso o teto em vez de zero: a dívida fica visível, uma escrita nova sem
 // verificação quebra o portão, e baixar o número é um passo consciente.
 const NL = String.fromCharCode(10)
-const TETO_ESCRITAS_SEM_VERIFICACAO = 58
+const TETO_ESCRITAS_SEM_VERIFICACAO = 56
 const escritasSemVerificacao = []
 for (const file of [
   ...(await filesBelow(path.join(root, 'src/server'))),

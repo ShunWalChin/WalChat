@@ -49,6 +49,17 @@ export const Route = createFileRoute('/api/inbox/agendar')({
             'admin',
             'agent',
           ])
+          // O limite tambem vale na leitura: e ela que dispara o freeBusy do
+          // Google, e a cota daquela API e do workspace inteiro. Uma tela em
+          // laco aqui derrubaria tambem a pagina publica e a IA, que dependem
+          // da mesma chamada. O teto e mais alto que o da escrita porque
+          // consultar horarios e o gesto normal de quem esta atendendo.
+          await assertRateLimit({
+            namespace: 'inbox-agendar-consulta',
+            identity: `${context.workspaceId}:${context.user.id}`,
+            limit: 90,
+            windowSeconds: 60,
+          })
           const { dias } = querySchema.parse(
             Object.fromEntries(new URL(request.url).searchParams),
           )

@@ -13,6 +13,16 @@ type LimitInput = {
 }
 
 let redisClient: IORedis | undefined
+/**
+ * Se a conexao ja ficou pronta alguma vez neste processo.
+ *
+ * E o que separa arranque de queda. Antes disso, `esperarConexao` esperava
+ * sempre que o estado nao fosse `ready` — e durante uma queda o ioredis fica em
+ * `reconnecting`, nao em `end`, entao TODA requisicao pagava os dois segundos
+ * antes de falhar. Com trafego, a indisponibilidade do Redis virava lentidao
+ * geral do app.
+ */
+let jaConectou = false
 const memoryWindows = new Map<string, { count: number; expiresAt: number }>()
 
 function redis() {
@@ -26,25 +36,33 @@ function redis() {
       enableOfflineQueue: false,
     })
     redisClient.on('error', () => undefined)
+    redisClient.on('ready', () => {
+      jaConectou = true
+    })
   }
   return redisClient
 }
 
 /**
- * Espera o cliente ficar pronto, no arranque.
+ * Espera o cliente ficar pronto, e somente no arranque.
  *
- * `enableOfflineQueue: false` é proposital: com o Redis fora, os comandos devem
- * falhar na hora em vez de empilhar. Só que a mesma regra vale enquanto a
- * conexão ainda está sendo aberta — e aí ela pune o caso errado. Como a política
- * é falhar fechada, a primeira requisição depois de cada deploy levava 503 sem
- * que nada estivesse quebrado.
+ * `enableOfflineQueue: false` e proposital: com o Redis fora, os comandos devem
+ * falhar na hora em vez de empilhar. So que a mesma regra vale enquanto a
+ * conexao ainda esta sendo aberta — e ai ela pune o caso errado. Como a
+ * politica e falhar fechada, a primeira requisicao depois de cada deploy levava
+ * 503 sem que nada estivesse quebrado.
  *
- * A espera é curta e só acontece quando o cliente ainda não ficou pronto uma
- * vez. Com o Redis realmente fora, o estado é `end` ou `close` e a função
- * devolve na hora, preservando a falha rápida.
+ * A espera acontece uma unica vez na vida do processo, antes da primeira
+ * conexao. Depois dela, `jaConectou` e verdadeiro e a funcao devolve na hora:
+ * durante uma queda o estado e `reconnecting`, e esperar dois segundos por
+ * requisicao transformaria a queda do Redis em lentidao de tudo.
  */
 async function esperarConexao(client: IORedis) {
   if (client.status === 'ready') return true
+  // Depois da primeira conexao bem-sucedida, qualquer estado diferente de
+  // `ready` e uma queda, e queda deve falhar rapido. A espera existe so para o
+  // arranque, quando ainda nao houve conexao nenhuma.
+  if (jaConectou) return false
   if (client.status === 'end' || client.status === 'close') return false
   return new Promise<boolean>((resolve) => {
     const encerrar = (pronto: boolean) => {

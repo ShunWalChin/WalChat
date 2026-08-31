@@ -32,9 +32,31 @@ describe('variáveis de ambiente em branco', () => {
     expect(getServerEnv().N8N_BASE_URL).toBeUndefined()
   })
 
-  it('cai no padrão quando a variável com default vem vazia', () => {
+  /**
+   * Este teste afirmava o contrario, e essa era a falha.
+   *
+   * A versao anterior fixava `APP_ORIGIN=''` virando `http://localhost:3000`
+   * como resultado esperado. O teste passava, a cobertura subia — e o que ele
+   * travava era um comportamento que, em producao, quebra todo redirecionamento
+   * de OAuth em silencio. Escrever a assercao a partir do que o codigo faz, e
+   * nao do que o sistema precisa fazer, transforma o teste em cumplice.
+   */
+  it('recusa origem e modo demo em branco em vez de cair no padrão', () => {
     process.env.APP_ORIGIN = ''
+    expect(() => getServerEnv()).toThrow(/APP_ORIGIN/)
+
+    process.env.APP_ORIGIN = 'https://wal-chat.exemplo.com'
+    process.env.DEMO_MODE = ''
+    expect(() => getServerEnv()).toThrow(/DEMO_MODE/)
+  })
+
+  it('usa o padrão quando a variável nem existe', () => {
+    // Linha ausente e uma escolha; linha em branco e um descuido. Sao coisas
+    // diferentes e o sistema passa a trata-las diferente.
+    delete process.env.APP_ORIGIN
+    delete process.env.DEMO_MODE
     expect(getServerEnv().APP_ORIGIN).toBe('http://localhost:3000')
+    expect(getServerEnv().DEMO_MODE).toBe('true')
   })
 
   it('não mexe em valor de verdade', () => {

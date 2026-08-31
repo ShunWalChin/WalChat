@@ -10,11 +10,16 @@ type ApiFetchOptions = {
   workspaceScoped?: boolean
 }
 
-export async function apiFetch<T>(
-  path: string,
-  init: RequestInit = {},
-  options: ApiFetchOptions = {},
-) {
+/**
+ * Monta os cabeçalhos autenticados de uma chamada.
+ *
+ * Vive separado porque `apiFetch` e `apiFetchText` diferem apenas em como leem
+ * o corpo. Enquanto os dois montavam a própria autenticação, uma mudança aqui
+ * — renovar token expirado, trocar o nome do header de workspace — precisava
+ * ser lembrada nos dois lugares, e esquecer não quebra build nem teste: só o
+ * caminho menos usado para de funcionar, calado.
+ */
+async function authHeaders(init: RequestInit, options: ApiFetchOptions) {
   const supabase = getBrowserSupabase()
   const token = supabase
     ? (await supabase.auth.getSession()).data.session?.access_token
@@ -36,7 +41,15 @@ export async function apiFetch<T>(
     const workspaceId = getActiveWorkspaceId()
     if (workspaceId) headers.set('X-Workspace-Id', workspaceId)
   }
+  return headers
+}
 
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+  options: ApiFetchOptions = {},
+) {
+  const headers = await authHeaders(init, options)
   const response = await fetch(path, { ...init, headers })
   const payload = (await response.json().catch(() => null)) as
     (T & { error?: string }) | null
@@ -61,32 +74,24 @@ export async function apiFetch<T>(
  * mesma autenticação e o mesmo portão de workspace.
  */
 export async function apiFetchText(path: string, init: RequestInit = {}) {
-  const supabase = getBrowserSupabase()
-  const token = supabase
-    ? (await supabase.auth.getSession()).data.session?.access_token
-    : null
-  if (!token) throw new Error('Entre com uma conta Supabase real.')
-
-  const headers = new Headers(init.headers)
-  headers.set('Authorization', `Bearer ${token}`)
-  await whenWorkspaceReady()
-  const workspaceId = getActiveWorkspaceId()
-  if (workspaceId) headers.set('X-Workspace-Id', workspaceId)
-
+  const headers = await authHeaders(init, {})
   const response = await fetch(path, { ...init, headers })
   const texto = await response.text()
   if (!response.ok) {
-    // O erro do backend vem em JSON mesmo quando o sucesso não vem.
+    // O erro do backend vem em JSON mesmo quando o sucesso não vem — mas nem
+    // sempre: uma página de erro do proxy chega como HTML. O `try` cobre só a
+    // leitura, e nunca o `throw`. Na versão anterior o `throw` ficava dentro
+    // dele e era capturado pelo próprio `catch`, que comparava a mensagem com
+    // a string exata 'Unexpected token'. Como o SyntaxError real traz o token
+    // e o trecho do documento, a comparação nunca batia e o erro cru vazava
+    // para a tela no lugar do texto pretendido.
+    let doBackend: string | null = null
     try {
-      throw new Error(
-        (JSON.parse(texto) as { error?: string }).error ??
-          `Falha HTTP ${response.status}.`,
-      )
-    } catch (causa) {
-      if (causa instanceof Error && causa.message !== 'Unexpected token')
-        throw causa
-      throw new Error(`Falha HTTP ${response.status}.`)
+      doBackend = (JSON.parse(texto) as { error?: string }).error ?? null
+    } catch {
+      doBackend = null
     }
+    throw new Error(doBackend ?? `Falha HTTP ${response.status}.`)
   }
   return texto
 }

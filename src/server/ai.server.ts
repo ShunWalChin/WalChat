@@ -16,7 +16,7 @@ import {
   toolsForMode,
 } from './ai-tools'
 import { executeAgendaTool } from './ai-tools.server'
-import type { AgendaToolContext, AgendaToolOutcome } from './ai-tools.server'
+import type { AgendaToolContext } from './ai-tools.server'
 import {
   aiErrorCode,
   assertAiTokenBudget,
@@ -221,7 +221,6 @@ async function runToolCall(
   name: string,
   argumentsJson: string,
   context: AgendaToolContext,
-  effects: Array<NonNullable<AgendaToolOutcome['effect']>>,
 ) {
   if (!isToolName(name))
     return toolFailure(
@@ -239,9 +238,7 @@ async function runToolCall(
       'Repita a chamada com um JSON válido.',
     )
   }
-  const outcome = await executeAgendaTool({ name, args, context })
-  if (outcome.effect) effects.push(outcome.effect)
-  return outcome.output
+  return (await executeAgendaTool({ name, args, context })).output
 }
 
 /**
@@ -254,7 +251,6 @@ async function runToolCall(
 function vercelTools(
   tools: ReturnType<typeof agendaToolsFor>,
   context: AgendaToolContext,
-  effects: Array<NonNullable<AgendaToolOutcome['effect']>>,
 ) {
   if (!tools.length) return null
   return Object.fromEntries(
@@ -264,7 +260,7 @@ function vercelTools(
         description: item.description,
         inputSchema: jsonSchema(item.parameters),
         execute: async (args: unknown) =>
-          runToolCall(item.name, JSON.stringify(args ?? {}), context, effects),
+          runToolCall(item.name, JSON.stringify(args ?? {}), context),
       }),
     ]),
   )
@@ -350,10 +346,11 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
 
   await assertAiTokenBudget(input.workspaceId)
   const startedAt = Date.now()
-  // Acumula o que as ferramentas mudaram de fato, para quem chama registrar a
-  // reunião no histórico da conversa. O texto do modelo não serve para isso:
-  // ele descreve o que houve, mas não é prova de que houve.
-  const toolEffects: Array<NonNullable<AgendaToolOutcome['effect']>> = []
+  // Cada rodada de ferramenta e uma chamada cobrada a parte. Somar todas e o
+  // que faz o teto mensal de gasto valer: contando so a ultima, o orcamento
+  // seria ultrapassado em ate `MAX_TOOL_ROUNDS` vezes antes da parada disparar.
+  let entrada = 0
+  let saida = 0
 
   if (agent.provider === 'openai') {
     const client = new OpenAI({
@@ -368,6 +365,13 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
       // `store: false` obriga a carregar o histórico inteiro a cada rodada: não
       // há estado do lado da OpenAI para continuar de onde parou.
       const conversa: Array<unknown> = [...history]
+      /** Soma o consumo de uma resposta ao total da conversa. */
+      const contabilizar = (
+        uso: { input_tokens?: number; output_tokens?: number } | undefined,
+      ) => {
+        entrada += uso?.input_tokens ?? 0
+        saida += uso?.output_tokens ?? 0
+      }
       let response = await client.responses.create({
         model: agent.model,
         instructions: buildInstructions(agent),
@@ -381,6 +385,7 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
           .digest('hex'),
         store: false,
       })
+      contabilizar(response.usage)
       for (let rodada = 0; rodada < MAX_TOOL_ROUNDS; rodada++) {
         const chamadas = response.output.filter(
           (item) => item.type === 'function_call',
@@ -391,16 +396,11 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
           conversa.push({
             type: 'function_call_output',
             call_id: chamada.call_id,
-            output: await runToolCall(
-              chamada.name,
-              chamada.arguments,
-              {
-                workspaceId: input.workspaceId,
-                contactId: input.contactId ?? null,
-                bookingPageId: agent.bookingPageId,
-              },
-              toolEffects,
-            ),
+            output: await runToolCall(chamada.name, chamada.arguments, {
+              workspaceId: input.workspaceId,
+              contactId: input.contactId ?? null,
+              bookingPageId: agent.bookingPageId,
+            }),
           })
         }
         response = await client.responses.create({
@@ -416,6 +416,27 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
             .digest('hex'),
           store: false,
         })
+        contabilizar(response.usage)
+      }
+      // O laco pode terminar com o modelo ainda pedindo ferramenta, e af
+      // `output_text` vem vazio — `finishSuggestion` lancaria e o cliente
+      // ficaria sem resposta nenhuma. Uma ultima volta sem ferramentas obriga
+      // o modelo a concluir em palavras com o que ja apurou.
+      if (!response.output_text.trim()) {
+        response = await client.responses.create({
+          model: agent.model,
+          instructions: `${buildInstructions(agent)}
+Encerre agora, em uma mensagem curta, com o que voce ja descobriu. Nao chame mais ferramentas.`,
+          input: conversa as never,
+          max_output_tokens: agent.maxOutputTokens,
+          reasoning: { effort: agent.reasoningEffort },
+          text: { verbosity: agent.responseVerbosity },
+          safety_identifier: createHash('sha256')
+            .update(input.safetyIdentifier)
+            .digest('hex'),
+          store: false,
+        })
+        contabilizar(response.usage)
       }
       await writeAiExecution({
         workspaceId: input.workspaceId,
@@ -423,8 +444,8 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
         provider: 'openai',
         model: agent.model,
         status: 'completed',
-        inputTokens: response.usage?.input_tokens,
-        outputTokens: response.usage?.output_tokens,
+        inputTokens: entrada,
+        outputTokens: saida,
         latencyMs: Date.now() - startedAt,
       })
       return {
@@ -433,7 +454,6 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
         model: agent.model,
         responseId: response.id,
         sources: agent.knowledgeSources,
-        toolEffects,
         agent,
       }
     } catch (error) {
@@ -452,15 +472,11 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
 
   const googleProvider = createGoogleGenerativeAI({ apiKey })
   try {
-    const geminiTools = vercelTools(
-      agendaToolsFor(agent),
-      {
-        workspaceId: input.workspaceId,
-        contactId: input.contactId ?? null,
-        bookingPageId: agent.bookingPageId,
-      },
-      toolEffects,
-    )
+    const geminiTools = vercelTools(agendaToolsFor(agent), {
+      workspaceId: input.workspaceId,
+      contactId: input.contactId ?? null,
+      bookingPageId: agent.bookingPageId,
+    })
     const { text, usage } = await generateText({
       model: googleProvider(agent.model),
       system: buildInstructions(agent),
@@ -482,6 +498,8 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
       provider: 'google',
       model: agent.model,
       status: 'completed',
+      // O SDK ja devolve o uso somado de todos os passos, entao aqui nao ha
+      // acumulador: a assimetria com o caminho OpenAI e do provedor, nao nossa.
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
       latencyMs: Date.now() - startedAt,
@@ -491,7 +509,6 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
       provider: 'google' as const,
       model: agent.model,
       sources: agent.knowledgeSources,
-      toolEffects,
       agent,
     }
   } catch (error) {

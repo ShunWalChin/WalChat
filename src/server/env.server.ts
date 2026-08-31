@@ -56,6 +56,26 @@ function blankAsUndefined(value: string | undefined) {
   return value?.trim() ? value : undefined
 }
 
+/**
+ * Variaveis onde cair no padrao e pior que quebrar.
+ *
+ * O tratamento de branco existe para que preparar uma integracao nao derrube o
+ * boot. Mas duas variaveis decidem se o sistema fala com o mundo, e nelas o
+ * padrao aponta para o lado errado: `DEMO_MODE` em branco viraria `true` e
+ * cortaria todos os envios externos; `APP_ORIGIN` em branco viraria localhost e
+ * quebraria todo redirecionamento de OAuth. Nos dois casos o processo sobe
+ * normal e nada alerta — que e a pior forma possivel de errar.
+ *
+ * Para elas, apagar o valor e um erro de configuracao e precisa parar o boot.
+ */
+function requireFilled(nome: string, value: string | undefined) {
+  if (value !== undefined && !value.trim())
+    throw new Error(
+      `${nome} esta definida mas vazia. Apague a linha inteira para usar o padrao, ou preencha o valor.`,
+    )
+  return blankAsUndefined(value)
+}
+
 /** Lê e valida o ambiente a cada processo, aplicando defaults seguros para o MVP. */
 export function getServerEnv() {
   return serverEnvSchema.parse({
@@ -114,8 +134,8 @@ export function getServerEnv() {
     CREDENTIALS_ENCRYPTION_KEY: blankAsUndefined(
       process.env.CREDENTIALS_ENCRYPTION_KEY,
     ),
-    APP_ORIGIN: blankAsUndefined(process.env.APP_ORIGIN),
-    DEMO_MODE: blankAsUndefined(process.env.DEMO_MODE),
+    APP_ORIGIN: requireFilled('APP_ORIGIN', process.env.APP_ORIGIN),
+    DEMO_MODE: requireFilled('DEMO_MODE', process.env.DEMO_MODE),
   })
 }
 

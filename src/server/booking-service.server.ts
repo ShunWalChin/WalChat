@@ -239,24 +239,30 @@ async function resolveContact(input: {
     if (existing.error) throw existing.error
     if (existing.data) {
       // O e-mail dado no agendamento costuma ser o primeiro que temos daquela
-      // pessoa; guardá-lo é o que permite o convite e o lembrete chegarem.
-      if (!existing.data.email)
-        await admin
+      // pessoa; guarda-lo e o que permite o convite e o lembrete chegarem.
+      if (!existing.data.email) {
+        const { error } = await admin
           .from('contacts')
           .update({ email: input.email.toLowerCase() })
           .eq('id', existing.data.id)
-      return existing.data.id
+        if (error) throw error
+      }
+      return { id: existing.data.id, criado: false }
     }
   }
+  // Igualdade, e nao `ilike`: em LIKE o sublinhado casa com qualquer
+  // caractere, e sublinhado e comum em e-mail. `joao_silva@` encontraria
+  // `joaoAsilva@` e a reuniao seria presa ao contato errado. A coluna e
+  // gravada em minusculas, entao comparar em minusculas basta.
   const found = await admin
     .from('contacts')
     .select('id')
     .eq('workspace_id', input.workspaceId)
-    .ilike('email', input.email)
+    .eq('email', input.email.toLowerCase())
     .limit(1)
     .maybeSingle()
   if (found.error) throw found.error
-  if (found.data) return found.data.id
+  if (found.data) return { id: found.data.id, criado: false }
   const created = await admin
     .from('contacts')
     .insert({
@@ -275,7 +281,10 @@ async function resolveContact(input: {
     .select('id')
     .single()
   if (created.error) throw created.error
-  return created.data.id
+  // Quem chamou precisa saber se este contato nasceu agora: se a reserva
+  // falhar em seguida, ele fica no CRM sem reuniao nenhuma, indistinguivel
+  // de um lead de verdade.
+  return { id: created.data.id, criado: true }
 }
 
 export type CreateBookingInput = {
@@ -366,9 +375,17 @@ export async function createBooking(
     }
   }
 
-  const date = localDateInZone(input.startAt, page.timezone)
+  // Normaliza antes de comparar. Os schemas HTTP aceitam ISO com
+  // deslocamento, e `2026-09-04T14:00:00-03:00` descreve o mesmo instante que
+  // `2026-09-04T17:00:00.000Z` — mas as duas strings sao diferentes, e a
+  // comparacao textual recusaria um horario que esta livre.
+  const instante = new Date(input.startAt)
+  if (Number.isNaN(instante.getTime()))
+    throw new BookingError(422, 'invalid_start', 'Horario invalido.')
+  const startAt = instante.toISOString()
+  const date = localDateInZone(startAt, page.timezone)
   const slot = (await findAvailableSlots(page, date, date)).find(
-    (item) => item.startAt === input.startAt,
+    (item) => item.startAt === startAt,
   )
   if (!slot)
     throw new BookingError(
@@ -377,13 +394,14 @@ export async function createBooking(
       'Este horário não está mais disponível. Escolha outro.',
     )
 
-  const contactId = await resolveContact({
+  const contato = await resolveContact({
     workspaceId: page.workspace_id,
     contactId: input.contactId,
     name: input.name,
     email: input.email,
     phone: input.phone,
   })
+  const contactId = contato.id
 
   const reservation = await admin.rpc('reserve_calendar_booking', {
     target_booking_page_id: page.id,
@@ -399,6 +417,11 @@ export async function createBooking(
     target_idempotency_key: idempotencyKey,
   })
   if (reservation.error) {
+    // A reserva e quem justifica o contato. Sem ela, um contato criado agora
+    // vira um lead fantasma no CRM a cada corrida perdida — e o cadastro de
+    // quem ja existia nao pode ser tocado.
+    if (contato.criado)
+      await admin.from('contacts').delete().eq('id', contactId)
     if (reservation.error.message.includes('booking_slot_unavailable'))
       throw new BookingError(
         409,
@@ -459,7 +482,12 @@ export async function createBooking(
           (entry) => entry.entryPointType === 'video',
         )?.uri ??
         null
-      await admin
+      // As duas gravacoes sao conferidas: sem elas o link existe no Google e
+      // nao aqui. Ele seria exibido uma unica vez na confirmacao e sumiria na
+      // proxima abertura da reserva — o cliente com um link que o sistema nao
+      // conhece, e a equipe sem como reenvia-lo. Falhando, cai no catch abaixo
+      // e a reserva volta com aviso, que e a verdade.
+      const eventoSalvo = await admin
         .from('calendar_events')
         .update({
           provider_event_id: google.id,
@@ -470,15 +498,21 @@ export async function createBooking(
           sync_error: null,
         })
         .eq('id', event.id)
-      await admin
+      if (eventoSalvo.error) throw eventoSalvo.error
+      const reservaSalva = await admin
         .from('bookings')
         .update({ google_event_id: google.id, meet_url: meetUrl })
         .eq('id', bookingId)
-      // O Google só dispara o convite porque o evento foi criado com o
-      // convidado anexado; é este ponto, e nenhum outro, que autoriza dizer
-      // à pessoa que ela vai receber alguma coisa.
+      if (reservaSalva.error) throw reservaSalva.error
+      // O Google so dispara o convite porque o evento foi criado com o
+      // convidado anexado, e as gravacoes locais ja passaram; e este ponto, e
+      // nenhum outro, que autoriza dizer a pessoa que ela vai receber algo.
       invited = true
     } catch {
+      // O link nao pode voltar ao chamador: se a gravacao falhou, ninguem
+      // consegue reencontra-lo depois.
+      meetUrl = null
+      invited = false
       warning =
         'Sua reserva foi confirmada, mas o convite Google será sincronizado pela equipe.'
       await admin

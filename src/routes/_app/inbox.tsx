@@ -269,7 +269,15 @@ function InboxPage() {
       : selected.open24h || (selected.humanAgentEligible && humanAgent)),
   )
 
-  async function selectConversation(conversationId: string) {
+  /**
+   * Zera tudo que pertence a uma conversa so.
+   *
+   * Existe como funcao separada porque a lista cresce: cada campo novo do
+   * composer ou de uma ferramenta precisa entrar aqui, e esquecer um significa
+   * levar o dado de uma pessoa para a conversa de outra. Foi o que aconteceu
+   * com o painel de agenda — nove campos eram zerados e os quatro dele nao.
+   */
+  function limparEstadoDaConversa() {
     setHumanAgent(false)
     setDraft('')
     setDraftFromAi(false)
@@ -280,7 +288,17 @@ function InboxPage() {
     setMediaUrl('')
     setTagOpen(false)
     setContactTagIds([])
+    setAgendaAberta(false)
+    setAgendaNome('')
+    setAgendaEmail('')
+    setAgendaEscolhido('')
+    setAgendaAviso(null)
+    setHorarios([])
     pendingSendKey.current = null
+  }
+
+  async function selectConversation(conversationId: string) {
+    limparEstadoDaConversa()
     try {
       await apiFetch('/api/inbox', {
         method: 'PATCH',
