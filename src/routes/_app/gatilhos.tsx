@@ -11,7 +11,12 @@ import {
   Zap,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ComplianceBanner, PageIntro, Switch } from '../../components/ui'
+import {
+  ComplianceBanner,
+  EstadoVazio,
+  PageIntro,
+  Switch,
+} from '../../components/ui'
 import { apiFetch } from '../../lib/api-client'
 
 export const Route = createFileRoute('/_app/gatilhos')({
@@ -434,7 +439,18 @@ function TriggersPage() {
           </article>
         ))}
         {busy !== 'load' && visible.length === 0 && !showForm && (
-          <div className="card inbox-empty">Nenhum gatilho nesta origem.</div>
+          <EstadoVazio
+            titulo="Nenhum gatilho nesta origem."
+            texto="Um gatilho observa uma palavra e responde sozinho — no comentário de um post ou na mensagem direta."
+            acao={
+              <button
+                className="button button-orange"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus size={16} /> Criar gatilho
+              </button>
+            }
+          />
         )}
       </section>
     </div>

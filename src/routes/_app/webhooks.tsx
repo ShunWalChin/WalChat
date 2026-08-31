@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import type { FormEvent, ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { PageIntro, StatusDot } from '../../components/ui'
+import { EstadoVazio, PageIntro, StatusDot } from '../../components/ui'
 import { apiFetch } from '../../lib/api-client'
 import './deskcomm.css'
 
@@ -201,7 +201,20 @@ function WebhooksPage() {
                 </article>
               ))}
               {!data.sources.length && (
-                <p className="compact-empty">Nenhuma fonte configurada.</p>
+                <EstadoVazio
+                  titulo="Nenhuma fonte configurada."
+                  texto="Cada fonte vira um endereço próprio que recebe formulários de fora e cria o lead direto no pipeline."
+                  acao={
+                    data.permissions.canManage ? (
+                      <button
+                        className="button button-orange"
+                        onClick={() => setCreating(true)}
+                      >
+                        <Plus size={16} /> Criar a primeira fonte
+                      </button>
+                    ) : undefined
+                  }
+                />
               )}
             </div>
           </section>

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { PageIntro, StatusDot, Switch } from '../../components/ui'
+import { EstadoVazio, PageIntro, StatusDot, Switch } from '../../components/ui'
 import { apiFetch } from '../../lib/api-client'
 import './deskcomm.css'
 
@@ -179,10 +179,29 @@ function TemplatesPage() {
           ))}
         </div>
       ) : (
-        <div className="card deskcomm-empty">
-          <strong>Nenhuma resposta encontrada.</strong>
-          <p>Crie scripts reutilizáveis para dúvidas e objeções recorrentes.</p>
-        </div>
+        <EstadoVazio
+          semResultado={Boolean(query.trim())}
+          titulo={
+            query.trim()
+              ? 'Nenhuma resposta para esta busca.'
+              : 'Você ainda não tem respostas rápidas.'
+          }
+          texto={
+            query.trim()
+              ? 'Tente outro termo, atalho ou categoria.'
+              : 'São scripts reutilizáveis para dúvidas e objeções que se repetem. No Inbox, você insere qualquer um deles em dois cliques.'
+          }
+          acao={
+            data?.permissions.canCreate ? (
+              <button
+                className="button button-orange"
+                onClick={() => setEditing('new')}
+              >
+                <Plus size={16} /> Criar a primeira
+              </button>
+            ) : undefined
+          }
+        />
       )}
       {editing && data && (
         <TemplateDialog

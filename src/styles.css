@@ -447,21 +447,51 @@ select:focus-visible {
 .nav-groups {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 20px 0;
+  gap: 10px;
+  padding: 16px 0;
   flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
 }
 .nav-group {
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
+/* O rótulo do grupo virou botão: com 27 destinos abertos ao mesmo tempo, doze
+   ficavam abaixo da dobra numa tela comum, e a barra rola sem que ninguém
+   perceba que rola. */
 .nav-label {
+  width: calc(100% - 22px);
   margin: 0 11px 5px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
   color: var(--ink-on-dark-faint);
+  font-family: inherit;
   font-size: 11px;
   letter-spacing: 0.16em;
   font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+.nav-label:hover {
+  color: #fff;
+}
+.nav-label svg {
+  flex: 0 0 auto;
+  opacity: 0.55;
+  transition: transform 0.16s ease;
+}
+/* A seta aponta para baixo quando o grupo está aberto; fechada, ela vira para
+   a direita, que é a convenção de "há mais coisa aqui dentro". */
+.nav-group:not(.aberto) .nav-label svg {
+  transform: rotate(-90deg);
 }
 .nav-item {
   min-height: 37px;
@@ -10794,4 +10824,30 @@ select,
   border-radius: var(--radius-md);
   color: var(--green);
   font-size: var(--text-xs);
+}
+
+/* Estado vazio: o texto e a ação no mesmo lugar, porque é ali que o olho
+   está quando termina de ler que não há nada. */
+.estado-vazio {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 44px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.estado-vazio strong {
+  font-size: 15px;
+}
+.estado-vazio p {
+  color: var(--muted);
+  font-size: 13.5px;
+  max-width: 46ch;
+  margin: 0;
+}
+.estado-vazio-acao {
+  margin-top: 10px;
 }

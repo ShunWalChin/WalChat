@@ -152,6 +152,54 @@ export function AppShell() {
   })
   const heading = titles[pathname] ?? titles['/dashboard']
 
+  /**
+   * Grupos abertos na barra lateral.
+   *
+   * São 27 destinos: com todos abertos, o menu mede 1706px e doze itens ficam
+   * abaixo da dobra numa tela de 900px — incluindo Calendário, Integrações e o
+   * próprio Manual. A barra rola, mas ninguém percebe que rola, então metade do
+   * produto some.
+   *
+   * O grupo da tela atual abre sempre; os outros ficam como a pessoa deixou.
+   */
+  const grupoDaRota =
+    groups.find((g) => g.items.some((i) => i.to === pathname))?.label ??
+    groups[0].label
+  const [openGroups, setOpenGroups] = useState<Array<string>>([grupoDaRota])
+
+  useEffect(() => {
+    try {
+      const salvos = window.localStorage.getItem('wal-chat-nav-groups')
+      if (salvos) setOpenGroups(JSON.parse(salvos) as Array<string>)
+    } catch {
+      // Sem armazenamento local a navegação segue com o padrão.
+    }
+  }, [])
+
+  // O grupo da rota atual não pode ficar fechado: a pessoa não veria onde está.
+  useEffect(() => {
+    setOpenGroups((atuais) =>
+      atuais.includes(grupoDaRota) ? atuais : [...atuais, grupoDaRota],
+    )
+  }, [grupoDaRota])
+
+  function toggleGroup(label: string) {
+    setOpenGroups((atuais) => {
+      const proximos = atuais.includes(label)
+        ? atuais.filter((item) => item !== label)
+        : [...atuais, label]
+      try {
+        window.localStorage.setItem(
+          'wal-chat-nav-groups',
+          JSON.stringify(proximos),
+        )
+      } catch {
+        // Preferência não persistida não impede navegar.
+      }
+      return proximos
+    })
+  }
+
   useEffect(() => {
     if (!user) return
     void apiFetch<{
@@ -242,26 +290,41 @@ export function AppShell() {
         </Link>
 
         <nav className="nav-groups" aria-label="Navegação principal">
-          {groups.map((group) => (
-            <div className="nav-group" key={group.label}>
-              <span className="nav-label">{group.label}</span>
-              {group.items.map((item) => {
-                const Icon = item.icon
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    onClick={() => setMobileOpen(false)}
-                    className="nav-item"
-                    activeProps={{ className: 'nav-item active' }}
-                  >
-                    <Icon size={18} strokeWidth={2.2} />
-                    <span>{item.label}</span>
-                  </Link>
-                )
-              })}
-            </div>
-          ))}
+          {groups.map((group) => {
+            const aberto = openGroups.includes(group.label)
+            return (
+              <div
+                className={`nav-group ${aberto ? 'aberto' : ''}`}
+                key={group.label}
+              >
+                <button
+                  type="button"
+                  className="nav-label"
+                  aria-expanded={aberto}
+                  onClick={() => toggleGroup(group.label)}
+                >
+                  <span>{group.label}</span>
+                  <ChevronDown size={13} />
+                </button>
+                {aberto &&
+                  group.items.map((item) => {
+                    const Icon = item.icon
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMobileOpen(false)}
+                        className="nav-item"
+                        activeProps={{ className: 'nav-item active' }}
+                      >
+                        <Icon size={18} strokeWidth={2.2} />
+                        <span>{item.label}</span>
+                      </Link>
+                    )
+                  })}
+              </div>
+            )
+          })}
         </nav>
 
         <div className="sidebar-foot">

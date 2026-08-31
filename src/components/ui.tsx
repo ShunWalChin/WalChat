@@ -102,3 +102,36 @@ export function Avatar({
     </span>
   )
 }
+
+/**
+ * Estado vazio com a ação dentro dele.
+ *
+ * Existia um componente assim, sem consumidores, e ele foi removido na
+ * limpeza — o que estava errado era não usá-lo. Cada tela escrevia o próprio
+ * vazio: um texto centralizado numa caixa grande, com o botão de criar no
+ * canto superior oposto. A pessoa lê "Nenhuma resposta" e o próximo passo está
+ * a uma diagonal inteira de distância, fora do campo de visão.
+ *
+ * A distinção entre `vazio` e `semResultado` importa: "não encontrei" sugere
+ * que existe algo escondido por um filtro, e dizer isso quando nada foi criado
+ * ainda faz a pessoa procurar em vez de começar.
+ */
+export function EstadoVazio({
+  titulo,
+  texto,
+  acao,
+  semResultado = false,
+}: {
+  titulo: string
+  texto?: string
+  acao?: React.ReactNode
+  semResultado?: boolean
+}) {
+  return (
+    <div className="estado-vazio" role="status">
+      <strong>{titulo}</strong>
+      {texto && <p>{texto}</p>}
+      {!semResultado && acao && <div className="estado-vazio-acao">{acao}</div>}
+    </div>
+  )
+}
