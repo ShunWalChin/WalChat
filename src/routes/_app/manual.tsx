@@ -77,8 +77,16 @@ const manualSections = [
       'gatilho comentário dm story sequência cooldown parar private reply',
   },
   {
-    id: 'modulos',
+    id: 'agenda',
     number: '07',
+    title: 'Agenda e captação',
+    description: 'Reuniões com Meet, links de captação e perguntas prontas.',
+    keywords:
+      'agenda google calendar meet reunião agendamento horário captação link ig.me referral qr code icebreaker pergunta pronta',
+  },
+  {
+    id: 'modulos',
+    number: '08',
     title: 'Mapa das funcionalidades',
     description: 'O que está funcional, em piloto ou ainda é protótipo.',
     keywords:
@@ -86,21 +94,21 @@ const manualSections = [
   },
   {
     id: 'go-live',
-    number: '08',
+    number: '09',
     title: 'Checklist de Go-Live',
     description: 'Gates obrigatórios antes de qualquer disparo real.',
     keywords: 'produção demo live checklist switch backup domínio smtp jwt',
   },
   {
     id: 'operacao',
-    number: '09',
+    number: '10',
     title: 'Operação e incidentes',
     description: 'Monitoramento, bloqueio emergencial e recuperação.',
     keywords: 'health ready worker scheduler erro incidente logs rollback',
   },
   {
     id: 'links',
-    number: '10',
+    number: '11',
     title: 'Links e referências',
     description: 'Endereços do Wal Chat e painéis externos necessários.',
     keywords: 'links url github meta developers openai privacidade termos',
@@ -118,6 +126,10 @@ const goLiveItems = [
   'DM, template, opt-out, cooldown e Private Reply testados',
   'OpenAI ou Gemini com orçamento, limite e alerta configurados',
   'Google Calendar/Tasks OAuth e página pública de agenda testados',
+  'Conta adicionada como usuário de teste no Google Cloud (app em modo Teste)',
+  'Agenda vinculada ao agente somente depois do Google conectado',
+  'Teto mensal de tokens de IA configurado com parada rígida',
+  'Backup automático agendado e restauração verificada',
   'Backup restaurado em ambiente isolado',
   'Responsável do piloto e procedimento de incidente definidos',
 ] as const
@@ -574,7 +586,23 @@ function ManualPage() {
                     <span>6</span> Revise toda sugestão antes do envio no
                     piloto.
                   </li>
+                  <li>
+                    <span>7</span> Só depois, em modo autônomo, vincule uma{' '}
+                    <Link
+                      to="/calendario"
+                      search={{ view: 'month', source: 'all' }}
+                    >
+                      agenda
+                    </Link>{' '}
+                    ao agente para ele marcar reuniões sozinho.
+                  </li>
                 </ol>
+                <Callout tone="safe" title="Copiloto não executa">
+                  No modo copiloto a IA só consulta horários: a sugestão sai com
+                  disponibilidade real e nada acontece até um humano enviar.
+                  Marcar, remarcar e cancelar são exclusivos do modo autônomo,
+                  onde a resposta já é a ação.
+                </Callout>
                 <div className="manual-provider-links">
                   <a
                     href="https://platform.openai.com/api-keys"
@@ -639,6 +667,11 @@ function ManualPage() {
                     ],
                     [
                       '6',
+                      'Agendamento',
+                      'Se a conversa pedir reunião, use Agendar sem sair daqui.',
+                    ],
+                    [
+                      '7',
                       'Fechamento',
                       'Marque pendente ou resolvida e registre nota interna.',
                     ],
@@ -755,10 +788,74 @@ function ManualPage() {
               </ManualSection>
             )}
 
+            {show('agenda') && (
+              <ManualSection
+                id="agenda"
+                number="07"
+                icon={<CalendarDays />}
+                eyebrow="DA CONVERSA AO COMPROMISSO"
+                title="Agenda e captação"
+                description="Os três caminhos que marcam reunião disputam o mesmo horário."
+              >
+                <div className="manual-routine-grid">
+                  {[
+                    [
+                      '1',
+                      'Conecte o Google',
+                      'Em Calendário, autorize a conta. Sem isso a agenda funciona local, mas sem Meet e sem convite por e-mail.',
+                    ],
+                    [
+                      '2',
+                      'Crie a agenda',
+                      'Em Links de agenda, defina duração, horários de cada dia, intervalo entre reuniões e antecedência mínima.',
+                    ],
+                    [
+                      '3',
+                      'Vincule ao agente',
+                      'Em Agentes de IA, escolha a agenda no campo de conversão. É esse passo que autoriza a IA a marcar.',
+                    ],
+                    [
+                      '4',
+                      'Agende pelo Inbox',
+                      'Dentro da conversa, o botão Agendar mostra os horários livres e devolve o link do Meet no rascunho.',
+                    ],
+                    [
+                      '5',
+                      'Distribua os links',
+                      'Em Captação, cada link abre seu direct e registra a origem. O QR serve para material impresso.',
+                    ],
+                    [
+                      '6',
+                      'Publique as perguntas',
+                      'Até quatro perguntas prontas aparecem no direct antes de a pessoa digitar. Não aparecem no computador.',
+                    ],
+                  ].map(([number, title, detail]) => (
+                    <article key={title}>
+                      <span>{number}</span>
+                      <strong>{title}</strong>
+                      <p>{detail}</p>
+                    </article>
+                  ))}
+                </div>
+                <Callout tone="safe" title="Um só caminho decide o horário">
+                  A página pública, a IA e o Inbox passam pelo mesmo serviço de
+                  agendamento, e a reserva é fechada em transação no banco. Dois
+                  pedidos no mesmo minuto: o primeiro entra, o segundo recebe
+                  &ldquo;horário não está mais disponível&rdquo;.
+                </Callout>
+                <Callout tone="danger" title="Antes de vincular ao agente">
+                  Sem o Google conectado, a disponibilidade sai apenas dos
+                  horários que você configurou — a IA não enxerga seus
+                  compromissos reais e pode marcar por cima deles. Conecte
+                  primeiro, vincule depois.
+                </Callout>
+              </ManualSection>
+            )}
+
             {show('modulos') && (
               <ManualSection
                 id="modulos"
-                number="07"
+                number="08"
                 icon={<BookOpenCheck />}
                 eyebrow="ESCOPO REAL DA V1"
                 title="Mapa das funcionalidades"
@@ -938,7 +1035,7 @@ function ManualPage() {
             {show('go-live') && (
               <ManualSection
                 id="go-live"
-                number="08"
+                number="09"
                 icon={<ClipboardCheck />}
                 eyebrow="ANTES DE DISPARAR"
                 title="Checklist de Go-Live"
@@ -983,7 +1080,7 @@ function ManualPage() {
             {show('operacao') && (
               <ManualSection
                 id="operacao"
-                number="09"
+                number="10"
                 icon={<LifeBuoy />}
                 eyebrow="OBSERVAR, BLOQUEAR, RECUPERAR"
                 title="Operação e incidentes"
@@ -1064,7 +1161,7 @@ function ManualPage() {
             {show('links') && (
               <ManualSection
                 id="links"
-                number="10"
+                number="11"
                 icon={<ExternalLink />}
                 eyebrow="ATALHOS VERIFICADOS"
                 title="Links e referências"

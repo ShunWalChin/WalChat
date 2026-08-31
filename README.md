@@ -26,12 +26,28 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | Governança de IA       | Orçamento, versões, roteadores, memória, casos e log de execução            |
 | Site público e SEO     | 404, CTA, FAQ, provas técnicas, sitemap, robots, OG e JSON-LD               |
 | LGPD e Analytics       | Pedido de exclusão persistido e GA4 bloqueado até consentimento             |
+| Agendamento            | Serviço único: página pública, IA e Inbox disputam o mesmo horário          |
+| Ferramentas de agenda  | IA consulta, marca, remarca e cancela; copiloto só consulta                 |
 | Modo atual da produção | `DEMO_MODE=false`; kill switches do workspace desligados                    |
 | Live Mode Meta         | API real validada; envio canário depende da conta remetente correta         |
 
 > A release live está implantada e as leituras reais da Instagram API foram
 > aprovadas. A entrega externa continua protegida pelos kill switches do
 > workspace até conectar `_fat.tech` e definir o destinatário do canário.
+
+### Pendências conhecidas
+
+Estão registradas aqui porque nenhuma é aceitável com um cliente pagante do outro
+lado, e todas dependem de uma decisão fora do código:
+
+| Pendência                        | Por que importa                                                                |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| Credenciais em histórico público | Chave SSH e senhas administrativas já publicadas; redigir o arquivo não desfaz |
+| Teto de gasto de IA ausente      | Sem linha em `ai_budgets` a checagem se desliga; IA autônoma sem limite        |
+| Backup sem automação             | Os existentes foram feitos à mão antes de cada deploy                          |
+| Google em modo Teste             | Só usuários de teste autorizam; verificar exige domínio próprio                |
+| Domínio `nip.io`                 | Passa no OAuth Client, mas não na verificação do Google nem em uso comercial   |
+| Sem cobrança                     | A coluna `plan` existe e nada a lê; não há planos nem limite por plano         |
 
 ## O que o sistema entrega
 
