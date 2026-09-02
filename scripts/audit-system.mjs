@@ -223,6 +223,59 @@ for (const file of await filesBelow(path.join(root, 'src/routes/_app'))) {
     })
 }
 
+// Escopo de workspace nas consultas.
+//
+// Trinta e seis das tabelas com RLS ligado não têm policy nenhuma, o que no
+// Postgres significa negar tudo — menos para `service_role`, que é justamente
+// quem as rotas usam. Ou seja: o isolamento entre tenants é o filtro de
+// `workspace_id` no código, sem rede embaixo. Uma rota nova que esqueça o
+// filtro devolve dado de outro cliente e nada quebra.
+//
+// A lista de tabelas com escopo é derivada das migrations, não fixada aqui, para
+// que uma tabela nova entre na checagem sozinha.
+const tabelasComEscopo = new Set()
+for (const file of await filesBelow(path.join(root, 'supabase/migrations'))) {
+  if (!file.endsWith('.sql')) continue
+  const sql = await readFile(file, 'utf8')
+  const blocos = sql.matchAll(
+    /create table (?:if not exists )?(?:public\.)?([a-z0-9_]+)\s*\(([\s\S]*?)^\);/gim,
+  )
+  for (const [, tabela, corpo] of blocos) {
+    if (/\bworkspace_id\b/.test(corpo)) tabelasComEscopo.add(tabela)
+  }
+}
+
+// Rotas legitimamente transversais: agem sobre todos os workspaces por
+// definição (exclusão de dados exigida pela Meta, pedido de privacidade e a
+// página pública de avaliações).
+const ROTAS_SEM_ESCOPO_DE_WORKSPACE = new Set([
+  'src/routes/api/data-deletion.ts',
+  'src/routes/api/privacy/deletion-requests.ts',
+  'src/routes/api/public/reviews.ts',
+])
+
+const consultasSemEscopo = []
+for (const file of await filesBelow(path.join(root, 'src/routes/api'))) {
+  if (!/\.ts$/.test(file) || file.includes('.test.')) continue
+  const nome = relative(file).split('\\').join('/')
+  if (ROTAS_SEM_ESCOPO_DE_WORKSPACE.has(nome)) continue
+  const source = await readFile(file, 'utf8')
+  if (/\bworkspace_id\b|\bworkspaceId\b/.test(source)) continue
+  const tocadas = [...source.matchAll(/\.from\(\s*['"]([a-z0-9_]+)['"]/g)]
+    .map(([, tabela]) => tabela)
+    .filter((tabela) => tabelasComEscopo.has(tabela))
+  if (tocadas.length)
+    consultasSemEscopo.push({ file: nome, tabelas: [...new Set(tocadas)] })
+}
+
+for (const ocorrencia of consultasSemEscopo)
+  findings.push({
+    severity: 'error',
+    file: ocorrencia.file,
+    code: 'consulta_sem_escopo_de_workspace',
+    detail: `consulta ${ocorrencia.tabelas.join(', ')} sem filtrar workspace_id`,
+  })
+
 const errors = findings.filter((finding) => finding.severity === 'error')
 console.log(
   JSON.stringify(
@@ -231,6 +284,8 @@ console.log(
       apiFiles: apiFiles.length,
       findings,
       escritasSemVerificacao: escritasSemVerificacao.length,
+      tabelasComEscopoDeWorkspace: tabelasComEscopo.size,
+      consultasSemEscopo,
       modulesStillUsingDemoData: productionOnlyPlaceholders,
       productionModuleGaps,
     },
