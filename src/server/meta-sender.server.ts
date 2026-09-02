@@ -7,6 +7,7 @@ import type { ComplianceInput } from './compliance'
 import { getServerEnv } from './env.server'
 import { assertWorkspaceExternalSendsEnabled } from './go-live.server'
 import { getMetaAccountAccess } from './integration-credentials.server'
+import { assertMetaAppQuotaHeadroom } from './meta-app-usage.server'
 import {
   OutboundDeliveryError,
   claimOutboundDelivery,
@@ -84,6 +85,9 @@ export async function sendInstagramMessage(input: MetaSendInput) {
   }
 
   await assertWorkspaceExternalSendsEnabled(input.workspaceId)
+  // Antes de reivindicar a entrega: um despacho pausado não pode queimar o
+  // slot de idempotência que o reenvio vai precisar.
+  await assertMetaAppQuotaHeadroom()
 
   if (!input.contactId || !input.idempotencyKey || !input.deliverySource)
     throw new OutboundDeliveryError(
@@ -224,6 +228,7 @@ export async function sendInstagramPrivateReply(
     }
 
   await assertWorkspaceExternalSendsEnabled(input.workspaceId)
+  await assertMetaAppQuotaHeadroom()
   if (!input.contactId || !input.idempotencyKey || !input.deliverySource)
     throw new OutboundDeliveryError(
       'missing_idempotency_key',

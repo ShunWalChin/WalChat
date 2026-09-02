@@ -100,6 +100,15 @@ async function esperarConexao(client: IORedis) {
   })
 }
 
+/**
+ * Compartilhados com o monitor de cota por aplicativo da Meta.
+ *
+ * Abrir um segundo `IORedis` seria outra conexão TCP para o mesmo Redis, e a
+ * política de espera no arranque precisa ser exatamente esta — a de lá herda a
+ * correção que impede a queda do Redis de virar lentidão geral.
+ */
+export { redis as redisCompartilhado, esperarConexao as esperarRedis }
+
 function opaqueKey(input: LimitInput) {
   const identityHash = createHash('sha256').update(input.identity).digest('hex')
   return `walchat:limit:${input.namespace}:${identityHash}`
