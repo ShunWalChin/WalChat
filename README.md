@@ -2,6 +2,8 @@
 
 Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento para Instagram Professional e WhatsApp Business. O Wal Chat foi desenhado para creators e negócios brasileiros, com interface em PT-BR, proteção centralizada das regras de mensageria da Meta e operação isolada por workspace.
 
+> Documentação central: [visão completa do sistema](docs/DOCUMENTACAO_COMPLETA_DO_SISTEMA.md) e [índice técnico e operacional](docs/README.md).
+
 ![Cartão de apresentação do Wal Chat](public/og.png)
 
 ## Estado do projeto
