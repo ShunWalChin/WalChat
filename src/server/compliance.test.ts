@@ -5,6 +5,7 @@ import {
   evaluateWhatsAppCompliance,
   MAX_META_TEXT_CHARS,
   OPT_OUT_FOOTER,
+  isOptOutKeyword,
   withOptOut,
 } from './compliance'
 
@@ -229,5 +230,54 @@ describe('evaluateWhatsAppCompliance', () => {
         },
       }).reason,
     ).toBe('whatsapp_template_missing_opt_out')
+  })
+})
+
+describe('isOptOutKeyword', () => {
+  it('reconhece termo isolado mesmo com pontuação, emoji ou acento', () => {
+    for (const texto of [
+      'PARAR',
+      'parar',
+      'PARAR.',
+      'parar!',
+      'Parar 🙏',
+      '  Sair  ',
+      'cancelar',
+      'STOP',
+      'descadastrar',
+    ]) {
+      expect(isOptOutKeyword(texto), texto).toBe(true)
+    }
+  })
+
+  it('reconhece verbo de cessação com objeto de comunicação', () => {
+    for (const texto of [
+      'quero parar mensagens',
+      'parar de receber mensagens',
+      'cancelar envio',
+      'nao quero mais receber whatsapp',
+      'remover da lista',
+      'para de mandar promoção',
+    ]) {
+      expect(isOptOutKeyword(texto), texto).toBe(true)
+    }
+  })
+
+  it('não confunde verbo de cessação com outro objeto', () => {
+    for (const texto of [
+      'tem como parar a dor?',
+      'quero parar de fumar',
+      'vou cancelar meu pedido',
+      'como faço para sair do estacionamento',
+      'preciso remover uma mancha',
+    ]) {
+      expect(isOptOutKeyword(texto), texto).toBe(false)
+    }
+  })
+
+  it('ignora mensagem vazia e texto comum', () => {
+    for (const texto of ['', '   ', '🙏', 'oi tudo bem?', 'quero o link']) {
+      expect(isOptOutKeyword(texto), texto).toBe(false)
+    }
   })
 })
