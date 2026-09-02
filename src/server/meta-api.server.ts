@@ -2,6 +2,7 @@
 import '@tanstack/react-start/server-only'
 import { createHash, randomBytes } from 'node:crypto'
 import { getInstagramAppConfig, getServerEnv } from './env.server'
+import { recordMetaAppUsage } from './meta-app-usage.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
 import {
   buildIcebreakersDeletePayload,
@@ -96,6 +97,10 @@ function oauthRedirectUri() {
 }
 
 async function parseMetaResponse<T>(response: Response): Promise<T> {
+  // Sem await: ler a cota do aplicativo é observação passiva e não pode
+  // acrescentar uma ida ao Redis na latência de toda chamada à Meta. A própria
+  // função engole os próprios erros.
+  void recordMetaAppUsage(response)
   const payload = (await response.json().catch(() => ({}))) as MetaErrorPayload
   if (!response.ok || payload.error)
     throw new MetaApiError(
