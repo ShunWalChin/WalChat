@@ -46,7 +46,7 @@ type CommentTrigger = {
   source: 'comment' | 'dm' | 'story'
   keyword: string
   keywords: Array<string>
-  matchMode: 'exact' | 'contains'
+  matchMode: 'exact' | 'contains' | 'whole_word'
   responseText: string
   postId: string | null
   instagramAccountId: string | null
@@ -65,7 +65,7 @@ type CommentToDmForm = {
   name: string
   postId: string
   keyword: string
-  matchMode: 'exact' | 'contains'
+  matchMode: 'exact' | 'contains' | 'whole_word'
   responseText: string
   cooldownHours: number
 }
@@ -74,7 +74,10 @@ const initialForm: CommentToDmForm = {
   name: 'Comentário para DM',
   postId: '',
   keyword: 'quero',
-  matchMode: 'contains' as const,
+  // Palavra inteira como padrão de gatilho novo: com `contains`, uma chave
+  // curta como "quero" ou "oi" casa dentro de outra palavra e dispara DM
+  // indevida. Gatilhos já salvos mantêm o modo que escolheram.
+  matchMode: 'whole_word' as const,
   responseText: 'Boa! Te mandei os detalhes por aqui.',
   cooldownHours: 24,
 }
@@ -372,10 +375,12 @@ function CommentToDmPage() {
                 onChange={(event) =>
                   setForm({
                     ...form,
-                    matchMode: event.target.value as 'exact' | 'contains',
+                    matchMode: event.target.value as
+                      'exact' | 'contains' | 'whole_word',
                   })
                 }
               >
+                <option value="whole_word">Palavra inteira</option>
                 <option value="contains">Contém a palavra</option>
                 <option value="exact">Comentário exato</option>
               </select>

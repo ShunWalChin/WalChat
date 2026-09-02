@@ -1,0 +1,12 @@
+-- Acrescenta o modo de correspondência por palavra inteira.
+--
+-- O modo `contains` é substring crua: a palavra-chave "oi" casa em "depois",
+-- "noite" e "herói", e "ver" casa em "verde" e "conversa". Em automação de
+-- creator a chave costuma ser curta, então cada falso positivo vira uma
+-- mensagem automática indevida — exatamente o comportamento que faz a Meta
+-- punir o número.
+--
+-- `add value if not exists` é idempotente e, no Postgres 12+, roda dentro de
+-- transação desde que o valor novo não seja usado na mesma transação. Por isso
+-- esta migration apenas declara o valor; nenhuma linha é atualizada aqui.
+alter type public.match_mode add value if not exists 'whole_word';
