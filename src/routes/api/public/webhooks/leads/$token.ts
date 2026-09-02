@@ -6,6 +6,10 @@ import {
   apiErrorResponse,
 } from '../../../../../server/api-auth.server'
 import { normalizePhone } from '../../../../../server/contacts-crm.server'
+import {
+  attributionFromLeadPayload,
+  saveContactAdAttribution,
+} from '../../../../../server/ad-attribution.server'
 import { assertRateLimit } from '../../../../../server/rate-limit.server'
 import { readLimitedText } from '../../../../../server/request-body.server'
 import { requestIdentity } from '../../../../../server/request-identity.server'
@@ -13,7 +17,7 @@ import { getSupabaseAdmin } from '../../../../../server/supabase-admin.server'
 
 const MAX_BODY_BYTES = 64 * 1024
 const blockedFieldPattern =
-  /(authorization|password|passwd|secret|token|api.?key)/i
+  /(authorization|password|passwd|secret|token|api.?key|gclid|gbraid|wbraid|fbclid|fbc|fbp|tracking|attribution)/i
 
 function scalar(value: unknown) {
   if (typeof value === 'string') return value.trim()
@@ -101,6 +105,7 @@ export const Route = createFileRoute('/api/public/webhooks/leads/$token')({
           if (!source.pipeline_id || !source.stage_id)
             throw new ApiError(409, 'A fonte não possui destino ativo no CRM.')
           const { payload, dedupeKey } = await readPayload(request)
+          const attribution = attributionFromLeadPayload(payload)
           const { data: capture, error: captureError } = await admin
             .from('webhook_lead_captures')
             .insert({
@@ -162,6 +167,13 @@ export const Route = createFileRoute('/api/public/webhooks/leads/$token')({
               contactId = created.id
             }
           }
+
+          if (contactId)
+            await saveContactAdAttribution({
+              workspaceId: source.workspace_id,
+              contactId,
+              attribution,
+            })
 
           const valueText = mapped(payload, source.field_mapping, 'value')
           const valueNumber = Number(valueText.replace(',', '.'))

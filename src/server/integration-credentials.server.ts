@@ -7,7 +7,8 @@ import {
 import { getServerEnv } from './env.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
 
-type Provider = 'meta' | 'openai' | 'google' | 'n8n'
+type Provider =
+  'meta' | 'openai' | 'google' | 'n8n' | 'google_ads' | 'meta_capi'
 type CredentialType = 'access_token' | 'refresh_token' | 'api_key'
 
 function requireAdmin() {

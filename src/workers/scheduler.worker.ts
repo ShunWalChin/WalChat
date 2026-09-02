@@ -47,6 +47,7 @@ import {
   reserveInstagramPrivateReplySlot,
 } from '../server/rate-limit.server'
 import { evaluateCompliance } from '../server/compliance'
+import { processAdConversionEvent } from '../server/ad-conversions.server'
 
 /**
  * Prazo de resposta vencido.
@@ -340,6 +341,12 @@ async function processDueJobs() {
       else if (job.kind === 'automation_step') await processAutomationStep(job)
       else if (job.kind === 'integration_event')
         await processIntegrationEventJob(job)
+      else if (job.kind === 'ad_conversion')
+        await processAdConversionEvent({
+          workspaceId: job.workspace_id,
+          eventId: String(job.payload.conversionEventId ?? ''),
+          jobAttempt: job.attempts,
+        })
       else if (job.kind === 'campaign_message') await processCampaignJob(job)
       else if (job.kind === 'content_publish')
         await processContentPublishJob(job)

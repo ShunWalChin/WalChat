@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
+  Goal,
   Instagram,
   LoaderCircle,
   MessageCircle,
@@ -20,8 +21,11 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageIntro, StatusDot } from '../../components/ui'
 import { apiFetch } from '../../lib/api-client'
+import { ConversionTrackingPanel } from '../../components/conversion-tracking-panel'
+import type { ConversionTrackingStatus } from '../../components/conversion-tracking-panel'
 
-type ProviderKey = 'instagram' | 'whatsapp' | 'google' | 'ai' | 'n8n'
+type ProviderKey =
+  'instagram' | 'whatsapp' | 'google' | 'ai' | 'n8n' | 'conversions'
 type MetaStatus = {
   platformConfigured: boolean
   accounts: Array<{ status: string; tokenStored: boolean }>
@@ -74,6 +78,7 @@ const events = [
   ['booking.created', 'Agendamento criado'],
   ['automation.completed', 'Automação concluída'],
   ['automation.node', 'Etapa de automação'],
+  ['conversion.ready', 'Conversão pronta (OCI/CAPI)'],
 ] as const
 
 type N8nEventSubscription = (typeof events)[number][0]
@@ -91,11 +96,13 @@ export const Route = createFileRoute('/_app/integracoes')({
 })
 
 function IntegrationsPage() {
-  const [selected, setSelected] = useState<ProviderKey>('n8n')
+  const [selected, setSelected] = useState<ProviderKey>('conversions')
   const [meta, setMeta] = useState<MetaStatus | null>(null)
   const [google, setGoogle] = useState<GoogleStatus | null>(null)
   const [ai, setAi] = useState<AiStatus | null>(null)
   const [n8n, setN8n] = useState<N8nStatus | null>(null)
+  const [conversions, setConversions] =
+    useState<ConversionTrackingStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<{
@@ -120,6 +127,9 @@ function IntegrationsPage() {
       apiFetch<GoogleStatus>('/api/integrations/google/status'),
       apiFetch<AiStatus>('/api/ai/settings'),
       apiFetch<N8nStatus>('/api/integrations/n8n/status'),
+      apiFetch<ConversionTrackingStatus>(
+        '/api/integrations/conversions/status',
+      ),
     ])
     if (results[0].status === 'fulfilled') setMeta(results[0].value)
     if (results[1].status === 'fulfilled') setGoogle(results[1].value)
@@ -138,6 +148,7 @@ function IntegrationsPage() {
             ) ?? current.eventSubscriptions,
         }))
     }
+    if (results[4].status === 'fulfilled') setConversions(results[4].value)
     if (results.every((result) => result.status === 'rejected'))
       setFeedback({
         tone: 'error',
@@ -201,8 +212,19 @@ function IntegrationsPage() {
         icon: PlugZap,
         ready: n8n?.connection?.status === 'connected',
       },
+      {
+        key: 'conversions' as const,
+        label: 'Conversões Ads',
+        description: 'Google OCI, Meta CAPI e atribuição do CRM',
+        icon: Goal,
+        ready: Boolean(
+          conversions?.connections.some(
+            (connection) => connection.status === 'connected',
+          ) && conversions.rules.some((rule) => rule.isActive),
+        ),
+      },
     ],
-    [ai, google, meta, n8n],
+    [ai, conversions, google, meta, n8n],
   )
   const readyCount = providerCards.filter((provider) => provider.ready).length
 
@@ -347,14 +369,14 @@ function IntegrationsPage() {
       <section className="card integration-readiness">
         <div>
           <span className="eyebrow">CENTRAL DE CONEXÕES</span>
-          <h2>{readyCount} de 5 ferramentas prontas</h2>
+          <h2>{readyCount} de 6 ferramentas prontas</h2>
           <p>
             Cada conector precisa concluir credencial, permissão, webhook e
             teste antes de ser usado em automações.
           </p>
         </div>
-        <div className="integration-progress" aria-label={`${readyCount} de 5`}>
-          <span style={{ width: `${(readyCount / 5) * 100}%` }} />
+        <div className="integration-progress" aria-label={`${readyCount} de 6`}>
+          <span style={{ width: `${(readyCount / 6) * 100}%` }} />
         </div>
       </section>
 
@@ -383,7 +405,13 @@ function IntegrationsPage() {
         })}
       </div>
 
-      {selected === 'n8n' ? (
+      {selected === 'conversions' ? (
+        <ConversionTrackingPanel
+          status={conversions}
+          loading={loading}
+          onRefresh={loadStatus}
+        />
+      ) : selected === 'n8n' ? (
         <N8nWizard
           status={n8n}
           form={form}
@@ -719,7 +747,7 @@ function ProviderConnectionPanel({
   busy,
   onGoogle,
 }: {
-  provider: Exclude<ProviderKey, 'n8n'>
+  provider: Exclude<ProviderKey, 'n8n' | 'conversions'>
   ready: boolean
   platformConfigured: boolean
   busy: string | null

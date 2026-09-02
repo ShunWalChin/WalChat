@@ -32,6 +32,7 @@ import {
   upsertGoogleEvent,
 } from './google-calendar.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
+import { saveContactAdAttribution } from './ad-attribution.server'
 
 /** Erro de agendamento com código estável, para a IA e a HTTP traduzirem. */
 export class BookingError extends Error {
@@ -298,6 +299,7 @@ export type CreateBookingInput = {
   source: 'public_page' | 'ai_agent' | 'trigger' | 'sequence' | 'manual'
   contactId?: string | null
   idempotencyKey?: string | null
+  attribution?: unknown
 }
 
 export type BookingResult = {
@@ -431,6 +433,12 @@ export async function createBooking(
     throw reservation.error
   }
   const bookingId = reservation.data as string
+
+  await saveContactAdAttribution({
+    workspaceId: page.workspace_id,
+    contactId,
+    attribution: input.attribution,
+  })
 
   const bookingResult = await admin
     .from('bookings')

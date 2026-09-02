@@ -5728,7 +5728,7 @@ select:focus {
 }
 .integration-provider-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 .integration-provider {
@@ -6016,12 +6016,148 @@ select:focus {
   line-height: 1.4;
 }
 
+/* OCI/CAPI: formulário denso com progressão clara e telemetria escaneável. */
+.conversion-panel {
+  padding: 26px;
+  display: grid;
+  gap: 22px;
+}
+.conversion-panel h2 {
+  margin: 5px 0 7px;
+  font-size: clamp(21px, 2vw, 28px);
+}
+.conversion-panel h3 {
+  margin: 3px 0 5px;
+  font-size: 17px;
+}
+.conversion-panel p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.conversion-panel-loading {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: var(--muted);
+}
+.conversion-provider-grid,
+.conversion-technical-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.conversion-provider-box,
+.conversion-section {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.52);
+}
+.conversion-provider-box > header,
+.conversion-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.conversion-provider-box > header {
+  margin-bottom: 14px;
+}
+.conversion-provider-box > header > div {
+  min-width: 0;
+}
+.conversion-provider-box .form-field {
+  margin-top: 11px;
+}
+.connection-actions.compact {
+  margin-top: 14px;
+}
+.connection-meta {
+  display: block;
+  margin-top: 12px;
+  color: var(--muted);
+}
+.conversion-rule-form {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+.conversion-rule-form .wide {
+  grid-column: span 2;
+}
+.check-row {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 750;
+}
+.check-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--orange-dark);
+}
+.conversion-rule-list,
+.conversion-event-list {
+  margin-top: 15px;
+  display: grid;
+  gap: 7px;
+}
+.conversion-rule-list > div,
+.conversion-event-list > div {
+  min-height: 54px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: rgba(255, 255, 255, 0.5);
+}
+.conversion-rule-list > div > span:first-child,
+.conversion-event-list > div > span:first-child {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 3px;
+}
+.conversion-rule-list small,
+.conversion-event-list small,
+.helper-text {
+  color: var(--muted);
+  font-size: 12px;
+}
+.conversion-code {
+  max-height: 270px;
+  margin: 14px 0 10px;
+  padding: 14px;
+  overflow: auto;
+  border-radius: 11px;
+  color: #f7f4ec;
+  background: #171714;
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre;
+}
+.conversion-technical-grid .conversion-section-head .button {
+  flex: 0 0 auto;
+}
+
 @media (max-width: 1120px) {
   .integration-provider-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .connection-wizard-grid {
     grid-template-columns: 1fr;
+  }
+  .conversion-rule-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -6038,11 +6174,24 @@ select:focus {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .connection-wizard,
-  .provider-connection-panel {
+  .provider-connection-panel,
+  .conversion-panel {
     padding: 20px;
   }
   .connection-wizard-head,
   .one-time-secret {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .conversion-provider-grid,
+  .conversion-technical-grid,
+  .conversion-rule-form {
+    grid-template-columns: 1fr;
+  }
+  .conversion-rule-form .wide {
+    grid-column: auto;
+  }
+  .conversion-section-head {
     align-items: stretch;
     flex-direction: column;
   }

@@ -17,6 +17,13 @@ export const GOOGLE_WORKSPACE_SCOPES = [
   'https://www.googleapis.com/auth/tasks',
 ] as const
 
+export const GOOGLE_ADS_SCOPES = [
+  'openid',
+  'email',
+  'profile',
+  'https://www.googleapis.com/auth/adwords',
+] as const
+
 const GOOGLE_TIMEOUT_MS = 20_000
 
 export class GoogleApiError extends Error {
@@ -80,6 +87,7 @@ async function parseGoogle<T>(response: Response): Promise<T> {
 export async function createGoogleOAuthState(input: {
   workspaceId: string
   userId: string
+  redirectAfter?: '/calendario' | '/integracoes'
 }) {
   const state = randomBytes(32).toString('base64url')
   const verifier = randomBytes(64).toString('base64url')
@@ -98,7 +106,7 @@ export async function createGoogleOAuthState(input: {
     workspace_id: input.workspaceId,
     user_id: input.userId,
     provider: 'google',
-    redirect_after: '/calendario',
+    redirect_after: input.redirectAfter ?? '/calendario',
     expires_at: expiresAt,
   })
   if (error) throw error
@@ -135,6 +143,7 @@ export async function consumeGoogleOAuthState(state: string) {
 export function buildGoogleAuthorizationUrl(input: {
   state: string
   challenge: string
+  scopes?: readonly string[]
 }) {
   const env = getServerEnv()
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET)
@@ -143,7 +152,10 @@ export function buildGoogleAuthorizationUrl(input: {
   url.searchParams.set('client_id', env.GOOGLE_CLIENT_ID)
   url.searchParams.set('redirect_uri', oauthRedirectUri())
   url.searchParams.set('response_type', 'code')
-  url.searchParams.set('scope', GOOGLE_WORKSPACE_SCOPES.join(' '))
+  url.searchParams.set(
+    'scope',
+    (input.scopes ?? GOOGLE_WORKSPACE_SCOPES).join(' '),
+  )
   url.searchParams.set('state', input.state)
   url.searchParams.set('code_challenge', input.challenge)
   url.searchParams.set('code_challenge_method', 'S256')

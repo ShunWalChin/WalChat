@@ -1,10 +1,22 @@
 /** Regras puras do scheduler, separadas do processo contínuo para teste. */
 import { OutboundDeliveryError } from './outbound-delivery.server'
 
+function isAdConversionDeliveryError(
+  error: unknown,
+): error is Error & { terminal: boolean; code: string } {
+  return (
+    error instanceof Error &&
+    error.name === 'AdConversionDeliveryError' &&
+    typeof (error as { terminal?: unknown }).terminal === 'boolean' &&
+    typeof (error as { code?: unknown }).code === 'string'
+  )
+}
+
 export const IMPLEMENTED_SCHEDULED_JOB_KINDS = [
   'sequence_step',
   'automation_step',
   'integration_event',
+  'ad_conversion',
   'campaign_message',
   'content_publish',
   'insights_sync',
@@ -24,6 +36,7 @@ export class UnsupportedScheduledJobError extends Error {
 export function isTerminalScheduledJobError(error: unknown) {
   return (
     error instanceof UnsupportedScheduledJobError ||
+    (isAdConversionDeliveryError(error) && error.terminal) ||
     (error instanceof OutboundDeliveryError && error.terminal)
   )
 }
@@ -38,6 +51,7 @@ export function privateReplyFailureStatus(error: unknown) {
 /** Nunca persiste resposta externa, token, recipient ou texto de mensagem. */
 export function operationalErrorCode(error: unknown) {
   if (error instanceof OutboundDeliveryError) return error.code
+  if (isAdConversionDeliveryError(error)) return error.code
   if (error instanceof UnsupportedScheduledJobError) return error.message
   if (error instanceof Error) return error.name.slice(0, 80)
   return 'unknown_error'
