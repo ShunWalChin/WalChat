@@ -12,8 +12,15 @@ const fields = {
   name: z.string().trim().min(2).max(100),
   source: z.enum(['comment', 'dm', 'story', 'whatsapp']),
   keyword: z.string().trim().min(1).max(100),
+  keywords: z
+    .array(z.string().trim().min(1).max(100))
+    .min(1)
+    .max(20)
+    .optional(),
   matchMode: z.enum(['exact', 'contains']),
   postId: z.string().uuid().nullable().optional(),
+  instagramAccountId: z.uuid().nullable().optional(),
+  targetNextReel: z.boolean().optional(),
   cooldownHours: z.number().int().min(24).max(168),
   isActive: z.boolean(),
   bookingPageId: z.uuid().nullable().optional(),
@@ -35,6 +42,16 @@ const createSchema = triggerInputSchema.superRefine((value, context) => {
       code: 'custom',
       path: ['responseText'],
       message: 'Escolha exatamente uma resposta, sequência ou automação.',
+    })
+  if (
+    value.targetNextReel &&
+    (value.source !== 'comment' || value.postId || !value.instagramAccountId)
+  )
+    context.addIssue({
+      code: 'custom',
+      path: ['targetNextReel'],
+      message:
+        'Próximo Reel exige gatilho de comentário, conta definida e nenhum post atual.',
     })
 })
 const updateSchema = triggerInputSchema.partial().extend({ id: z.uuid() })
@@ -82,6 +99,21 @@ async function destinationBelongs(
   return true
 }
 
+async function instagramAccountBelongs(
+  context: Awaited<ReturnType<typeof requireWorkspaceContext>>,
+  accountId: string | null | undefined,
+) {
+  if (!accountId) return true
+  const { count, error } = await context.supabase
+    .from('instagram_accounts')
+    .select('id', { count: 'exact', head: true })
+    .eq('workspace_id', context.workspaceId)
+    .eq('id', accountId)
+    .eq('status', 'connected')
+  if (error) throw error
+  return Boolean(count)
+}
+
 /** Private Reply aceita somente texto; mídia pode entrar após um inbound em DM. */
 async function commentDestinationCompatible(
   context: Awaited<ReturnType<typeof requireWorkspaceContext>>,
@@ -119,7 +151,7 @@ export const Route = createFileRoute('/api/triggers')({
             context.supabase
               .from('triggers')
               .select(
-                'id,name,source,keyword,match_mode,response_text,sequence_id,flow_id,post_id,cooldown_hours,is_active,booking_page_id,created_at',
+                'id,name,source,keyword,keywords,match_mode,response_text,sequence_id,flow_id,post_id,instagram_account_id,target_next_reel,cooldown_hours,is_active,booking_page_id,created_at',
               )
               .eq('workspace_id', context.workspaceId)
               .order('created_at'),
@@ -176,11 +208,19 @@ export const Route = createFileRoute('/api/triggers')({
               name: trigger.name,
               source: trigger.source,
               keyword: trigger.keyword,
+              keywords:
+                trigger.keywords?.length > 0
+                  ? trigger.keywords
+                  : trigger.keyword
+                    ? [trigger.keyword]
+                    : [],
               matchMode: trigger.match_mode,
               responseText: trigger.response_text,
               sequenceId: trigger.sequence_id,
               flowId: trigger.flow_id,
               postId: trigger.post_id,
+              instagramAccountId: trigger.instagram_account_id,
+              targetNextReel: trigger.target_next_reel,
               cooldownHours: trigger.cooldown_hours,
               isActive: trigger.is_active,
               bookingPageId: trigger.booking_page_id,
@@ -209,6 +249,13 @@ export const Route = createFileRoute('/api/triggers')({
               { error: 'Agenda não pertence ao workspace.' },
               { status: 422 },
             )
+          if (
+            !(await instagramAccountBelongs(context, body.instagramAccountId))
+          )
+            return Response.json(
+              { error: 'Conta Instagram não pertence ao workspace.' },
+              { status: 422 },
+            )
           if (!(await destinationBelongs(context, body)))
             return Response.json(
               { error: 'Destino não pertence ao workspace ou não está ativo.' },
@@ -225,7 +272,7 @@ export const Route = createFileRoute('/api/triggers')({
           if (body.postId) {
             const { data: post, error: postError } = await context.supabase
               .from('posts_cache')
-              .select('id')
+              .select('id,instagram_account_id')
               .eq('workspace_id', context.workspaceId)
               .eq('id', body.postId)
               .maybeSingle()
@@ -235,19 +282,35 @@ export const Route = createFileRoute('/api/triggers')({
                 { error: 'Post não pertence ao workspace.' },
                 { status: 422 },
               )
+            if (
+              body.instagramAccountId &&
+              post.instagram_account_id !== body.instagramAccountId
+            )
+              return Response.json(
+                { error: 'Post não pertence à conta Instagram selecionada.' },
+                { status: 422 },
+              )
           }
+          const keywords = Array.from(
+            new Set(
+              (body.keywords ?? [body.keyword]).map((item) => item.trim()),
+            ),
+          )
           const { data, error } = await context.supabase
             .from('triggers')
             .insert({
               workspace_id: context.workspaceId,
               name: body.name,
               source: body.source,
-              keyword: body.keyword,
+              keyword: keywords[0],
+              keywords,
               match_mode: body.matchMode,
               response_text: body.responseText ?? null,
               sequence_id: body.sequenceId ?? null,
               flow_id: body.flowId ?? null,
               post_id: body.postId ?? null,
+              instagram_account_id: body.instagramAccountId ?? null,
+              target_next_reel: body.targetNextReel ?? false,
               cooldown_hours: body.cooldownHours,
               is_active: body.isActive,
               booking_page_id: body.bookingPageId ?? null,
@@ -275,7 +338,9 @@ export const Route = createFileRoute('/api/triggers')({
             )
           const { data: current, error: currentError } = await context.supabase
             .from('triggers')
-            .select('source,response_text,sequence_id,flow_id')
+            .select(
+              'source,response_text,sequence_id,flow_id,post_id,instagram_account_id,target_next_reel',
+            )
             .eq('workspace_id', context.workspaceId)
             .eq('id', body.id)
             .maybeSingle()
@@ -284,6 +349,13 @@ export const Route = createFileRoute('/api/triggers')({
             return Response.json(
               { error: 'Gatilho não encontrado.' },
               { status: 404 },
+            )
+          if (
+            !(await instagramAccountBelongs(context, body.instagramAccountId))
+          )
+            return Response.json(
+              { error: 'Conta Instagram não pertence ao workspace.' },
+              { status: 422 },
             )
           const destination = {
             responseText:
@@ -326,12 +398,18 @@ export const Route = createFileRoute('/api/triggers')({
               },
               { status: 422 },
             )
-          if (body.postId) {
+          const selectedPostId =
+            body.postId !== undefined ? body.postId : current.post_id
+          const selectedAccountId =
+            body.instagramAccountId !== undefined
+              ? body.instagramAccountId
+              : current.instagram_account_id
+          if (selectedPostId) {
             const { data: post, error: postError } = await context.supabase
               .from('posts_cache')
-              .select('id')
+              .select('id,instagram_account_id')
               .eq('workspace_id', context.workspaceId)
-              .eq('id', body.postId)
+              .eq('id', selectedPostId)
               .maybeSingle()
             if (postError) throw postError
             if (!post)
@@ -339,11 +417,44 @@ export const Route = createFileRoute('/api/triggers')({
                 { error: 'Post não pertence ao workspace.' },
                 { status: 422 },
               )
+            if (
+              selectedAccountId &&
+              post.instagram_account_id !== selectedAccountId
+            )
+              return Response.json(
+                { error: 'Post não pertence à conta Instagram selecionada.' },
+                { status: 422 },
+              )
           }
+          const nextReel =
+            body.targetNextReel !== undefined
+              ? body.targetNextReel
+              : current.target_next_reel
+          if (
+            nextReel &&
+            (source !== 'comment' || selectedPostId || !selectedAccountId)
+          )
+            return Response.json(
+              {
+                error:
+                  'Próximo Reel exige gatilho de comentário, conta definida e nenhum post atual.',
+              },
+              { status: 422 },
+            )
           const changes: Record<string, unknown> = {}
           if (body.name !== undefined) changes.name = body.name
           if (body.source !== undefined) changes.source = body.source
-          if (body.keyword !== undefined) changes.keyword = body.keyword
+          if (body.keyword !== undefined) {
+            changes.keyword = body.keyword
+            if (body.keywords === undefined) changes.keywords = [body.keyword]
+          }
+          if (body.keywords !== undefined) {
+            const keywords = Array.from(
+              new Set(body.keywords.map((item) => item.trim())),
+            )
+            changes.keywords = keywords
+            changes.keyword = keywords[0]
+          }
           if (body.matchMode !== undefined) changes.match_mode = body.matchMode
           if (body.responseText !== undefined)
             changes.response_text = body.responseText
@@ -351,6 +462,10 @@ export const Route = createFileRoute('/api/triggers')({
             changes.sequence_id = body.sequenceId
           if (body.flowId !== undefined) changes.flow_id = body.flowId
           if (body.postId !== undefined) changes.post_id = body.postId
+          if (body.instagramAccountId !== undefined)
+            changes.instagram_account_id = body.instagramAccountId
+          if (body.targetNextReel !== undefined)
+            changes.target_next_reel = body.targetNextReel
           if (body.cooldownHours !== undefined)
             changes.cooldown_hours = body.cooldownHours
           if (body.isActive !== undefined) changes.is_active = body.isActive

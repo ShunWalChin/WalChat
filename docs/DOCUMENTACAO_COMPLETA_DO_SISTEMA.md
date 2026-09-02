@@ -83,6 +83,12 @@ Detalhes: [Integração Deskcomm](INTEGRACAO_DESKCOMM_2026-08-28.md).
 - Gatilhos por comentário, DM, resposta de Story e WhatsApp.
 - Comment-to-DM limitado a uma resposta privada por comentário e cooldown por
   contato/gatilho.
+- Comment-to-DM aceita até 20 palavras equivalentes, faz correspondência
+  Unicode sem diferença de acentos latinos e pode aguardar o próximo Reel.
+- O worker reconcilia comentários recentes que não chegaram por webhook,
+  incluindo cópias de posts impulsionados ligadas por `original_media_id`.
+- Private Replies reservam um limite atômico de 700 envios por hora e por conta,
+  com margem operacional antes do teto estudado.
 - Automation Studio baseado em DAG versionado e publicações imutáveis.
 - Nós suportados: entrada, mensagem/mídia, botões, pergunta validada, espera,
   condição, A/B determinístico, CRM, IA, handoff humano, HTTP externo, evento
@@ -122,6 +128,8 @@ Detalhes: [Automation Studio v2](AUTOMATION_STUDIO_V2_2026-08-24.md) e
   vazão configurável de 30–45/min.
 - Growth links e QR codes.
 - Insights oficiais com métricas diárias e por publicação.
+- Histórico de seguidores usa total absoluto observado e estimativas
+  reconstruídas; snapshots diários preservam a série além da janela da Meta.
 - Auto-like mantém preferências, mas não executa curtidas: a API oficial da Meta
   não oferece essa operação.
 
@@ -174,8 +182,8 @@ flowchart LR
 | ---------------------- | ------------------------------------------------------------- |
 | `wal-chat-app-1`       | SSR, interface e APIs HTTP                                    |
 | `wal-chat-redis-1`     | filas, locks e limites distribuídos                           |
-| `wal-chat-webhooks-1`  | consumo dos eventos Meta                                      |
-| `wal-chat-scheduler-1` | delays, campanhas, publicações, agenda, outbox e radar CRM    |
+| `wal-chat-webhooks-1`  | eventos Meta, outbox e reconciliação de comentários           |
+| `wal-chat-scheduler-1` | delays, campanhas, Reels futuros, snapshots, agenda e CRM     |
 | Supabase isolado       | Auth, Postgres, Storage, REST, Realtime e serviços auxiliares |
 | Nginx                  | TLS, proxy reverso, limites e cabeçalhos                      |
 
@@ -194,6 +202,10 @@ ser o `working_dir` do projeto Compose.
 5. Enfileira o evento.
 6. O worker normaliza contato, conversa, mensagem, comentário ou receipt.
 7. Gatilhos elegíveis iniciam o DAG.
+8. A cada cinco minutos, o polling procura comentários recentes ausentes do
+   log e os reenvia pelo mesmo pipeline idempotente.
+
+Detalhes e decisões: [Engenharia reversa do OpenReply](ENGENHARIA_REVERSA_OPENREPLY_2026-09-02.md).
 
 ### Envio de mensagem
 

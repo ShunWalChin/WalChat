@@ -36,8 +36,17 @@ import {
 } from '../server/automation-engine.server'
 import { n8nDispatchSchema } from '../server/n8n-contract'
 import { sendN8nEvent } from '../server/n8n-integration.server'
-import { syncWorkspaceInstagramInsights } from '../server/insights-sync.server'
+import {
+  syncInstagramFollowerHistory,
+  syncWorkspaceInstagramInsights,
+} from '../server/insights-sync.server'
 import { reconcileCrmRiskStates } from '../server/crm-pipeline.server'
+import { attachPendingNextReels } from '../server/instagram-comment-reconciler.server'
+import {
+  InstagramPrivateReplyRateLimitError,
+  reserveInstagramPrivateReplySlot,
+} from '../server/rate-limit.server'
+import { evaluateCompliance } from '../server/compliance'
 
 /**
  * Prazo de resposta vencido.
@@ -76,6 +85,8 @@ let lastTokenRefreshSweep = 0
 let lastRecoverySweep = 0
 let lastGoogleCalendarSweep = 0
 let lastCrmRiskSweep = 0
+let lastNextReelSweep = 0
+let lastFollowerSnapshotSweep = 0
 
 /** Materializa somente mudanças de faixa para o Radar, sem tocar o lead. */
 /**
@@ -112,6 +123,44 @@ async function refreshCrmRiskStates() {
   if (Date.now() - lastCrmRiskSweep < 5 * 60_000) return
   lastCrmRiskSweep = Date.now()
   await reconcileCrmRiskStates({ admin: supabase })
+}
+
+async function attachDueNextReels() {
+  if (Date.now() - lastNextReelSweep < 5 * 60_000) return
+  lastNextReelSweep = Date.now()
+  const result = await attachPendingNextReels()
+  if (result.bound)
+    console.log(JSON.stringify({ event: 'next_reels_attached', ...result }))
+}
+
+async function snapshotDueFollowers() {
+  if (Date.now() - lastFollowerSnapshotSweep < 60 * 60_000) return
+  lastFollowerSnapshotSweep = Date.now()
+  const today = new Date().toISOString().slice(0, 10)
+  const { data: accounts, error } = await supabase
+    .from('instagram_accounts')
+    .select('id,workspace_id,last_follower_snapshot_at')
+    .eq('status', 'connected')
+    .limit(50)
+  if (error) throw error
+  for (const account of accounts.filter(
+    (item) => item.last_follower_snapshot_at?.slice(0, 10) !== today,
+  )) {
+    try {
+      await syncInstagramFollowerHistory({
+        workspaceId: account.workspace_id,
+        instagramAccountId: account.id,
+      })
+    } catch (caught) {
+      console.error(
+        JSON.stringify({
+          event: 'instagram_follower_snapshot_failed',
+          accountId: account.id,
+          error: caught instanceof Error ? caught.name : 'unknown_error',
+        }),
+      )
+    }
+  }
 }
 
 /**
@@ -305,15 +354,22 @@ async function processDueJobs() {
       if (completedError) throw completedError
     } catch (caught) {
       const message = operationalErrorCode(caught)
-      const terminal = job.attempts >= 5 || isTerminalScheduledJobError(caught)
+      const privateReplyLimited =
+        caught instanceof InstagramPrivateReplyRateLimitError
+      // Um limite por conta só pode liberar quando a janela expirar; gastar as
+      // cinco tentativas antes disso descartaria um comentário ainda válido.
+      const terminal =
+        !privateReplyLimited &&
+        (job.attempts >= 5 || isTerminalScheduledJobError(caught))
+      const retryDelay = privateReplyLimited
+        ? caught.retryAfterMs + 1_000
+        : 2 ** Math.max(0, job.attempts - 1) * 30_000
       await supabase
         .from('scheduled_jobs')
         .update({
           status: terminal ? 'failed' : 'pending',
           last_error: message,
-          run_at: new Date(
-            Date.now() + 2 ** Math.max(0, job.attempts - 1) * 30_000,
-          ).toISOString(),
+          run_at: new Date(Date.now() + retryDelay).toISOString(),
           locked_at: null,
         })
         .eq('id', job.id)
@@ -735,6 +791,19 @@ async function processSequenceJob(job: {
         recipientId: senderId || (contact.whatsapp_user_id as string),
       })
     } else if (commentId) {
+      // A reserva vem antes do claim permanente do comentário: quando a conta
+      // está cheia, o job pode esperar a janela seguinte sem inutilizar a única
+      // Private Reply que a Meta permite para esse comentário.
+      if (
+        evaluateCompliance({
+          ...common,
+          commentAlreadyReplied: false,
+          instagramCommentId: commentId,
+        }).allowed
+      )
+        await reserveInstagramPrivateReplySlot(
+          contact.instagram_account_id as string,
+        )
       // O insert ocorre antes da chamada externa: a PK funciona como claim
       // at-most-once mesmo com dois schedulers ou resposta HTTP ambígua.
       const { error: claimError } = await supabase
@@ -1001,6 +1070,8 @@ async function tick() {
     await refreshDueMetaTokens()
     await syncDueGoogleCalendars()
     await refreshCrmRiskStates()
+    await attachDueNextReels()
+    await snapshotDueFollowers()
     await processDueJobs()
     await writeWorkerHeartbeat('scheduler', 'healthy')
   } catch (error) {
