@@ -5,6 +5,8 @@
  * produz uma decisão determinística que pode ser testada e auditada. Todo
  * sender automático deve passar por `evaluateCompliance` no momento do envio.
  */
+import { foldLatinDiacritics } from './keyword-matcher'
+
 export const OPT_OUT_FOOTER = 'Responda PARAR'
 export const MAX_META_TEXT_CHARS = 1_000
 export const STANDARD_WINDOW_MS = 24 * 60 * 60 * 1000
@@ -66,8 +68,137 @@ export function normalizeComplianceText(value: string) {
     .toLocaleLowerCase('pt-BR')
 }
 
+/**
+ * Normalização específica de opt-out.
+ *
+ * Diferente de `normalizeComplianceText`, esta remove pontuação e emoji: quem
+ * responde `PARAR.` ou `Parar 🙏` está pedindo opt-out do mesmo jeito. A
+ * normalização de conformidade não pode fazer isso porque a blocklist depende
+ * de comparar o texto com a pontuação preservada.
+ */
+function normalizeOptOutText(value: string) {
+  return foldLatinDiacritics(normalizeComplianceText(value))
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Termos que, sozinhos numa mensagem, são pedido inequívoco de opt-out. */
+const OPT_OUT_TERMS_ISOLADOS = new Set([
+  'parar',
+  'pare',
+  'para',
+  'sair',
+  'cancelar',
+  'cancela',
+  'descadastrar',
+  'remover',
+  'stop',
+  'unsubscribe',
+])
+
+/** Verbos de cessação — só valem com um objeto de comunicação junto. */
+const VERBOS_DE_CESSACAO = new Set([
+  'parar',
+  'pare',
+  'para',
+  'cancelar',
+  'cancela',
+  'cancelo',
+  'descadastrar',
+  'descadastre',
+  'remover',
+  'remova',
+  'sair',
+  'suspender',
+  'encerrar',
+  'stop',
+  'excluir',
+  'tirar',
+  'tire',
+])
+
+/**
+ * Objetos que caracterizam comunicação.
+ *
+ * É esta lista que separa `parar mensagens` de `parar a dor`: sem um objeto de
+ * comunicação, o verbo sozinho no meio de uma frase nunca dispara opt-out.
+ */
+const OBJETOS_DE_COMUNICACAO = new Set([
+  'mensagem',
+  'mensagens',
+  'msg',
+  'msgs',
+  'envio',
+  'envios',
+  'contato',
+  'contatos',
+  'notificacao',
+  'notificacoes',
+  'aviso',
+  'avisos',
+  'promocao',
+  'promocoes',
+  'publicidade',
+  'propaganda',
+  'divulgacao',
+  'newsletter',
+  'lista',
+  'spam',
+  'whatsapp',
+  'sms',
+  'email',
+  'emails',
+  'zap',
+])
+
+const NEGACOES = new Set(['nao', 'n', 'nunca'])
+
+const VERBOS_DE_DESEJO = new Set([
+  'quero',
+  'queria',
+  'desejo',
+  'gostaria',
+  'preciso',
+  'receber',
+])
+
+/**
+ * Reconhece pedido de opt-out em dois níveis.
+ *
+ * Nível 1 — termo isolado (`PARAR`, `parar.`, `Sair 🙏`).
+ * Nível 2 — verbo de cessação seguido de objeto de comunicação na mesma
+ * mensagem (`parar mensagens`, `cancelar envio`).
+ * Nível 3 — negação de desejo continuado mais objeto de comunicação
+ * (`nao quero mais receber whatsapp`).
+ *
+ * O que deliberadamente NÃO dispara: o verbo solto no meio de uma frase com
+ * outro objeto. `tem como parar a dor?` é pergunta clínica, não opt-out — foi
+ * exatamente esse falso positivo que motivou a regra em níveis.
+ */
 export function isOptOutKeyword(value: string) {
-  return normalizeComplianceText(value) === 'parar'
+  const normalized = normalizeOptOutText(value)
+  if (!normalized) return false
+
+  const tokens = normalized.split(' ')
+
+  if (tokens.length === 1) return OPT_OUT_TERMS_ISOLADOS.has(tokens[0])
+
+  const temObjetoDepoisDe = (indice: number) =>
+    tokens.slice(indice + 1).some((token) => OBJETOS_DE_COMUNICACAO.has(token))
+
+  const indiceVerbo = tokens.findIndex((token) => VERBOS_DE_CESSACAO.has(token))
+  if (indiceVerbo !== -1 && temObjetoDepoisDe(indiceVerbo)) return true
+
+  // `mais` é o que transforma recusa pontual em pedido de cessação: separa
+  // `nao quero mais receber whatsapp` de `nao quero receber o link por email`.
+  const indiceNegacao = tokens.findIndex((token) => NEGACOES.has(token))
+  if (indiceNegacao === -1) return false
+  const restante = tokens.slice(indiceNegacao + 1)
+  const temDesejo = restante.some((token) => VERBOS_DE_DESEJO.has(token))
+  const temMais = restante.includes('mais')
+
+  return temDesejo && temMais && temObjetoDepoisDe(indiceNegacao)
 }
 
 function asTime(value: Date | string | null | undefined) {
