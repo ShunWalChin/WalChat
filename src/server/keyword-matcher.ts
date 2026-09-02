@@ -1,6 +1,6 @@
 /** Correspondência de palavras preservando alfabetos não latinos. */
 
-export type KeywordMatchMode = 'exact' | 'contains'
+export type KeywordMatchMode = 'exact' | 'contains' | 'whole_word'
 
 /**
  * Remove acentos somente de letras latinas.
@@ -31,6 +31,33 @@ export function normalizeKeywordText(value: string) {
     .trim()
 }
 
+/**
+ * Casamento por palavra inteira, sobre tokens em vez de regex.
+ *
+ * A normalização já transformou pontuação e emoji em separador, então basta
+ * procurar a sequência de tokens do termo dentro da sequência do texto. Isso
+ * evita duas armadilhas de uma vez: `\b` do ASCII nunca dispara entre dois
+ * caracteres não latinos, e termo vindo do usuário precisaria de escape se
+ * virasse regex.
+ */
+function containsTokenSequence(
+  textTokens: Array<string>,
+  termTokens: Array<string>,
+) {
+  if (!termTokens.length || termTokens.length > textTokens.length) return false
+  for (let start = 0; start <= textTokens.length - termTokens.length; start++) {
+    let igual = true
+    for (let offset = 0; offset < termTokens.length; offset++) {
+      if (textTokens[start + offset] !== termTokens[offset]) {
+        igual = false
+        break
+      }
+    }
+    if (igual) return true
+  }
+  return false
+}
+
 export function matchKeywordTerms(
   text: string,
   terms: Array<string>,
@@ -39,13 +66,19 @@ export function matchKeywordTerms(
   const normalizedText = normalizeKeywordText(text)
   if (!normalizedText) return { matched: false, keyword: null as string | null }
 
+  const textTokens = mode === 'whole_word' ? normalizedText.split(' ') : []
+
   for (const term of terms) {
     const normalizedTerm = normalizeKeywordText(term)
     if (!normalizedTerm) continue
-    const matched =
-      mode === 'exact'
-        ? normalizedText === normalizedTerm
-        : normalizedText.includes(normalizedTerm)
+    let matched: boolean
+    if (mode === 'exact') {
+      matched = normalizedText === normalizedTerm
+    } else if (mode === 'whole_word') {
+      matched = containsTokenSequence(textTokens, normalizedTerm.split(' '))
+    } else {
+      matched = normalizedText.includes(normalizedTerm)
+    }
     if (matched) return { matched: true, keyword: term }
   }
   return { matched: false, keyword: null as string | null }

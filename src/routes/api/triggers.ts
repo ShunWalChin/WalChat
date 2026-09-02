@@ -17,7 +17,7 @@ const fields = {
     .min(1)
     .max(20)
     .optional(),
-  matchMode: z.enum(['exact', 'contains']),
+  matchMode: z.enum(['exact', 'contains', 'whole_word']),
   postId: z.string().uuid().nullable().optional(),
   instagramAccountId: z.uuid().nullable().optional(),
   targetNextReel: z.boolean().optional(),
