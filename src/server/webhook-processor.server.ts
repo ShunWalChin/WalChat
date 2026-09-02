@@ -10,6 +10,7 @@ import {
 } from './automation-engine.server'
 import { isOptOutKeyword } from './compliance'
 import { getServerEnv } from './env.server'
+import { matchKeywordTerms, triggerKeywordTerms } from './keyword-matcher'
 import { assertRateLimit } from './rate-limit.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
 import { assignConversationByRouting } from './team-routing.server'
@@ -366,7 +367,7 @@ async function matchWelcomeTrigger(input: {
   const { data: trigger, error } = await input.supabase
     .from('triggers')
     .select(
-      'id,keyword,match_mode,response_text,sequence_id,flow_id,post_id,cooldown_hours,auto_tag_id,booking_page_id,first_contact_channels',
+      'id,keyword,keywords,match_mode,response_text,sequence_id,flow_id,post_id,instagram_account_id,target_next_reel,cooldown_hours,auto_tag_id,booking_page_id,first_contact_channels',
     )
     .eq('workspace_id', input.workspaceId)
     .eq('source', 'first_contact')
@@ -436,11 +437,14 @@ async function matchAndScheduleTrigger(input: {
     ? {
         id: `growth:${input.growthLink.id}`,
         keyword: null,
+        keywords: [],
         match_mode: 'contains' as const,
         response_text: null,
         sequence_id: null,
         flow_id: input.growthLink.flow_id,
         post_id: null,
+        instagram_account_id: null,
+        target_next_reel: false,
         cooldown_hours: 168,
         auto_tag_id: null,
         booking_page_id: null,
@@ -456,7 +460,7 @@ async function matchAndScheduleTrigger(input: {
   const { data: keywordTriggers, error } = await input.supabase
     .from('triggers')
     .select(
-      'id,keyword,match_mode,response_text,sequence_id,flow_id,post_id,cooldown_hours,auto_tag_id,booking_page_id',
+      'id,keyword,keywords,match_mode,response_text,sequence_id,flow_id,post_id,instagram_account_id,target_next_reel,cooldown_hours,auto_tag_id,booking_page_id',
     )
     .eq('workspace_id', input.workspaceId)
     .eq('source', source)
@@ -478,23 +482,32 @@ async function matchAndScheduleTrigger(input: {
   const instagramMediaByPost = new Map(
     configuredPosts.map((post) => [post.id, post.instagram_media_id]),
   )
-  const incomingMediaId = extractInstagramMediaId(input.raw)
-  const normalized = input.text.trim().toLocaleLowerCase('pt-BR')
+  const incomingMediaIds = extractInstagramMediaIds(input.raw)
   for (const trigger of triggers) {
     // Gatilho sem palavra é a saudação: ela já foi qualificada por ser o
     // primeiro contato, então não há texto a casar.
     const matches =
       trigger.keyword === null
         ? true
-        : trigger.match_mode === 'exact'
-          ? normalized === String(trigger.keyword).toLocaleLowerCase('pt-BR')
-          : normalized.includes(
-              String(trigger.keyword).toLocaleLowerCase('pt-BR'),
-            )
+        : matchKeywordTerms(
+            input.text,
+            triggerKeywordTerms(trigger),
+            trigger.match_mode,
+          ).matched
     if (!matches) continue
     if (
+      trigger.instagram_account_id &&
+      trigger.instagram_account_id !== input.accountId
+    )
+      continue
+    // Enquanto aguarda o próximo Reel a regra não é uma regra de "qualquer
+    // post". Ela só passa a disparar depois de receber um post_id real.
+    if (trigger.target_next_reel) continue
+    if (
       trigger.post_id &&
-      instagramMediaByPost.get(trigger.post_id) !== incomingMediaId
+      !incomingMediaIds.includes(
+        instagramMediaByPost.get(trigger.post_id) ?? '',
+      )
     )
       continue
     const { data: existingRun, error: existingRunError } = await input.supabase
@@ -537,7 +550,8 @@ async function matchAndScheduleTrigger(input: {
             source,
             status: 'matched',
             metadata: {
-              instagramMediaId: incomingMediaId,
+              instagramMediaId: incomingMediaIds[0] ?? null,
+              instagramMediaIds: incomingMediaIds,
               metaEventId: input.metaId,
             },
           },
@@ -687,14 +701,20 @@ async function matchAndScheduleTrigger(input: {
   return false
 }
 
-function extractInstagramMediaId(raw: unknown) {
-  if (!raw || typeof raw !== 'object') return null
+export function extractInstagramMediaIds(raw: unknown) {
+  if (!raw || typeof raw !== 'object') return []
   const record = raw as Record<string, unknown>
   const media = record.media
-  if (media && typeof media === 'object' && 'id' in media)
-    return String(media.id)
-  if (record.media_id) return String(record.media_id)
-  return null
+  const ids: string[] = []
+  if (media && typeof media === 'object') {
+    const mediaRecord = media as Record<string, unknown>
+    if (mediaRecord.original_media_id)
+      ids.push(String(mediaRecord.original_media_id))
+    if (mediaRecord.id) ids.push(String(mediaRecord.id))
+  }
+  if (record.original_media_id) ids.push(String(record.original_media_id))
+  if (record.media_id) ids.push(String(record.media_id))
+  return Array.from(new Set(ids.filter(Boolean)))
 }
 
 /** Em modo autônomo a IA apenas prepara um job; compliance e envio ficam no scheduler. */

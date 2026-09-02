@@ -6,6 +6,10 @@ import { processInstagramWebhook } from '../server/webhook-processor.server'
 import { processWhatsAppWebhook } from '../server/whatsapp-webhook-processor.server'
 import { writeWorkerHeartbeat } from '../server/worker-heartbeat'
 import {
+  COMMENT_RECONCILE_INTERVAL_MS,
+  reconcileInstagramComments,
+} from '../server/instagram-comment-reconciler.server'
+import {
   reconcileWebhookOutbox,
   recordWebhookJobFailure,
 } from '../server/webhook-outbox.server'
@@ -34,6 +38,7 @@ const worker = new Worker(
 )
 
 let outboxHealthy = true
+let commentReconciliationRunning = false
 
 async function updateHeartbeat() {
   const healthy =
@@ -80,11 +85,34 @@ async function runOutboxReconciliation() {
   }
 }
 
+/** A trava local impede duas varreduras concorrentes quando a Meta demora. */
+async function runCommentReconciliation() {
+  if (commentReconciliationRunning) return
+  commentReconciliationRunning = true
+  try {
+    const result = await reconcileInstagramComments()
+    if (result.recoveredComments || result.failures)
+      console.log(
+        JSON.stringify({ event: 'instagram_comments_reconciled', ...result }),
+      )
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: 'instagram_comment_reconciliation_failed',
+        error: error instanceof Error ? error.name : 'unknown_error',
+      }),
+    )
+  } finally {
+    commentReconciliationRunning = false
+  }
+}
+
 void writeWorkerHeartbeat('webhooks', 'starting').catch(logHeartbeatFailure)
 void worker
   .waitUntilReady()
   .then(async () => {
     await runOutboxReconciliation()
+    await runCommentReconciliation()
     await updateHeartbeat()
   })
   .catch(() =>
@@ -98,6 +126,10 @@ const heartbeatInterval = setInterval(
   30_000,
 )
 const outboxInterval = setInterval(() => void runOutboxReconciliation(), 60_000)
+const commentReconciliationInterval = setInterval(
+  () => void runCommentReconciliation(),
+  COMMENT_RECONCILE_INTERVAL_MS,
+)
 
 worker.on('completed', (job, result) =>
   console.log(
@@ -139,6 +171,7 @@ worker.on('error', (error) => {
 async function shutdown() {
   clearInterval(heartbeatInterval)
   clearInterval(outboxInterval)
+  clearInterval(commentReconciliationInterval)
   await worker.close()
   await outboxQueue.close()
   await outboxConnection.quit()

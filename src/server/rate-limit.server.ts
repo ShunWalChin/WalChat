@@ -25,6 +25,27 @@ let redisClient: IORedis | undefined
 let jaConectou = false
 const memoryWindows = new Map<string, { count: number; expiresAt: number }>()
 
+/** Margem abaixo do teto de 750 Private Replies/h usado pelo OpenReply. */
+export const INSTAGRAM_PRIVATE_REPLY_LIMIT = 700
+const INSTAGRAM_PRIVATE_REPLY_WINDOW_SECONDS = 60 * 60
+
+export class InstagramPrivateReplyRateLimitError extends Error {
+  readonly retryAfterMs: number
+
+  constructor(retryAfterMs: number) {
+    super('instagram_private_reply_rate_limited')
+    this.name = 'InstagramPrivateReplyRateLimitError'
+    this.retryAfterMs = Math.max(1_000, retryAfterMs)
+  }
+}
+
+export function privateReplyLimitDecision(currentCount: number) {
+  return {
+    allowed: currentCount < INSTAGRAM_PRIVATE_REPLY_LIMIT,
+    remaining: Math.max(0, INSTAGRAM_PRIVATE_REPLY_LIMIT - currentCount),
+  }
+}
+
 function redis() {
   const url = getServerEnv().REDIS_URL
   if (!url) return null
@@ -115,6 +136,105 @@ export async function assertRateLimit(input: LimitInput) {
   }
   if (count > input.limit)
     throw new ApiError(429, 'Muitas requisições. Aguarde e tente novamente.')
+}
+
+const RESERVE_LIMIT_SLOT_SCRIPT = `
+local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+local maximum = tonumber(ARGV[1])
+local ttl = tonumber(ARGV[2])
+if current >= maximum then
+  local remaining = redis.call('PTTL', KEYS[1])
+  if remaining < 1 then remaining = ttl * 1000 end
+  return {0, current, remaining}
+end
+local next_count = redis.call('INCR', KEYS[1])
+if next_count == 1 then redis.call('EXPIRE', KEYS[1], ttl) end
+local remaining = redis.call('PTTL', KEYS[1])
+return {1, next_count, remaining}
+`
+
+/**
+ * Reserva atômica exclusiva do endpoint de Private Reply.
+ * Em live, Redis indisponível bloqueia o envio em vez de perder o limite global.
+ */
+export async function reserveInstagramPrivateReplySlot(
+  instagramAccountId: string,
+) {
+  const key = opaqueKey({
+    namespace: 'instagram-private-reply-account',
+    identity: instagramAccountId,
+    limit: INSTAGRAM_PRIVATE_REPLY_LIMIT,
+    windowSeconds: INSTAGRAM_PRIVATE_REPLY_WINDOW_SECONDS,
+  })
+  const client = redis()
+  let allowed = false
+  let count = 0
+  let retryAfterMs = INSTAGRAM_PRIVATE_REPLY_WINDOW_SECONDS * 1_000
+
+  if (client) {
+    if (client.status !== 'ready') await esperarConexao(client)
+    try {
+      const raw = await client.eval(
+        RESERVE_LIMIT_SLOT_SCRIPT,
+        1,
+        key,
+        INSTAGRAM_PRIVATE_REPLY_LIMIT,
+        INSTAGRAM_PRIVATE_REPLY_WINDOW_SECONDS,
+      )
+      const values = Array.isArray(raw) ? raw : []
+      allowed = Number(values[0]) === 1
+      count = Number(values[1] ?? 0)
+      retryAfterMs = Number(values[2] ?? retryAfterMs)
+    } catch {
+      if (getServerEnv().DEMO_MODE === 'false')
+        throw new ApiError(
+          503,
+          'Proteção de Private Reply temporariamente indisponível.',
+        )
+      ;({ allowed, count, retryAfterMs } = reserveMemorySlot(
+        key,
+        INSTAGRAM_PRIVATE_REPLY_LIMIT,
+        INSTAGRAM_PRIVATE_REPLY_WINDOW_SECONDS,
+      ))
+    }
+  } else {
+    if (getServerEnv().DEMO_MODE === 'false')
+      throw new ApiError(
+        503,
+        'Proteção de Private Reply temporariamente indisponível.',
+      )
+    ;({ allowed, count, retryAfterMs } = reserveMemorySlot(
+      key,
+      INSTAGRAM_PRIVATE_REPLY_LIMIT,
+      INSTAGRAM_PRIVATE_REPLY_WINDOW_SECONDS,
+    ))
+  }
+  if (!allowed) throw new InstagramPrivateReplyRateLimitError(retryAfterMs)
+  return { count, remaining: INSTAGRAM_PRIVATE_REPLY_LIMIT - count }
+}
+
+function reserveMemorySlot(key: string, limit: number, windowSeconds: number) {
+  const now = Date.now()
+  const current = memoryWindows.get(key)
+  if (!current || current.expiresAt <= now) {
+    memoryWindows.set(key, {
+      count: 1,
+      expiresAt: now + windowSeconds * 1_000,
+    })
+    return { allowed: true, count: 1, retryAfterMs: windowSeconds * 1_000 }
+  }
+  if (current.count >= limit)
+    return {
+      allowed: false,
+      count: current.count,
+      retryAfterMs: current.expiresAt - now,
+    }
+  current.count += 1
+  return {
+    allowed: true,
+    count: current.count,
+    retryAfterMs: current.expiresAt - now,
+  }
 }
 
 function incrementMemory(key: string, windowSeconds: number) {

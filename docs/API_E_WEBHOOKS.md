@@ -246,6 +246,11 @@ service role. O opt-in restaurado exige confirmação e origem registradas.
 - `POST/PATCH/DELETE /api/triggers`: cria, altera ou exclui gatilhos com um
   destino exclusivo entre resposta simples, sequência e automação DAG; exige
   `owner/admin`.
+- Gatilhos aceitam `keywords` com até 20 termos, `instagramAccountId` para
+  isolamento por conta e `targetNextReel` para vínculo automático. O campo
+  legado `keyword` continua aceito.
+- Comentários de anúncios são comparados tanto pelo ID da mídia promovida
+  quanto por `original_media_id`, preservando a regra do post orgânico.
 
 ## Automações DAG
 

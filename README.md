@@ -19,6 +19,7 @@ Plataforma multi-tenant de automação, atendimento, conteúdo e relacionamento 
 | Hardening do backend   | JWT + RLS, ingestão transacional, SKIP LOCKED e limites distribuídos        |
 | Motor de automações    | DAG visual com botões, pergunta validada, requisição externa e simulador    |
 | Reconciliação da fila  | Postgres/BullMQ por `jobId` canônico                                        |
+| Reconciliação social   | Polling de comentários perdidos e suporte a posts impulsionados             |
 | OAuth Instagram        | Login, token cifrado por tenant, assinatura e validação implementados       |
 | WhatsApp Cloud API     | Embedded Signup, WABA, telefone, templates e receipts implementados         |
 | OpenAI / Gemini        | Responses API + Gemini opcional, configuráveis por workspace                |
@@ -67,6 +68,8 @@ lado, e todas dependem de uma decisão fora do código:
 - Captação externa por webhooks isolados, com tokens irreversíveis, limites,
   sanitização e criação direta de contatos e oportunidades no CRM.
 - Gatilhos por comentário, DM, resposta de story ou mensagem do WhatsApp.
+- Comment-to-DM multilíngue com até 20 palavras, equivalência de acentos,
+  limite por conta, recuperação por polling e alvo automático no próximo Reel.
 - Embedded Signup do WhatsApp, registro do telefone, sincronização de templates e mídia autenticada.
 - Automation Studio v2: editor visual ligado ao DAG versionado com mensagem e
   mídia, botões de resposta, pergunta com validação, agente de IA, requisição
@@ -88,7 +91,8 @@ lado, e todas dependem de uma decisão fora do código:
 - Preferências de auto-like são configuráveis, mas a execução permanece
   explicitamente indisponível porque a API oficial não oferece curtida de
   comentários.
-- Insights com sincronização oficial resiliente, métricas diárias e por post.
+- Insights com sincronização oficial resiliente, métricas diárias e por post,
+  mais snapshots absolutos de seguidores com histórico reconstruído.
 - Política de Privacidade, Termos e Exclusão de Dados.
 - Central de Go-Live com diagnóstico, kill switches e observabilidade de webhooks.
 - Comment-to-DM por publicação real e Inbox com atribuição, prioridade e notas.
@@ -107,7 +111,7 @@ lado, e todas dependem de uma decisão fora do código:
 
 ```mermaid
 flowchart LR
-    Meta["Instagram API + WhatsApp Cloud API"] -->|"Webhooks assinados"| Webhook["TanStack Start / API"]
+    Meta["Instagram API + WhatsApp Cloud API"] -->|"Webhooks assinados + polling limitado"| Webhook["TanStack Start / API"]
     Browser["Dashboard React"] -->|"JWT do usuário"| Supabase["Supabase Auth + Postgres + RLS"]
     Webhook -->|"Evento idempotente"| Redis["Redis / BullMQ"]
     Redis --> Worker["Worker Meta multicanal"]

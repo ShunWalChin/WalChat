@@ -18,33 +18,61 @@ export const Route = createFileRoute('/api/insights')({
       GET: async ({ request }) => {
         try {
           const context = await requireWorkspaceContext(request)
-          const [dailyResult, postsResult, accountsResult] = await Promise.all([
-            context.supabase
-              .from('insights_daily')
-              .select(
-                'day,reach,views,followers,dms_received,dms_sent,comments,new_contacts,hourly_activity',
-              )
-              .eq('workspace_id', context.workspaceId)
-              .order('day', { ascending: true })
-              .limit(90),
-            context.supabase
-              .from('posts_cache')
-              .select(
-                'id,caption,permalink,thumbnail_url,published_at,reach,views,likes,comments,saves,shares',
-              )
-              .eq('workspace_id', context.workspaceId)
-              .order('reach', { ascending: false })
-              .limit(10),
-            context.supabase
-              .from('instagram_accounts')
-              .select('id,username,status,scopes')
-              .eq('workspace_id', context.workspaceId)
-              .eq('status', 'connected')
-              .order('created_at'),
-          ])
+          const [dailyResult, postsResult, accountsResult, followerResult] =
+            await Promise.all([
+              context.supabase
+                .from('insights_daily')
+                .select(
+                  'day,reach,views,followers,dms_received,dms_sent,comments,new_contacts,hourly_activity',
+                )
+                .eq('workspace_id', context.workspaceId)
+                .order('day', { ascending: true })
+                .limit(90),
+              context.supabase
+                .from('posts_cache')
+                .select(
+                  'id,caption,permalink,thumbnail_url,published_at,reach,views,likes,comments,saves,shares',
+                )
+                .eq('workspace_id', context.workspaceId)
+                .order('reach', { ascending: false })
+                .limit(10),
+              context.supabase
+                .from('instagram_accounts')
+                .select('id,username,status,scopes')
+                .eq('workspace_id', context.workspaceId)
+                .eq('status', 'connected')
+                .order('created_at'),
+              context.supabase
+                .from('instagram_follower_snapshots')
+                .select('day,followers,is_estimated,instagram_account_id')
+                .eq('workspace_id', context.workspaceId)
+                .order('day', { ascending: true })
+                .limit(900),
+            ])
           if (dailyResult.error) throw dailyResult.error
           if (postsResult.error) throw postsResult.error
           if (accountsResult.error) throw accountsResult.error
+          if (followerResult.error) throw followerResult.error
+          const followersByDay = new Map<string, number>()
+          const estimatedByDay = new Map<string, boolean>()
+          for (const point of followerResult.data) {
+            followersByDay.set(
+              point.day,
+              (followersByDay.get(point.day) ?? 0) + point.followers,
+            )
+            estimatedByDay.set(
+              point.day,
+              (estimatedByDay.get(point.day) ?? false) || point.is_estimated,
+            )
+          }
+          const followerHistory = [...followersByDay].map(
+            ([day, followers]) => ({
+              day,
+              followers,
+              estimated: estimatedByDay.get(day) ?? false,
+            }),
+          )
+          const latestFollowerTotal = followerHistory.at(-1)?.followers ?? 0
           const totals = dailyResult.data.reduce(
             (result, day) => ({
               reach: result.reach + day.reach,
@@ -53,7 +81,8 @@ export const Route = createFileRoute('/api/insights')({
               dmsSent: result.dmsSent + day.dms_sent,
               comments: result.comments + day.comments,
               newContacts: result.newContacts + day.new_contacts,
-              followers: day.followers || result.followers,
+              followers:
+                latestFollowerTotal || day.followers || result.followers,
             }),
             {
               reach: 0,
@@ -65,12 +94,13 @@ export const Route = createFileRoute('/api/insights')({
               followers: 0,
             },
           )
+          if (latestFollowerTotal) totals.followers = latestFollowerTotal
           return Response.json({
             daily: dailyResult.data.map((day) => ({
               day: day.day,
               reach: day.reach,
               views: day.views,
-              followers: day.followers,
+              followers: followersByDay.get(day.day) ?? day.followers,
               dmsReceived: day.dms_received,
               dmsSent: day.dms_sent,
               comments: day.comments,
@@ -97,6 +127,7 @@ export const Route = createFileRoute('/api/insights')({
                 'instagram_business_manage_insights',
               ),
             })),
+            followerHistory,
             totals,
             generatedAt: new Date().toISOString(),
           })

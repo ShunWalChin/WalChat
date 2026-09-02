@@ -40,6 +40,11 @@ type Daily = {
 }
 type InsightsData = {
   daily: Daily[]
+  followerHistory: Array<{
+    day: string
+    followers: number
+    estimated: boolean
+  }>
   posts: Array<{
     id: string
     caption: string | null
@@ -253,6 +258,10 @@ function InsightsPage() {
     data?.totals.newContacts ?? 0,
     data?.totals.dmsReceived ?? 0,
   )
+  const followerDelta = data?.followerHistory.length
+    ? (data.followerHistory.at(-1)?.followers ?? 0) -
+      (data.followerHistory[0]?.followers ?? 0)
+    : 0
 
   return (
     <div className="stack-lg">
@@ -311,7 +320,9 @@ function InsightsPage() {
             {data?.totals.followers.toLocaleString('pt-BR') ?? '—'}
           </strong>
           <em>
-            <ArrowUpRight size={14} /> {data?.totals.reach ?? 0} alcançados
+            <ArrowUpRight size={14} /> {followerDelta >= 0 ? '+' : ''}
+            {followerDelta.toLocaleString('pt-BR')} no histórico de{' '}
+            {data?.followerHistory.length ?? 0} dias
           </em>
         </article>
         <article>

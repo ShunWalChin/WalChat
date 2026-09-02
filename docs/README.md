@@ -19,14 +19,15 @@ use os documentos especializados abaixo quando precisar aprofundar uma área.
 
 ## Produto e automação
 
-| Documento                                                           | Conteúdo                                                     |
-| ------------------------------------------------------------------- | ------------------------------------------------------------ |
-| [Automation Studio v2](AUTOMATION_STUDIO_V2_2026-08-24.md)          | Editor visual, publicação, execução, simulação e limites     |
-| [Arquitetura DAG](ARQUITETURA_BACKEND_AUTOMACOES_DAG_2026-08-22.md) | Motor versionado, scheduler e idempotência                   |
-| [Lógica de Sequências](LOGICA_DE_NEGOCIO_SEQUENCIAS.md)             | Regras funcionais, jornadas e nós                            |
-| [Paridade ManyChat](PARIDADE_MANYCHAT_2026-08-25.md)                | Cobertura funcional e diferenças deliberadas                 |
-| [Integração Deskcomm](INTEGRACAO_DESKCOMM_2026-08-28.md)            | CRM, radar, equipe, respostas, governança e webhooks de lead |
-| [Agenda Google](AGENDA_GOOGLE_2026-08-30.md)                        | Agenda operacional, Inbox e Google Workspace                 |
+| Documento                                                                  | Conteúdo                                                         |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [Automation Studio v2](AUTOMATION_STUDIO_V2_2026-08-24.md)                 | Editor visual, publicação, execução, simulação e limites         |
+| [Arquitetura DAG](ARQUITETURA_BACKEND_AUTOMACOES_DAG_2026-08-22.md)        | Motor versionado, scheduler e idempotência                       |
+| [Lógica de Sequências](LOGICA_DE_NEGOCIO_SEQUENCIAS.md)                    | Regras funcionais, jornadas e nós                                |
+| [Paridade ManyChat](PARIDADE_MANYCHAT_2026-08-25.md)                       | Cobertura funcional e diferenças deliberadas                     |
+| [Integração Deskcomm](INTEGRACAO_DESKCOMM_2026-08-28.md)                   | CRM, radar, equipe, respostas, governança e webhooks de lead     |
+| [Agenda Google](AGENDA_GOOGLE_2026-08-30.md)                               | Agenda operacional, Inbox e Google Workspace                     |
+| [Engenharia reversa OpenReply](ENGENHARIA_REVERSA_OPENREPLY_2026-09-02.md) | Arquitetura estudada, riscos, comparação e recursos incorporados |
 
 ## Integrações e APIs
 

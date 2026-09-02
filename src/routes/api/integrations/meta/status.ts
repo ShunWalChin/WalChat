@@ -28,7 +28,7 @@ export const Route = createFileRoute('/api/integrations/meta/status')({
           const { data: accounts, error } = await context.supabase
             .from('instagram_accounts')
             .select(
-              'id,instagram_user_id,username,display_name,profile_picture_url,account_type,status,scopes,subscribed_fields,token_expires_at,webhook_subscribed_at,permissions_validated_at,last_sync_at,connection_error',
+              'id,instagram_user_id,username,display_name,profile_picture_url,account_type,status,scopes,subscribed_fields,token_expires_at,webhook_subscribed_at,permissions_validated_at,last_sync_at,connection_error,last_comment_reconcile_at,comment_reconcile_error,last_next_reel_check_at,last_follower_snapshot_at',
             )
             .eq('workspace_id', context.workspaceId)
             .order('created_at')

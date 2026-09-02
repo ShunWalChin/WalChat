@@ -4,11 +4,13 @@ import { getMetaAccountAccess } from './integration-credentials.server'
 import {
   MetaApiError,
   getMetaAccountInsights,
+  getMetaFollowerCount,
   getMetaMedia,
   getMetaMediaInsights,
 } from './meta-api.server'
 import type { MetaInsightMetric } from './meta-api.server'
 import { getSupabaseAdmin } from './supabase-admin.server'
+import { reconstructFollowerTotals } from './follower-history'
 
 function requireSupabase() {
   const client = getSupabaseAdmin()
@@ -37,6 +39,57 @@ function dateDays(count: number) {
     date.setUTCDate(date.getUTCDate() - (count - index - 1))
     return date.toISOString().slice(0, 10)
   })
+}
+
+function followerDeltas(metric: MetaInsightMetric | undefined) {
+  return (metric?.values ?? []).flatMap((value) =>
+    typeof value.value === 'number' && value.end_time
+      ? [{ date: value.end_time.slice(0, 10), delta: value.value }]
+      : [],
+  )
+}
+
+async function persistFollowerHistory(input: {
+  supabase: ReturnType<typeof requireSupabase>
+  workspaceId: string
+  instagramAccountId: string
+  currentFollowers: number
+  points: Array<{ date: string; delta: number }>
+}) {
+  const today = new Date().toISOString().slice(0, 10)
+  const reconstructed = reconstructFollowerTotals(
+    input.points,
+    input.currentFollowers,
+  )
+  const { data: observed, error: observedError } = await input.supabase
+    .from('instagram_follower_snapshots')
+    .select('day')
+    .eq('instagram_account_id', input.instagramAccountId)
+    .eq('is_estimated', false)
+  if (observedError) throw observedError
+  const observedDays = new Set(observed.map((item) => item.day))
+  const rows = reconstructed
+    .filter((item) => item.date === today || !observedDays.has(item.date))
+    .map((item) => ({
+      workspace_id: input.workspaceId,
+      instagram_account_id: input.instagramAccountId,
+      day: item.date,
+      followers: item.date === today ? input.currentFollowers : item.followers,
+      is_estimated: item.date !== today,
+    }))
+  if (!rows.some((item) => item.day === today))
+    rows.push({
+      workspace_id: input.workspaceId,
+      instagram_account_id: input.instagramAccountId,
+      day: today,
+      followers: input.currentFollowers,
+      is_estimated: false,
+    })
+  const { error } = await input.supabase
+    .from('instagram_follower_snapshots')
+    .upsert(rows, { onConflict: 'instagram_account_id,day' })
+  if (error) throw error
+  return reconstructed
 }
 
 async function resilientMediaInsights(mediaId: string, accessToken: string) {
@@ -105,36 +158,58 @@ export async function syncWorkspaceInstagramInsights(input: {
   const days = dateDays(7)
   const since = `${days[0]}T00:00:00Z`
   const until = new Date(Date.now() + 24 * 60 * 60_000).toISOString()
-  const [accountInsights, mediaResult, interactionsResult, contactsResult] =
-    await Promise.all([
-      resilientAccountInsights({
-        instagramUserId: access.instagramUserId,
-        accessToken: access.accessToken,
-        since,
-        until,
-      }),
-      getMetaMedia({
-        instagramUserId: access.instagramUserId,
-        accessToken: access.accessToken,
-        limit: 25,
-      }),
-      supabase
-        .from('interactions_log')
-        .select('direction,channel,created_at')
-        .eq('workspace_id', input.workspaceId)
-        .gte('created_at', since)
-        .limit(20_000),
-      supabase
-        .from('contacts')
-        .select('first_seen_at')
-        .eq('workspace_id', input.workspaceId)
-        .gte('first_seen_at', since)
-        .limit(20_000),
-    ])
+  const [
+    accountInsights,
+    followerProfile,
+    mediaResult,
+    interactionsResult,
+    contactsResult,
+  ] = await Promise.all([
+    resilientAccountInsights({
+      instagramUserId: access.instagramUserId,
+      accessToken: access.accessToken,
+      since,
+      until,
+    }),
+    getMetaFollowerCount({
+      instagramUserId: access.instagramUserId,
+      accessToken: access.accessToken,
+    }),
+    getMetaMedia({
+      instagramUserId: access.instagramUserId,
+      accessToken: access.accessToken,
+      limit: 25,
+    }),
+    supabase
+      .from('interactions_log')
+      .select('direction,channel,created_at')
+      .eq('workspace_id', input.workspaceId)
+      .gte('created_at', since)
+      .limit(20_000),
+    supabase
+      .from('contacts')
+      .select('first_seen_at')
+      .eq('workspace_id', input.workspaceId)
+      .gte('first_seen_at', since)
+      .limit(20_000),
+  ])
   if (interactionsResult.error) throw interactionsResult.error
   if (contactsResult.error) throw contactsResult.error
   const metrics = new Map(
     accountInsights.map((metric) => [metric.name, metric]),
+  )
+  if (typeof followerProfile.followers_count !== 'number')
+    throw new Error('instagram_followers_count_unavailable')
+  const currentFollowers = followerProfile.followers_count
+  const reconstructedFollowers = await persistFollowerHistory({
+    supabase,
+    workspaceId: input.workspaceId,
+    instagramAccountId: input.instagramAccountId,
+    currentFollowers,
+    points: followerDeltas(metrics.get('follower_count')),
+  })
+  const followersByDay = new Map(
+    reconstructedFollowers.map((item) => [item.date, item.followers]),
   )
   const rows = days.map((day) => {
     const dayInteractions = interactionsResult.data.filter((item) =>
@@ -155,7 +230,8 @@ export async function syncWorkspaceInstagramInsights(input: {
       views: dailyMetric(metrics.get('views'), day),
       // Campo legado preservado para dashboards antigos; desde v22 usamos views.
       impressions: dailyMetric(metrics.get('views'), day),
-      followers: dailyMetric(metrics.get('follower_count'), day),
+      // follower_count é delta diário; o dashboard precisa do total absoluto.
+      followers: followersByDay.get(day) ?? currentFollowers,
       dms_received: dayInteractions.filter(
         (item) => item.direction === 'inbound' && item.channel === 'dm',
       ).length,
@@ -216,6 +292,45 @@ export async function syncWorkspaceInstagramInsights(input: {
   return {
     days: rows.length,
     posts: mediaRows.length,
-    followers: metricNumber(metrics.get('follower_count')),
+    followers: currentFollowers,
   }
+}
+
+/** Snapshot diário leve, sem buscar insights de todas as mídias. */
+export async function syncInstagramFollowerHistory(input: {
+  workspaceId: string
+  instagramAccountId: string
+}) {
+  const supabase = requireSupabase()
+  const access = await getMetaAccountAccess(input)
+  const days = dateDays(30)
+  const [accountInsights, followerProfile] = await Promise.all([
+    resilientAccountInsights({
+      instagramUserId: access.instagramUserId,
+      accessToken: access.accessToken,
+      since: `${days[0]}T00:00:00Z`,
+      until: new Date(Date.now() + 24 * 60 * 60_000).toISOString(),
+    }),
+    getMetaFollowerCount({
+      instagramUserId: access.instagramUserId,
+      accessToken: access.accessToken,
+    }),
+  ])
+  if (typeof followerProfile.followers_count !== 'number')
+    throw new Error('instagram_followers_count_unavailable')
+  const metric = accountInsights.find((item) => item.name === 'follower_count')
+  const reconstructed = await persistFollowerHistory({
+    supabase,
+    workspaceId: input.workspaceId,
+    instagramAccountId: input.instagramAccountId,
+    currentFollowers: followerProfile.followers_count,
+    points: followerDeltas(metric),
+  })
+  const { error } = await supabase
+    .from('instagram_accounts')
+    .update({ last_follower_snapshot_at: new Date().toISOString() })
+    .eq('workspace_id', input.workspaceId)
+    .eq('id', input.instagramAccountId)
+  if (error) throw error
+  return { currentFollowers: followerProfile.followers_count, reconstructed }
 }

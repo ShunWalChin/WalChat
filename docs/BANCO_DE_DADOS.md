@@ -9,6 +9,7 @@ erDiagram
     AUTH_USERS ||--o{ WORKSPACE_MEMBERS : participa
     WORKSPACES ||--o{ WORKSPACE_MEMBERS : possui
     WORKSPACES ||--o{ INSTAGRAM_ACCOUNTS : conecta
+    INSTAGRAM_ACCOUNTS ||--o{ INSTAGRAM_FOLLOWER_SNAPSHOTS : registra
     WORKSPACES ||--o{ WHATSAPP_ACCOUNTS : conecta
     INSTAGRAM_ACCOUNTS ||--o{ CONTACTS : relaciona
     WHATSAPP_ACCOUNTS ||--o{ CONTACTS : relaciona
@@ -230,7 +231,11 @@ As funções de autorização usam `SECURITY DEFINER`, `search_path` fixo e par�
 - Private Reply: um registro por ID de comentário;
 - jobs: índice parcial por `run_at` quando `pending`;
 - gatilhos: índice por workspace, origem e estado;
+- gatilhos por conta: índice de conta/origem/estado e índice parcial das regras
+  que aguardam o próximo Reel;
 - posts: índice por workspace e data de publicação.
+- seguidores: um total por conta e dia; observações reais prevalecem sobre
+  estimativas reconstruídas;
 - reservas: chave idempotente por workspace e um slot ativo por página/início;
   a RPC também bloqueia qualquer intervalo sobreposto;
 - eventos/tarefas: unicidade por conexão e ID Google, com índices por intervalo;
@@ -260,6 +265,11 @@ A migration `20260822010000_automation_dag_core.sql` adiciona o DAG versionado,
 variáveis tipadas, execução auditável, publicação atômica, RLS/GRANTs restritos
 e validações de escopo entre tenants. Consulte
 [Backend e automações DAG](ARQUITETURA_BACKEND_AUTOMACOES_DAG_2026-08-22.md).
+
+A migration `20260902120000_openreply_useful_capabilities.sql` adiciona termos
+múltiplos e conta-alvo aos gatilhos, estado de “próximo Reel”, telemetria das
+varreduras e `instagram_follower_snapshots`. A nova tabela permite somente
+leitura autenticada sob RLS; escritas ficam restritas à `service_role`.
 
 Fluxo seguro:
 

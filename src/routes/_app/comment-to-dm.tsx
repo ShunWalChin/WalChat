@@ -25,6 +25,8 @@ type MetaStatus = {
     username: string
     status: string
     tokenStored: boolean
+    last_comment_reconcile_at?: string | null
+    comment_reconcile_error?: string | null
   }>
 }
 type MetaPost = {
@@ -43,9 +45,12 @@ type CommentTrigger = {
   name: string
   source: 'comment' | 'dm' | 'story'
   keyword: string
+  keywords: Array<string>
   matchMode: 'exact' | 'contains'
   responseText: string
   postId: string | null
+  instagramAccountId: string | null
+  targetNextReel: boolean
   cooldownHours: number
   isActive: boolean
   fired: number
@@ -170,15 +175,27 @@ function CommentToDmPage() {
   async function createTrigger() {
     setBusy('create')
     try {
+      const keywords = Array.from(
+        new Set(
+          form.keyword
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean),
+        ),
+      )
+      const targetNextReel = form.postId === '__next_reel__'
       await apiFetch('/api/triggers', {
         method: 'POST',
         body: JSON.stringify({
           name: form.name,
           source: 'comment',
-          keyword: form.keyword,
+          keyword: keywords[0],
+          keywords,
           matchMode: form.matchMode,
           responseText: form.responseText,
-          postId: form.postId || null,
+          postId: targetNextReel ? null : form.postId || null,
+          instagramAccountId: account?.id ?? null,
+          targetNextReel,
           cooldownHours: form.cooldownHours,
           isActive: true,
         }),
@@ -258,7 +275,7 @@ function CommentToDmPage() {
       {feedback && (
         <div
           className={feedback.tone === 'error' ? 'form-error' : 'form-success'}
-          role="status"
+          role={feedback.tone === 'error' ? 'alert' : 'status'}
         >
           {feedback.tone === 'error' ? (
             <AlertTriangle size={16} />
@@ -277,6 +294,17 @@ function CommentToDmPage() {
               ? `@${account?.username} está conectado e o kill switch está ativo.`
               : 'Conecte a Meta e libere External Sends + Comment-to-DM na Central de Go-Live.'}
           </p>
+          {account?.last_comment_reconcile_at && (
+            <small>
+              Reconciliação de comentários:{' '}
+              {new Date(account.last_comment_reconcile_at).toLocaleString(
+                'pt-BR',
+              )}
+              {account.comment_reconcile_error
+                ? ` · alerta ${account.comment_reconcile_error}`
+                : ' · saudável'}
+            </small>
+          )}
         </div>
         <a className="button button-dark" href="/operacoes">
           Abrir Go-Live
@@ -311,24 +339,31 @@ function CommentToDmPage() {
                 }
               >
                 <option value="">Qualquer publicação</option>
-                {posts.map((post) => (
-                  <option key={post.id} value={post.id}>
-                    {post.kind.toUpperCase()} ·{' '}
-                    {(post.caption ?? 'Sem legenda').slice(0, 55)}
-                  </option>
-                ))}
+                <option value="__next_reel__">Próximo Reel publicado</option>
+                {posts
+                  .filter(
+                    (post) =>
+                      !account || post.instagram_account_id === account.id,
+                  )
+                  .map((post) => (
+                    <option key={post.id} value={post.id}>
+                      {post.kind.toUpperCase()} ·{' '}
+                      {(post.caption ?? 'Sem legenda').slice(0, 55)}
+                    </option>
+                  ))}
               </select>
             </label>
           </div>
           <div className="two-fields">
             <label>
-              Palavra-chave
+              Palavras-chave
               <input
                 value={form.keyword}
                 onChange={(event) =>
                   setForm({ ...form, keyword: event.target.value })
                 }
               />
+              <small>Separe alternativas por vírgula, até 20 termos.</small>
             </label>
             <label>
               Correspondência
@@ -405,7 +440,7 @@ function CommentToDmPage() {
           </div>
           <div className="comment-example">
             <span>Seguidor</span>
-            <p>{form.keyword || 'quero'}</p>
+            <p>{form.keyword.split(',')[0]?.trim() || 'quero'}</p>
           </div>
           <div className="dm-example">
             <MessageCircleReply size={16} />
@@ -440,10 +475,17 @@ function CommentToDmPage() {
                 <div>
                   <strong>{trigger.name}</strong>
                   <p>
-                    “{trigger.keyword}” ·{' '}
-                    {post
-                      ? `${post.kind} ${post.instagram_media_id}`
-                      : 'qualquer post'}
+                    “
+                    {(trigger.keywords.length
+                      ? trigger.keywords
+                      : [trigger.keyword]
+                    ).join(', ')}
+                    ” ·{' '}
+                    {trigger.targetNextReel
+                      ? 'aguardando próximo Reel'
+                      : post
+                        ? `${post.kind} ${post.instagram_media_id}`
+                        : 'qualquer post'}
                   </p>
                 </div>
                 <span className="comment-rule-metric">

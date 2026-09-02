@@ -244,6 +244,21 @@ export async function getMetaOwnProfile(accessToken: string) {
   }>(response)
 }
 
+/** Total absoluto atual usado para ancorar o histórico de seguidores. */
+export async function getMetaFollowerCount(input: {
+  instagramUserId: string
+  accessToken: string
+}) {
+  const url = new URL(
+    `${graphBase()}/${encodeURIComponent(input.instagramUserId)}`,
+  )
+  url.searchParams.set('fields', 'followers_count')
+  const response = await fetchMeta(url, {
+    headers: { Authorization: `Bearer ${input.accessToken}` },
+  })
+  return parseMetaResponse<{ id?: string; followers_count?: number }>(response)
+}
+
 /** Lista mídia publicável da própria conta para configurar gatilhos por post. */
 export async function getMetaMedia(input: {
   instagramUserId: string
@@ -276,6 +291,67 @@ export async function getMetaMedia(input: {
       timestamp?: string
     }>
   }>(response)
+}
+
+export type MetaRecentComment = {
+  id: string
+  text?: string
+  timestamp?: string
+  from?: { id?: string; username?: string }
+  replies?: { data?: Array<{ from?: { id?: string } }> }
+}
+
+/**
+ * Comentários recentes, paginados do mais novo para o mais antigo.
+ * O próximo cursor só é seguido quando continua no host oficial da Graph API.
+ */
+export async function getMetaRecentComments(input: {
+  mediaId: string
+  accessToken: string
+  sinceMs: number
+  max?: number
+}) {
+  const max = Math.min(800, Math.max(1, input.max ?? 300))
+  const first = new URL(
+    `${graphBase()}/${encodeURIComponent(input.mediaId)}/comments`,
+  )
+  first.searchParams.set('fields', 'id,text,timestamp,from,replies{from}')
+  first.searchParams.set('order', 'reverse_chronological')
+  first.searchParams.set('limit', '50')
+  const results: Array<MetaRecentComment> = []
+  let nextUrl: URL | null = first
+
+  while (nextUrl && results.length < max) {
+    if (
+      nextUrl.protocol !== 'https:' ||
+      nextUrl.hostname !== 'graph.instagram.com'
+    )
+      throw new MetaApiError(502)
+    const response = await fetchMeta(nextUrl, {
+      headers: { Authorization: `Bearer ${input.accessToken}` },
+    })
+    const page = await parseMetaResponse<{
+      data?: Array<MetaRecentComment>
+      paging?: { next?: string }
+    }>(response)
+    const comments = page.data ?? []
+    results.push(...comments)
+    const oldest = comments.at(-1)
+    if (
+      oldest?.timestamp &&
+      new Date(oldest.timestamp).getTime() < input.sinceMs
+    )
+      break
+    nextUrl = page.paging?.next ? new URL(page.paging.next) : null
+  }
+
+  return results
+    .filter(
+      (comment) =>
+        !comment.timestamp ||
+        new Date(comment.timestamp).getTime() >= input.sinceMs,
+    )
+    .slice(0, max)
 }
 
 export type MetaPublishMedia = {
