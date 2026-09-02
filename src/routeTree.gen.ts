@@ -90,6 +90,12 @@ import { Route as ApiTemplatesTemplateIdRouteImport } from './routes/api/templat
 import { Route as ApiAutomationsFlowIdExecuteRouteImport } from './routes/api/automations/$flowId/execute'
 import { Route as ApiAutomationsFlowIdSimulateRouteImport } from './routes/api/automations/$flowId/simulate'
 import { Route as ApiContactsContactIdNotesRouteImport } from './routes/api/contacts/$contactId/notes'
+import { Route as ApiIntegrationsConversionsConfigureRouteImport } from './routes/api/integrations/conversions/configure'
+import { Route as ApiIntegrationsConversionsDisconnectRouteImport } from './routes/api/integrations/conversions/disconnect'
+import { Route as ApiIntegrationsConversionsReplayRouteImport } from './routes/api/integrations/conversions/replay'
+import { Route as ApiIntegrationsConversionsRulesRouteImport } from './routes/api/integrations/conversions/rules'
+import { Route as ApiIntegrationsConversionsStatusRouteImport } from './routes/api/integrations/conversions/status'
+import { Route as ApiIntegrationsConversionsTestRouteImport } from './routes/api/integrations/conversions/test'
 import { Route as ApiIntegrationsGoogleCallbackRouteImport } from './routes/api/integrations/google/callback'
 import { Route as ApiIntegrationsGoogleDisconnectRouteImport } from './routes/api/integrations/google/disconnect'
 import { Route as ApiIntegrationsGoogleStartRouteImport } from './routes/api/integrations/google/start'
@@ -109,6 +115,7 @@ import { Route as ApiIntegrationsN8nTestRouteImport } from './routes/api/integra
 import { Route as ApiPublicBookingsSlugRouteImport } from './routes/api/public/bookings/$slug'
 import { Route as ApiPublicWebhooksInstagramRouteImport } from './routes/api/public/webhooks/instagram'
 import { Route as ApiPublicWebhooksWhatsappRouteImport } from './routes/api/public/webhooks/whatsapp'
+import { Route as ApiIntegrationsConversionsGoogleStartRouteImport } from './routes/api/integrations/conversions/google/start'
 import { Route as ApiIntegrationsMetaWhatsappCompleteRouteImport } from './routes/api/integrations/meta/whatsapp/complete'
 import { Route as ApiIntegrationsMetaWhatsappDisconnectRouteImport } from './routes/api/integrations/meta/whatsapp/disconnect'
 import { Route as ApiIntegrationsMetaWhatsappRegisterRouteImport } from './routes/api/integrations/meta/whatsapp/register'
@@ -526,6 +533,42 @@ const ApiContactsContactIdNotesRoute =
     path: '/notes',
     getParentRoute: () => ApiContactsContactIdRoute,
   } as any)
+const ApiIntegrationsConversionsConfigureRoute =
+  ApiIntegrationsConversionsConfigureRouteImport.update({
+    id: '/api/integrations/conversions/configure',
+    path: '/api/integrations/conversions/configure',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsConversionsDisconnectRoute =
+  ApiIntegrationsConversionsDisconnectRouteImport.update({
+    id: '/api/integrations/conversions/disconnect',
+    path: '/api/integrations/conversions/disconnect',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsConversionsReplayRoute =
+  ApiIntegrationsConversionsReplayRouteImport.update({
+    id: '/api/integrations/conversions/replay',
+    path: '/api/integrations/conversions/replay',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsConversionsRulesRoute =
+  ApiIntegrationsConversionsRulesRouteImport.update({
+    id: '/api/integrations/conversions/rules',
+    path: '/api/integrations/conversions/rules',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsConversionsStatusRoute =
+  ApiIntegrationsConversionsStatusRouteImport.update({
+    id: '/api/integrations/conversions/status',
+    path: '/api/integrations/conversions/status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsConversionsTestRoute =
+  ApiIntegrationsConversionsTestRouteImport.update({
+    id: '/api/integrations/conversions/test',
+    path: '/api/integrations/conversions/test',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiIntegrationsGoogleCallbackRoute =
   ApiIntegrationsGoogleCallbackRouteImport.update({
     id: '/api/integrations/google/callback',
@@ -636,6 +679,12 @@ const ApiPublicWebhooksWhatsappRoute =
   ApiPublicWebhooksWhatsappRouteImport.update({
     id: '/api/public/webhooks/whatsapp',
     path: '/api/public/webhooks/whatsapp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsConversionsGoogleStartRoute =
+  ApiIntegrationsConversionsGoogleStartRouteImport.update({
+    id: '/api/integrations/conversions/google/start',
+    path: '/api/integrations/conversions/google/start',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiIntegrationsMetaWhatsappCompleteRoute =
@@ -768,6 +817,12 @@ export interface FileRoutesByFullPath {
   '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
   '/api/automations/$flowId/simulate': typeof ApiAutomationsFlowIdSimulateRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
+  '/api/integrations/conversions/configure': typeof ApiIntegrationsConversionsConfigureRoute
+  '/api/integrations/conversions/disconnect': typeof ApiIntegrationsConversionsDisconnectRoute
+  '/api/integrations/conversions/replay': typeof ApiIntegrationsConversionsReplayRoute
+  '/api/integrations/conversions/rules': typeof ApiIntegrationsConversionsRulesRoute
+  '/api/integrations/conversions/status': typeof ApiIntegrationsConversionsStatusRoute
+  '/api/integrations/conversions/test': typeof ApiIntegrationsConversionsTestRoute
   '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
   '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
   '/api/integrations/google/start': typeof ApiIntegrationsGoogleStartRoute
@@ -787,6 +842,7 @@ export interface FileRoutesByFullPath {
   '/api/public/bookings/$slug': typeof ApiPublicBookingsSlugRoute
   '/api/public/webhooks/instagram': typeof ApiPublicWebhooksInstagramRoute
   '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
+  '/api/integrations/conversions/google/start': typeof ApiIntegrationsConversionsGoogleStartRoute
   '/api/integrations/meta/whatsapp/complete': typeof ApiIntegrationsMetaWhatsappCompleteRoute
   '/api/integrations/meta/whatsapp/disconnect': typeof ApiIntegrationsMetaWhatsappDisconnectRoute
   '/api/integrations/meta/whatsapp/register': typeof ApiIntegrationsMetaWhatsappRegisterRoute
@@ -877,6 +933,12 @@ export interface FileRoutesByTo {
   '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
   '/api/automations/$flowId/simulate': typeof ApiAutomationsFlowIdSimulateRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
+  '/api/integrations/conversions/configure': typeof ApiIntegrationsConversionsConfigureRoute
+  '/api/integrations/conversions/disconnect': typeof ApiIntegrationsConversionsDisconnectRoute
+  '/api/integrations/conversions/replay': typeof ApiIntegrationsConversionsReplayRoute
+  '/api/integrations/conversions/rules': typeof ApiIntegrationsConversionsRulesRoute
+  '/api/integrations/conversions/status': typeof ApiIntegrationsConversionsStatusRoute
+  '/api/integrations/conversions/test': typeof ApiIntegrationsConversionsTestRoute
   '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
   '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
   '/api/integrations/google/start': typeof ApiIntegrationsGoogleStartRoute
@@ -896,6 +958,7 @@ export interface FileRoutesByTo {
   '/api/public/bookings/$slug': typeof ApiPublicBookingsSlugRoute
   '/api/public/webhooks/instagram': typeof ApiPublicWebhooksInstagramRoute
   '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
+  '/api/integrations/conversions/google/start': typeof ApiIntegrationsConversionsGoogleStartRoute
   '/api/integrations/meta/whatsapp/complete': typeof ApiIntegrationsMetaWhatsappCompleteRoute
   '/api/integrations/meta/whatsapp/disconnect': typeof ApiIntegrationsMetaWhatsappDisconnectRoute
   '/api/integrations/meta/whatsapp/register': typeof ApiIntegrationsMetaWhatsappRegisterRoute
@@ -988,6 +1051,12 @@ export interface FileRoutesById {
   '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
   '/api/automations/$flowId/simulate': typeof ApiAutomationsFlowIdSimulateRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
+  '/api/integrations/conversions/configure': typeof ApiIntegrationsConversionsConfigureRoute
+  '/api/integrations/conversions/disconnect': typeof ApiIntegrationsConversionsDisconnectRoute
+  '/api/integrations/conversions/replay': typeof ApiIntegrationsConversionsReplayRoute
+  '/api/integrations/conversions/rules': typeof ApiIntegrationsConversionsRulesRoute
+  '/api/integrations/conversions/status': typeof ApiIntegrationsConversionsStatusRoute
+  '/api/integrations/conversions/test': typeof ApiIntegrationsConversionsTestRoute
   '/api/integrations/google/callback': typeof ApiIntegrationsGoogleCallbackRoute
   '/api/integrations/google/disconnect': typeof ApiIntegrationsGoogleDisconnectRoute
   '/api/integrations/google/start': typeof ApiIntegrationsGoogleStartRoute
@@ -1007,6 +1076,7 @@ export interface FileRoutesById {
   '/api/public/bookings/$slug': typeof ApiPublicBookingsSlugRoute
   '/api/public/webhooks/instagram': typeof ApiPublicWebhooksInstagramRoute
   '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
+  '/api/integrations/conversions/google/start': typeof ApiIntegrationsConversionsGoogleStartRoute
   '/api/integrations/meta/whatsapp/complete': typeof ApiIntegrationsMetaWhatsappCompleteRoute
   '/api/integrations/meta/whatsapp/disconnect': typeof ApiIntegrationsMetaWhatsappDisconnectRoute
   '/api/integrations/meta/whatsapp/register': typeof ApiIntegrationsMetaWhatsappRegisterRoute
@@ -1099,6 +1169,12 @@ export interface FileRouteTypes {
     | '/api/automations/$flowId/execute'
     | '/api/automations/$flowId/simulate'
     | '/api/contacts/$contactId/notes'
+    | '/api/integrations/conversions/configure'
+    | '/api/integrations/conversions/disconnect'
+    | '/api/integrations/conversions/replay'
+    | '/api/integrations/conversions/rules'
+    | '/api/integrations/conversions/status'
+    | '/api/integrations/conversions/test'
     | '/api/integrations/google/callback'
     | '/api/integrations/google/disconnect'
     | '/api/integrations/google/start'
@@ -1118,6 +1194,7 @@ export interface FileRouteTypes {
     | '/api/public/bookings/$slug'
     | '/api/public/webhooks/instagram'
     | '/api/public/webhooks/whatsapp'
+    | '/api/integrations/conversions/google/start'
     | '/api/integrations/meta/whatsapp/complete'
     | '/api/integrations/meta/whatsapp/disconnect'
     | '/api/integrations/meta/whatsapp/register'
@@ -1208,6 +1285,12 @@ export interface FileRouteTypes {
     | '/api/automations/$flowId/execute'
     | '/api/automations/$flowId/simulate'
     | '/api/contacts/$contactId/notes'
+    | '/api/integrations/conversions/configure'
+    | '/api/integrations/conversions/disconnect'
+    | '/api/integrations/conversions/replay'
+    | '/api/integrations/conversions/rules'
+    | '/api/integrations/conversions/status'
+    | '/api/integrations/conversions/test'
     | '/api/integrations/google/callback'
     | '/api/integrations/google/disconnect'
     | '/api/integrations/google/start'
@@ -1227,6 +1310,7 @@ export interface FileRouteTypes {
     | '/api/public/bookings/$slug'
     | '/api/public/webhooks/instagram'
     | '/api/public/webhooks/whatsapp'
+    | '/api/integrations/conversions/google/start'
     | '/api/integrations/meta/whatsapp/complete'
     | '/api/integrations/meta/whatsapp/disconnect'
     | '/api/integrations/meta/whatsapp/register'
@@ -1318,6 +1402,12 @@ export interface FileRouteTypes {
     | '/api/automations/$flowId/execute'
     | '/api/automations/$flowId/simulate'
     | '/api/contacts/$contactId/notes'
+    | '/api/integrations/conversions/configure'
+    | '/api/integrations/conversions/disconnect'
+    | '/api/integrations/conversions/replay'
+    | '/api/integrations/conversions/rules'
+    | '/api/integrations/conversions/status'
+    | '/api/integrations/conversions/test'
     | '/api/integrations/google/callback'
     | '/api/integrations/google/disconnect'
     | '/api/integrations/google/start'
@@ -1337,6 +1427,7 @@ export interface FileRouteTypes {
     | '/api/public/bookings/$slug'
     | '/api/public/webhooks/instagram'
     | '/api/public/webhooks/whatsapp'
+    | '/api/integrations/conversions/google/start'
     | '/api/integrations/meta/whatsapp/complete'
     | '/api/integrations/meta/whatsapp/disconnect'
     | '/api/integrations/meta/whatsapp/register'
@@ -1390,6 +1481,12 @@ export interface RootRouteChildren {
   ApiOperationsWebhooksRoute: typeof ApiOperationsWebhooksRoute
   ApiPrivacyDeletionRequestsRoute: typeof ApiPrivacyDeletionRequestsRoute
   ApiPublicReviewsRoute: typeof ApiPublicReviewsRoute
+  ApiIntegrationsConversionsConfigureRoute: typeof ApiIntegrationsConversionsConfigureRoute
+  ApiIntegrationsConversionsDisconnectRoute: typeof ApiIntegrationsConversionsDisconnectRoute
+  ApiIntegrationsConversionsReplayRoute: typeof ApiIntegrationsConversionsReplayRoute
+  ApiIntegrationsConversionsRulesRoute: typeof ApiIntegrationsConversionsRulesRoute
+  ApiIntegrationsConversionsStatusRoute: typeof ApiIntegrationsConversionsStatusRoute
+  ApiIntegrationsConversionsTestRoute: typeof ApiIntegrationsConversionsTestRoute
   ApiIntegrationsGoogleCallbackRoute: typeof ApiIntegrationsGoogleCallbackRoute
   ApiIntegrationsGoogleDisconnectRoute: typeof ApiIntegrationsGoogleDisconnectRoute
   ApiIntegrationsGoogleStartRoute: typeof ApiIntegrationsGoogleStartRoute
@@ -1409,6 +1506,7 @@ export interface RootRouteChildren {
   ApiPublicBookingsSlugRoute: typeof ApiPublicBookingsSlugRoute
   ApiPublicWebhooksInstagramRoute: typeof ApiPublicWebhooksInstagramRoute
   ApiPublicWebhooksWhatsappRoute: typeof ApiPublicWebhooksWhatsappRoute
+  ApiIntegrationsConversionsGoogleStartRoute: typeof ApiIntegrationsConversionsGoogleStartRoute
   ApiIntegrationsMetaWhatsappCompleteRoute: typeof ApiIntegrationsMetaWhatsappCompleteRoute
   ApiIntegrationsMetaWhatsappDisconnectRoute: typeof ApiIntegrationsMetaWhatsappDisconnectRoute
   ApiIntegrationsMetaWhatsappRegisterRoute: typeof ApiIntegrationsMetaWhatsappRegisterRoute
@@ -1988,6 +2086,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiContactsContactIdNotesRouteImport
       parentRoute: typeof ApiContactsContactIdRoute
     }
+    '/api/integrations/conversions/configure': {
+      id: '/api/integrations/conversions/configure'
+      path: '/api/integrations/conversions/configure'
+      fullPath: '/api/integrations/conversions/configure'
+      preLoaderRoute: typeof ApiIntegrationsConversionsConfigureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/conversions/disconnect': {
+      id: '/api/integrations/conversions/disconnect'
+      path: '/api/integrations/conversions/disconnect'
+      fullPath: '/api/integrations/conversions/disconnect'
+      preLoaderRoute: typeof ApiIntegrationsConversionsDisconnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/conversions/replay': {
+      id: '/api/integrations/conversions/replay'
+      path: '/api/integrations/conversions/replay'
+      fullPath: '/api/integrations/conversions/replay'
+      preLoaderRoute: typeof ApiIntegrationsConversionsReplayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/conversions/rules': {
+      id: '/api/integrations/conversions/rules'
+      path: '/api/integrations/conversions/rules'
+      fullPath: '/api/integrations/conversions/rules'
+      preLoaderRoute: typeof ApiIntegrationsConversionsRulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/conversions/status': {
+      id: '/api/integrations/conversions/status'
+      path: '/api/integrations/conversions/status'
+      fullPath: '/api/integrations/conversions/status'
+      preLoaderRoute: typeof ApiIntegrationsConversionsStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/conversions/test': {
+      id: '/api/integrations/conversions/test'
+      path: '/api/integrations/conversions/test'
+      fullPath: '/api/integrations/conversions/test'
+      preLoaderRoute: typeof ApiIntegrationsConversionsTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/integrations/google/callback': {
       id: '/api/integrations/google/callback'
       path: '/api/integrations/google/callback'
@@ -2119,6 +2259,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/webhooks/whatsapp'
       fullPath: '/api/public/webhooks/whatsapp'
       preLoaderRoute: typeof ApiPublicWebhooksWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/conversions/google/start': {
+      id: '/api/integrations/conversions/google/start'
+      path: '/api/integrations/conversions/google/start'
+      fullPath: '/api/integrations/conversions/google/start'
+      preLoaderRoute: typeof ApiIntegrationsConversionsGoogleStartRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/integrations/meta/whatsapp/complete': {
@@ -2396,6 +2543,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOperationsWebhooksRoute: ApiOperationsWebhooksRoute,
   ApiPrivacyDeletionRequestsRoute: ApiPrivacyDeletionRequestsRoute,
   ApiPublicReviewsRoute: ApiPublicReviewsRoute,
+  ApiIntegrationsConversionsConfigureRoute:
+    ApiIntegrationsConversionsConfigureRoute,
+  ApiIntegrationsConversionsDisconnectRoute:
+    ApiIntegrationsConversionsDisconnectRoute,
+  ApiIntegrationsConversionsReplayRoute: ApiIntegrationsConversionsReplayRoute,
+  ApiIntegrationsConversionsRulesRoute: ApiIntegrationsConversionsRulesRoute,
+  ApiIntegrationsConversionsStatusRoute: ApiIntegrationsConversionsStatusRoute,
+  ApiIntegrationsConversionsTestRoute: ApiIntegrationsConversionsTestRoute,
   ApiIntegrationsGoogleCallbackRoute: ApiIntegrationsGoogleCallbackRoute,
   ApiIntegrationsGoogleDisconnectRoute: ApiIntegrationsGoogleDisconnectRoute,
   ApiIntegrationsGoogleStartRoute: ApiIntegrationsGoogleStartRoute,
@@ -2415,6 +2570,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicBookingsSlugRoute: ApiPublicBookingsSlugRoute,
   ApiPublicWebhooksInstagramRoute: ApiPublicWebhooksInstagramRoute,
   ApiPublicWebhooksWhatsappRoute: ApiPublicWebhooksWhatsappRoute,
+  ApiIntegrationsConversionsGoogleStartRoute:
+    ApiIntegrationsConversionsGoogleStartRoute,
   ApiIntegrationsMetaWhatsappCompleteRoute:
     ApiIntegrationsMetaWhatsappCompleteRoute,
   ApiIntegrationsMetaWhatsappDisconnectRoute:

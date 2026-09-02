@@ -516,6 +516,7 @@ export async function sendN8nEvent(input: {
   eventType: N8nOutboundEventType
   payload: Record<string, unknown>
   deliveryId?: string
+  occurredAt?: string
   fetcher?: typeof fetch
 }) {
   const admin = requireAdmin()
@@ -543,7 +544,7 @@ export async function sendN8nEvent(input: {
     schemaVersion: 1,
     deliveryId,
     eventType: input.eventType,
-    occurredAt: new Date().toISOString(),
+    occurredAt: input.occurredAt ?? new Date().toISOString(),
     workspace: { id: input.workspaceId },
     data: input.payload,
   })

@@ -441,6 +441,7 @@ O procedimento completo, configuração das contas Meta/OpenAI e rotina de opera
 - [Manual interno de implementação e operação](docs/MANUAL_INTERNO_IMPLEMENTACAO_E_OPERACAO.md)
 - [Configuração real da Meta e OpenAI](docs/CONFIGURACAO_META_E_OPENAI.md)
 - [Configuração do Google Calendar, Meet e Tasks](docs/CONFIGURACAO_GOOGLE_CALENDAR.md)
+- [Rastreamento de conversões Google Ads OCI e Meta CAPI](docs/RASTREAMENTO_CONVERSOES_OCI_CAPI.md)
 - [Manual em PDF](output/pdf/manual-interno-wal-chat.pdf)
 - [Relatório de homologação](docs/RELATORIO_VALIDACAO_HOMOLOGACAO.md)
 - [Validação Meta em produção — 24/08/2026](docs/VALIDACAO_META_PRODUCAO_2026-08-24.md)

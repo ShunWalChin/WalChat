@@ -11,6 +11,7 @@ import {
 describe('scheduled job policy', () => {
   it('mantém eventos de integração dentro do runtime implementado', () => {
     expect(IMPLEMENTED_SCHEDULED_JOB_KINDS).toContain('integration_event')
+    expect(IMPLEMENTED_SCHEDULED_JOB_KINDS).toContain('ad_conversion')
     expect(IMPLEMENTED_SCHEDULED_JOB_KINDS).toContain('campaign_message')
     expect(IMPLEMENTED_SCHEDULED_JOB_KINDS).toContain('content_publish')
     expect(IMPLEMENTED_SCHEDULED_JOB_KINDS).toContain('insights_sync')

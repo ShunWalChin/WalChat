@@ -392,3 +392,23 @@ comportamento `429` seguem obrigatórios na infraestrutura de destino.
 - `/api/ai/suggest`: devolve a sugestão e as fontes recuperadas da base do tenant.
 
 Veja os fluxos, gates e matriz de aceite em [Atualização operacional V1](ATUALIZACAO_OPERACIONAL_V1.md).
+
+## Google Ads OCI e Meta CAPI
+
+O módulo de conversões offline adiciona estas APIs privadas:
+
+- `GET /api/integrations/conversions/status`: conexões sanitizadas, etapas,
+  regras e últimos eventos;
+- `PUT /api/integrations/conversions/configure`: salva Customer/Dataset ID e
+  credenciais cifradas;
+- `POST /api/integrations/conversions/google/start`: inicia OAuth Google Ads
+  com state e PKCE;
+- `POST /api/integrations/conversions/test`: valida acesso sem criar conversão;
+- `DELETE /api/integrations/conversions/disconnect?provider=google_ads|meta_capi`;
+- `POST /api/integrations/conversions/rules`: operação `save` ou `delete`;
+- `POST /api/integrations/conversions/replay`: reenfileira evento terminal.
+
+O webhook público de leads aceita os campos de atribuição no topo ou dentro de
+`tracking`/`attribution`. Click IDs não são copiados para o payload de
+diagnóstico. O contrato, a matriz de estados e o runbook completos estão em
+[Rastreamento de conversões OCI/CAPI](RASTREAMENTO_CONVERSOES_OCI_CAPI.md).

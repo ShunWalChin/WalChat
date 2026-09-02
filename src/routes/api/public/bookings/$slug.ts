@@ -23,6 +23,7 @@ import {
 import { assertRateLimit } from '../../../../server/rate-limit.server'
 import { readJsonBody } from '../../../../server/request-body.server'
 import { requestIdentity } from '../../../../server/request-identity.server'
+import { normalizeAdAttribution } from '../../../../lib/ad-attribution'
 
 const querySchema = z.object({
   from: z.iso.date(),
@@ -38,6 +39,7 @@ const bookingSchema = z.object({
     .enum(['public_page', 'ai_agent', 'trigger', 'sequence'])
     .default('public_page'),
   idempotencyKey: z.uuid().optional(),
+  attribution: z.unknown().optional().transform(normalizeAdAttribution),
 })
 
 export const Route = createFileRoute('/api/public/bookings/$slug')({
@@ -112,6 +114,7 @@ export const Route = createFileRoute('/api/public/bookings/$slug')({
             startAt: body.startAt,
             source: body.source,
             idempotencyKey: body.idempotencyKey ?? null,
+            attribution: body.attribution,
           })
           return Response.json(
             {

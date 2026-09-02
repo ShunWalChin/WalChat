@@ -13,6 +13,10 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { seoHead } from '../../lib/seo'
+import {
+  captureAdAttribution,
+  readAdAttribution,
+} from '../../lib/ad-attribution'
 
 type Slot = {
   startAt: string
@@ -81,6 +85,7 @@ function PublicBookingPage() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [notes, setNotes] = useState('')
+  const [adConsent, setAdConsent] = useState(false)
   const [idempotencyKey] = useState(() => crypto.randomUUID())
 
   const load = useCallback(async () => {
@@ -105,6 +110,7 @@ function PublicBookingPage() {
   }, [slug])
 
   useEffect(() => void load(), [load])
+  useEffect(() => void captureAdAttribution(), [])
 
   const grouped = useMemo(
     () => groupSlots(calendar?.slots ?? []),
@@ -133,6 +139,10 @@ function PublicBookingPage() {
             notes: notes || null,
             idempotencyKey,
             source: 'public_page',
+            attribution: {
+              ...readAdAttribution(),
+              adUserDataConsent: adConsent ? 'granted' : 'denied',
+            },
           }),
         },
       )
@@ -377,6 +387,14 @@ function PublicBookingPage() {
                   rows={3}
                   maxLength={2000}
                 />
+              </label>
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={adConsent}
+                  onChange={(event) => setAdConsent(event.target.checked)}
+                />
+                Autorizo o uso dos meus dados para mensuração de anúncios.
               </label>
               {error && <p className="form-error">{error}</p>}
               <button

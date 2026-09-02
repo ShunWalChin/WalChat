@@ -31,14 +31,15 @@ use os documentos especializados abaixo quando precisar aprofundar uma área.
 
 ## Integrações e APIs
 
-| Documento                                                            | Conteúdo                                        |
-| -------------------------------------------------------------------- | ----------------------------------------------- |
-| [API e webhooks](API_E_WEBHOOKS.md)                                  | Contratos HTTP e exemplos de integração         |
-| [Meta, Instagram e WhatsApp](INTEGRACOES_META_INSTAGRAM_WHATSAPP.md) | OAuth, webhooks, Cloud API e Embedded Signup    |
-| [Meta e OpenAI](CONFIGURACAO_META_E_OPENAI.md)                       | Variáveis e configuração dos provedores         |
-| [Google Calendar](CONFIGURACAO_GOOGLE_CALENDAR.md)                   | OAuth PKCE, Calendar, Tasks, Meet e Free/Busy   |
-| [Integração n8n](INTEGRACAO_N8N.md)                                  | Ponte bidirecional, autenticação e idempotência |
-| [Workflows n8n](WORKFLOWS_N8N_OPERACIONAIS_2026-08-24.md)            | Suíte operacional provisionada                  |
+| Documento                                                            | Conteúdo                                               |
+| -------------------------------------------------------------------- | ------------------------------------------------------ |
+| [API e webhooks](API_E_WEBHOOKS.md)                                  | Contratos HTTP e exemplos de integração                |
+| [Meta, Instagram e WhatsApp](INTEGRACOES_META_INSTAGRAM_WHATSAPP.md) | OAuth, webhooks, Cloud API e Embedded Signup           |
+| [Meta e OpenAI](CONFIGURACAO_META_E_OPENAI.md)                       | Variáveis e configuração dos provedores                |
+| [Google Calendar](CONFIGURACAO_GOOGLE_CALENDAR.md)                   | OAuth PKCE, Calendar, Tasks, Meet e Free/Busy          |
+| [Google Ads OCI e Meta CAPI](RASTREAMENTO_CONVERSOES_OCI_CAPI.md)    | Atribuição, regras CRM, fila, consentimento e operação |
+| [Integração n8n](INTEGRACAO_N8N.md)                                  | Ponte bidirecional, autenticação e idempotência        |
+| [Workflows n8n](WORKFLOWS_N8N_OPERACIONAIS_2026-08-24.md)            | Suíte operacional provisionada                         |
 
 ## Segurança, produção e recuperação
 
