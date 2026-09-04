@@ -163,7 +163,11 @@ function GrowthLinksScreen() {
       )}
 
       <section className="growth-create">
+        <label className="sr-only" htmlFor="capture-source-name">
+          Nome da origem do link
+        </label>
         <input
+          id="capture-source-name"
           value={nome}
           maxLength={80}
           placeholder="Nome da origem. Ex: Link da bio"

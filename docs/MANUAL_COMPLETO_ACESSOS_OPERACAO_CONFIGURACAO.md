@@ -1,8 +1,8 @@
 # Wal Chat — Manual completo de acessos, operação e configuração
 
-Atualizado em: 20/08/2026
+Atualizado em: 03/09/2026
 
-Ambiente auditado: homologação Oracle Cloud `64.181.178.125`
+Ambiente auditado: produção Oracle Cloud
 
 Aplicação: [https://wal-chat.64.181.178.125.nip.io](https://wal-chat.64.181.178.125.nip.io)
 
@@ -16,103 +16,139 @@ Aplicação: [https://wal-chat.64.181.178.125.nip.io](https://wal-chat.64.181.17
 > cofre `Acessos Privados/`. Substitua o marcador na hora de executar o comando
 > e não recoloque o valor concreto no arquivo versionado.
 >
-> | Marcador                          | Onde está o valor real                                              |
-> | --------------------------------- | ------------------------------------------------------------------- |
-> | `<IP_DO_SERVIDOR>`                | Cofre local (o `nip.io` do domínio de homologação já expõe este IP) |
-> | `<USUARIO_SSH>`                   | Cofre local                                                         |
-> | `<USUARIO_SSH_RECUPERACAO>`       | Cofre local                                                         |
-> | `<CAMINHO_DA_CHAVE_SSH>`          | Máquina do operador                                                 |
-> | `<CONTA_OWNER>` / `<CONTA_ADMIN>` | Cofre local                                                         |
+> | Marcador                          | Onde está o valor real                                      |
+> | --------------------------------- | ----------------------------------------------------------- |
+> | `<IP_DO_SERVIDOR>`                | Cofre local (o `nip.io` do ambiente atual já expõe este IP) |
+> | `<USUARIO_SSH>`                   | Cofre local                                                 |
+> | `<USUARIO_SSH_RECUPERACAO>`       | Cofre local                                                 |
+> | `<CAMINHO_DA_CHAVE_SSH>`          | Máquina do operador                                         |
+> | `<CONTA_OWNER>` / `<CONTA_ADMIN>` | Cofre local                                                 |
 
 ## 1. Situação atual do ambiente
 
-Em 17/08/2026 foram confirmados:
+Verificação direta executada em **03/09/2026**:
 
-- HTTPS público válido e aplicação respondendo `200`;
-- Supabase público respondendo `200`;
-- autenticação das três contas do Wal Chat;
-- RLS multi-tenant e papéis `owner` e `admin`;
-- webhook com verificação de token e assinatura `X-Hub-Signature-256`;
-- Redis, BullMQ, worker de webhooks e scheduler;
-- motor de compliance de 24 horas, `HUMAN_AGENT`, opt-out, cooldown e Private Reply;
-- comunicação privada entre os contêineres Wal Chat e Supabase;
-- Nginx, Docker e todos os contêineres necessários em execução.
+| Item                        | Estado confirmado                                                              |
+| --------------------------- | ------------------------------------------------------------------------------ |
+| Aplicação e HTTPS           | `200`; processo vivo e modo `live`                                             |
+| Readiness                   | `200`; Supabase e Redis `up`                                                   |
+| Release ativa               | `/opt/wal-chat/releases/20260831-ux-v1`                                        |
+| Contêineres Wal Chat        | aplicação, Redis, scheduler e worker de webhooks saudáveis                     |
+| Capacidade do servidor      | volume raiz com 47% de uso                                                     |
+| Meta / Instagram / WhatsApp | configuração de runtime detectada                                              |
+| Google Workspace            | configuração de runtime detectada                                              |
+| OpenAI                      | chave cifrada de workspace detectada; botão **Salvar configurações** publicado |
+| Gemini                      | não configurado                                                                |
+| n8n                         | painel e `/healthz` respondendo `200`                                          |
+| Telas web                   | 26 endereços auditados respondendo `200` após redirecionamentos canônicos      |
 
-Em 20/08/2026, a atualização operacional V1 acrescentou e validou:
+`/api/health` mostra somente chaves presentes no ambiente do servidor. Por isso
+ele informa `openai: false`; `/api/ready` também consulta o cofre cifrado dos
+workspaces e informa `openaiConfigured: true`. A chave de IA pode, portanto,
+ficar armazenada por workspace sem aparecer como variável de ambiente.
 
-- Central de Go-Live e três kill switches por workspace;
-- observabilidade e replay seguro de webhooks com falha;
-- Inbox com atribuição, prioridade, status e notas internas;
-- Comment-to-DM por publicação real com execução auditável;
-- copiloto com recuperação da base e indicação de fontes;
-- migrations de idempotência e operação aplicadas no banco isolado.
+### 1.1 Diferença entre produção e a base local
 
-O ambiente continua em `DEMO_MODE=true`. Portanto, está liberado para
-homologação, cadastro, configuração, simulações e smoke tests, mas não para
-disparos reais ou campanhas em massa.
+O rastreamento de conversões Google Ads OCI e Meta CAPI está implementado e
+testado na base local, mas **ainda não está publicado**: o endpoint
+`/api/integrations/conversions/status` responde `404` em produção. O refino de
+usabilidade de 03/09 também está somente no worktree local.
 
-Configurações ainda ausentes no runtime:
-
-- `META_APP_ID`;
-- token Meta conectado por OAuth;
-- `OPENAI_API_KEY`;
-- `GOOGLE_GENERATIVE_AI_API_KEY`.
-
-O `META_APP_SECRET`, o verify token e a chave de criptografia existem, mas isso
-sozinho não representa uma integração Meta operacional.
+A base local passa em 399 testes, ESLint e build cliente/SSR. O deploy deve
+permanecer bloqueado até resolver o portão `audit:system`, que encontrou 67
+escritas sem verificação explícita para um teto de 56, reconciliar a branch com
+`github/main`, versionar as alterações e criar um backup pré-release novo.
 
 ## 2. Todos os links de acesso
 
-### 2.1 Aplicação e módulos
+### 2.1 Aplicação e módulos autenticados
 
-| Área                   | Link                                                                        |
-| ---------------------- | --------------------------------------------------------------------------- |
-| Entrada e autenticação | [Abrir Wal Chat](https://wal-chat.64.181.178.125.nip.io/)                   |
-| Dashboard              | [Abrir Dashboard](https://wal-chat.64.181.178.125.nip.io/dashboard)         |
-| Central de Go-Live     | [Abrir Operações](https://wal-chat.64.181.178.125.nip.io/operacoes)         |
-| Inbox                  | [Abrir Inbox](https://wal-chat.64.181.178.125.nip.io/inbox)                 |
-| Contatos e tags        | [Abrir Contatos](https://wal-chat.64.181.178.125.nip.io/contatos)           |
-| Gatilhos               | [Abrir Gatilhos](https://wal-chat.64.181.178.125.nip.io/gatilhos)           |
-| Comment-to-DM          | [Abrir Comment-to-DM](https://wal-chat.64.181.178.125.nip.io/comment-to-dm) |
-| Sequências             | [Abrir Sequências](https://wal-chat.64.181.178.125.nip.io/sequencias)       |
-| Agentes de IA          | [Abrir Agentes](https://wal-chat.64.181.178.125.nip.io/agentes)             |
-| Reengajamento          | [Abrir Reengajamento](https://wal-chat.64.181.178.125.nip.io/reengajamento) |
-| Calendário editorial   | [Abrir Calendário](https://wal-chat.64.181.178.125.nip.io/calendario)       |
-| Publicar               | [Abrir Publicar](https://wal-chat.64.181.178.125.nip.io/publicar)           |
-| Auto-like              | [Abrir Auto-like](https://wal-chat.64.181.178.125.nip.io/auto-like)         |
-| Insights               | [Abrir Insights](https://wal-chat.64.181.178.125.nip.io/insights)           |
-| Configurações          | [Abrir Configurações](https://wal-chat.64.181.178.125.nip.io/configuracoes) |
+Todos estes links foram validados em 03/09/2026. Sem sessão, a aplicação abre a
+tela pública de autenticação; o conteúdo interno exige uma conta autorizada.
+
+| Grupo     | Área                   | Link                                                                        |
+| --------- | ---------------------- | --------------------------------------------------------------------------- |
+| Acesso    | Entrada e autenticação | [Abrir Wal Chat](https://wal-chat.64.181.178.125.nip.io/)                   |
+| Conversas | Visão geral            | [Abrir Dashboard](https://wal-chat.64.181.178.125.nip.io/dashboard)         |
+| Conversas | Operação & Go-Live     | [Abrir Operações](https://wal-chat.64.181.178.125.nip.io/operacoes)         |
+| Conversas | Inbox                  | [Abrir Inbox](https://wal-chat.64.181.178.125.nip.io/inbox)                 |
+| CRM       | Pipeline               | [Abrir Pipeline](https://wal-chat.64.181.178.125.nip.io/crm)                |
+| CRM       | Radar de risco         | [Abrir Radar](https://wal-chat.64.181.178.125.nip.io/radar)                 |
+| CRM       | Contatos e tags        | [Abrir Contatos](https://wal-chat.64.181.178.125.nip.io/contatos)           |
+| CRM       | Respostas rápidas      | [Abrir Respostas](https://wal-chat.64.181.178.125.nip.io/respostas)         |
+| CRM       | Equipe                 | [Abrir Equipe](https://wal-chat.64.181.178.125.nip.io/equipe)               |
+| Automação | Gatilhos               | [Abrir Gatilhos](https://wal-chat.64.181.178.125.nip.io/gatilhos)           |
+| Automação | Boas-vindas            | [Abrir Boas-vindas](https://wal-chat.64.181.178.125.nip.io/boas-vindas)     |
+| Automação | Captação               | [Abrir Captação](https://wal-chat.64.181.178.125.nip.io/captacao)           |
+| Automação | Comment-to-DM          | [Abrir Comment-to-DM](https://wal-chat.64.181.178.125.nip.io/comment-to-dm) |
+| Automação | Sequências             | [Abrir Sequências](https://wal-chat.64.181.178.125.nip.io/sequencias)       |
+| Automação | Agentes de IA          | [Abrir Agentes](https://wal-chat.64.181.178.125.nip.io/agentes)             |
+| Automação | Governança de IA       | [Abrir Governança](https://wal-chat.64.181.178.125.nip.io/governanca)       |
+| Automação | Reengajamento          | [Abrir Reengajamento](https://wal-chat.64.181.178.125.nip.io/reengajamento) |
+| Automação | Auto-like              | [Abrir Auto-like](https://wal-chat.64.181.178.125.nip.io/auto-like)         |
+| Conteúdo  | Calendário             | [Abrir Calendário](https://wal-chat.64.181.178.125.nip.io/calendario)       |
+| Conteúdo  | Publicar               | [Abrir Publicar](https://wal-chat.64.181.178.125.nip.io/publicar)           |
+| Conteúdo  | Insights               | [Abrir Insights](https://wal-chat.64.181.178.125.nip.io/insights)           |
+| Sistema   | Integrações            | [Abrir Integrações](https://wal-chat.64.181.178.125.nip.io/integracoes)     |
+| Sistema   | Webhooks de leads      | [Abrir Webhooks](https://wal-chat.64.181.178.125.nip.io/webhooks)           |
+| Sistema   | Auditoria              | [Abrir Auditoria](https://wal-chat.64.181.178.125.nip.io/auditoria)         |
+| Conta     | Configurações          | [Abrir Configurações](https://wal-chat.64.181.178.125.nip.io/configuracoes) |
+| Ajuda     | Manual no sistema      | [Abrir Manual](https://wal-chat.64.181.178.125.nip.io/manual)               |
 
 ### 2.2 Endpoints públicos e legais
 
 | Recurso                      | Link/finalidade                                                                       |
 | ---------------------------- | ------------------------------------------------------------------------------------- |
-| Health check                 | [ `/api/health` ](https://wal-chat.64.181.178.125.nip.io/api/health)                  |
-| API pública Supabase         | [API Wal Chat](https://api-wal-chat.64.181.178.125.nip.io/)                           |
+| Liveness                     | [`/api/health`](https://wal-chat.64.181.178.125.nip.io/api/health)                    |
+| Readiness                    | [`/api/ready`](https://wal-chat.64.181.178.125.nip.io/api/ready)                      |
+| Robots                       | [`/robots.txt`](https://wal-chat.64.181.178.125.nip.io/robots.txt)                    |
+| Sitemap                      | [`/sitemap.xml`](https://wal-chat.64.181.178.125.nip.io/sitemap.xml)                  |
+| Página pública de agenda     | `https://wal-chat.64.181.178.125.nip.io/agendar/<SLUG_DA_AGENDA>`                     |
+| Confirmação pública          | [Abrir Obrigado](https://wal-chat.64.181.178.125.nip.io/obrigado)                     |
 | Configuração pública do Auth | [Supabase Auth Settings](https://api-wal-chat.64.181.178.125.nip.io/auth/v1/settings) |
 | Webhook Instagram            | `https://wal-chat.64.181.178.125.nip.io/api/public/webhooks/instagram`                |
+| Webhook WhatsApp             | `https://wal-chat.64.181.178.125.nip.io/api/public/webhooks/whatsapp`                 |
 | Callback OAuth Meta          | `https://wal-chat.64.181.178.125.nip.io/api/integrations/meta/callback`               |
+| Callback OAuth Google        | `https://wal-chat.64.181.178.125.nip.io/api/integrations/google/callback`             |
 | Exclusão assinada Meta       | `https://wal-chat.64.181.178.125.nip.io/api/data-deletion`                            |
 | Política de Privacidade      | [Abrir Política](https://wal-chat.64.181.178.125.nip.io/privacidade)                  |
 | Termos de Uso                | [Abrir Termos](https://wal-chat.64.181.178.125.nip.io/termos)                         |
 | Instruções de exclusão       | [Abrir Exclusão de Dados](https://wal-chat.64.181.178.125.nip.io/exclusao-de-dados)   |
+
+A raiz da API Supabase responde `404` por desenho; isso não significa falha. O
+endpoint público de configuração do Auth, usado como sonda, responde `200`.
 
 O endereço legado `https://mano-chat.64.181.178.125.nip.io` redireciona para o
 Wal Chat. Não use o endereço legado em novas integrações.
 
 ### 2.3 Painéis externos necessários
 
-| Serviço             | Link                                                                  |
-| ------------------- | --------------------------------------------------------------------- |
-| Meta for Developers | [developers.facebook.com/apps](https://developers.facebook.com/apps/) |
-| Meta Business Suite | [business.facebook.com](https://business.facebook.com/)               |
-| OpenAI Platform     | [platform.openai.com](https://platform.openai.com/)                   |
-| Chaves OpenAI       | [API Keys](https://platform.openai.com/api-keys)                      |
-| Uso OpenAI          | [Usage](https://platform.openai.com/usage)                            |
-| Google AI Studio    | [aistudio.google.com](https://aistudio.google.com/)                   |
-| Repositório         | [ShunWalChin/WalChat](https://github.com/ShunWalChin/WalChat)         |
+| Serviço              | Link                                                                  |
+| -------------------- | --------------------------------------------------------------------- |
+| n8n Wal Chat         | [n8n.fattech.com.br](https://n8n.fattech.com.br/)                     |
+| Saúde do n8n         | [n8n.fattech.com.br/healthz](https://n8n.fattech.com.br/healthz)      |
+| Meta for Developers  | [developers.facebook.com/apps](https://developers.facebook.com/apps/) |
+| Meta Business Suite  | [business.facebook.com](https://business.facebook.com/)               |
+| OpenAI Platform      | [platform.openai.com](https://platform.openai.com/)                   |
+| Chaves OpenAI        | [API Keys](https://platform.openai.com/api-keys)                      |
+| Uso OpenAI           | [Usage](https://platform.openai.com/usage)                            |
+| Google AI Studio     | [aistudio.google.com](https://aistudio.google.com/)                   |
+| Google Ads           | [ads.google.com](https://ads.google.com/)                             |
+| Google Cloud Console | [console.cloud.google.com](https://console.cloud.google.com/)         |
+| Repositório GitHub   | [ShunWalChin/WalChat](https://github.com/ShunWalChin/WalChat)         |
 
-### 2.4 Painéis internos por túnel SSH
+### 2.4 Ambiente local de desenvolvimento
+
+| Serviço         | Link                                             |
+| --------------- | ------------------------------------------------ |
+| Aplicação       | [http://127.0.0.1:3001](http://127.0.0.1:3001)   |
+| Supabase API    | [http://127.0.0.1:54321](http://127.0.0.1:54321) |
+| Supabase Studio | [http://127.0.0.1:54323](http://127.0.0.1:54323) |
+| Mailpit         | [http://127.0.0.1:54324](http://127.0.0.1:54324) |
+
+Esses endereços só respondem quando a stack local está iniciada.
+
+### 2.5 Painéis internos por túnel SSH
 
 Os painéis internos não são publicados na internet.
 
@@ -191,63 +227,66 @@ Não habilitar `PasswordAuthentication` nem login root por senha.
 2. Use `<CONTA_OWNER>` ou `<CONTA_ADMIN>` e consulte a senha no cofre.
 3. Confirme que o topo mostra o usuário autenticado, e não `Wal Demo`.
 4. Abra **Configurações**.
-5. Confirme o estado da Meta e da IA. No estado atual ambos devem aparecer sem
-   credencial operacional.
-6. Abra **Operações** e confirme que os três switches estão desligados.
-7. Não clique em disparos ou ative automações reais enquanto
-   `DEMO_MODE=true` não tiver passado pelo checklist da seção 12.
+5. Confirme o estado da Meta e da IA. No workspace operacional, Meta e OpenAI
+   devem aparecer configurados; Gemini permanece opcional e não configurado.
+6. Abra **Operações** e confira readiness, canais e os três kill switches antes
+   de qualquer ação externa.
+7. A produção está em `DEMO_MODE=false`. Não inicie disparos, campanhas ou IA
+   autônoma sem contato controlado, consentimento e autorização do responsável.
 
 O botão **Explorar o modo demo** cria uma sessão visual local. Ele não substitui
 o login Supabase e não deve ser usado para configurar Meta ou IA.
 
 ## 5. Matriz real das funcionalidades
 
-| Módulo            | Estado implantado                             | O que funciona hoje                                                      |
-| ----------------- | --------------------------------------------- | ------------------------------------------------------------------------ |
-| Autenticação      | Funcional                                     | Login Supabase, sessão, criação de workspace e RLS                       |
-| Multi-tenant      | Funcional no backend                          | Papéis e isolamento no banco                                             |
-| Central Go-Live   | Funcional                                     | Diagnóstico, confirmação forte e três kill switches por workspace        |
-| Webhook Instagram | Funcional tecnicamente                        | Challenge, HMAC SHA-256, idempotência, fila e worker                     |
-| Observabilidade   | Funcional                                     | Status, tentativas, latência, erro e replay restrito a falhas            |
-| Configuração Meta | Backend e tela funcionais; credencial ausente | OAuth, status, validação, assinatura e desconexão                        |
-| Inbox             | Integrada ao backend                          | Conversas, atribuição, prioridade, notas, IA e envio com compliance      |
-| Gatilhos          | CRUD real                                     | Palavra-chave, origem, resposta, sequência, cooldown e tag               |
-| Comment-to-DM     | Backend real; aguarda conta Meta              | Post específico, regra, cooldown e uma Private Reply por comentário      |
-| Agentes de IA     | CRUD real                                     | Personas, base pesquisável, fontes, tom, modo e playground               |
-| IA OpenAI/Gemini  | Código funcional; chave ausente               | Sugestão real após configurar provedor                                   |
-| Compliance        | Funcional                                     | 24h, 7d humano, opt-out, blocklist, cooldown e Private Reply             |
-| Dashboard         | Demonstrativo                                 | Métricas e gráfico usam dados de demonstração no frontend                |
-| Contatos          | Demonstrativo                                 | Lista e CSV atuais usam dados de demonstração                            |
-| Sequências        | Operacional                                   | Automation Studio v2 usa o DAG versionado executado pelo scheduler       |
-| Reengajamento     | Protótipo                                     | Preview e taxa são visuais; não liberar campanha real                    |
-| Calendário        | Funcional                                     | CRUD, Google Calendar/Tasks, Meet, Free/Busy, links e trilha operacional |
-| Publicar          | Protótipo                                     | Preview/roteiro visual; não publica Feed, Reel, Story ou carrossel       |
-| Auto-like         | Protótipo                                     | Seleção visual; não executa likes reais                                  |
-| Insights          | Demonstrativo                                 | Gráfico e heatmap usam dados de demonstração                             |
-| Páginas legais    | Funcional                                     | Privacidade, termos e exclusão disponíveis publicamente                  |
+| Módulo                      | Estado implantado                 | O que funciona hoje                                                                                                               |
+| --------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Autenticação e multi-tenant | Operacional                       | Login Supabase, sessão, papéis, workspace e RLS                                                                                   |
+| Central Go-Live             | Operacional                       | Readiness, diagnóstico e três kill switches por workspace                                                                         |
+| Meta / Instagram            | Operacional no workspace Wal Demo | OAuth, token cifrado, campos assinados, webhook HMAC, polling e worker                                                            |
+| WhatsApp                    | Infraestrutura pronta             | Embedded Signup, WABA, telefone, templates, mídia e receipts; falta registrar canal no workspace                                  |
+| Observabilidade             | Operacional                       | Status, tentativas, latência, auditoria e replay restrito a falhas                                                                |
+| Inbox                       | Operacional                       | Conversas, filtros, atribuição, prioridade, notas, IA e envio com compliance                                                      |
+| CRM e radar                 | Operacional                       | Quadro/lista, drag-and-drop, edição 360º, filtros, tarefas, notas, links/documentos, etapas, score, risco e concorrência otimista |
+| Contatos e tags             | Operacional                       | Perfil 360º, filtros, lote, campos, notas, elegibilidade e CSV                                                                    |
+| Equipe e respostas          | Operacional                       | Capacidade, horários, distribuição e templates compartilháveis                                                                    |
+| Gatilhos e boas-vindas      | Operacional                       | Origens Meta/WhatsApp, resposta, sequência, cooldown e tags                                                                       |
+| Captação                    | Operacional                       | Links, QR codes e webhooks de lead isolados e idempotentes                                                                        |
+| Comment-to-DM               | Operacional e protegido           | Publicação real, até 20 palavras, cooldown, limite por conta e Private Reply única                                                |
+| Sequências                  | Operacional                       | Automation Studio v2, DAG versionado, simulação e scheduler                                                                       |
+| IA OpenAI                   | Operacional                       | Configuração e chave cifrada por workspace, agentes, playground e telemetria                                                      |
+| Gemini                      | Implementado, não configurado     | Alternativa de provedor disponível após salvar uma chave válida                                                                   |
+| Governança de IA            | Operacional                       | Orçamento, versões, roteamento, memória, revisão humana e logs                                                                    |
+| Dashboard                   | Operacional                       | Métricas de DMs, comentários, canais, contatos e insights persistidos                                                             |
+| Reengajamento               | Operacional e protegido           | Preview, persistência, início, pausa, cancelamento e controle de vazão                                                            |
+| Calendário                  | Operacional                       | Mês/semana/agenda, CRUD, reservas públicas, Calendar, Tasks, Meet e Free/Busy                                                     |
+| Publicar                    | Operacional e protegido           | Feed, Reel, Story e Carrossel persistidos, agendados e enviados pelo scheduler                                                    |
+| Insights                    | Operacional                       | Métricas oficiais diárias, por publicação e histórico de seguidores                                                               |
+| n8n                         | Operacional                       | Gateway bidirecional, HMAC, idempotência e workflows ativos                                                                       |
+| Auto-like                   | Limitação oficial                 | Preferências são salvas; a API oficial da Meta não permite curtir comentários                                                     |
+| OCI/CAPI                    | Implementado apenas localmente    | Google Ads OCI e Meta CAPI aguardam release de produção                                                                           |
+| Páginas legais e SEO        | Operacional                       | Privacidade, termos, exclusão, sitemap, robots, OG e JSON-LD                                                                      |
 
 ### Consequência operacional
 
-É correto usar agora:
+É correto usar agora, respeitando papéis, consentimento e os gates:
 
 - autenticação e papéis;
-- configuração de Meta e IA;
-- criação de agentes e base de conhecimento;
-- playground de IA;
-- Central de Go-Live e observabilidade;
-- Inbox, gatilhos e Comment-to-DM em teste controlado;
-- webhook e filas em homologação.
+- configuração de Meta, OpenAI, Google e n8n;
+- CRM, Contatos, Inbox, Equipe e respostas rápidas;
+- agentes, base de conhecimento, playground e governança de IA;
+- gatilhos, captação, sequências e Comment-to-DM;
+- calendário, agendamento público, publicação e insights;
+- Central de Go-Live, auditoria, webhook e filas.
 
-Ainda não tratar como recurso de produção:
+Limitações e pendências que não devem ser confundidas com recurso ativo:
 
-- dashboard analítico;
-- CRM/contatos como fonte oficial;
-- campanhas de reengajamento;
-- publicação social;
-- auto-like;
-- calendário editorial persistente;
-- insights reais;
-- sequências editadas inteiramente pela interface.
+- OCI/CAPI ainda não está na release publicada;
+- auto-like não executa curtidas por ausência de endpoint oficial da Meta;
+- Google exige conexão OAuth por workspace antes de sincronizar;
+- WhatsApp exige WABA e telefone registrados no workspace;
+- campanhas e envios externos exigem canário controlado e revisão dos gates;
+- domínio próprio, cobrança e automação de backup continuam pendentes.
 
 ## 6. Configuração completa da Meta
 
@@ -476,7 +515,7 @@ reais.
 3. Use as abas Principal, Geral, Pedidos e IA off.
 4. Observe o badge da janela de 24 horas.
 5. Use **Sugerir com IA** somente depois de configurar um agente.
-6. Revise a sugestão e envie manualmente durante a homologação.
+6. Revise a sugestão e envie manualmente durante a primeira validação controlada.
 7. Use IA off para conversas que exigem atendimento humano.
 
 O envio chama o backend, que recalcula compliance antes de chegar à Meta.
@@ -669,8 +708,8 @@ conta Meta real ligada a uma automação ativa.
 
 ### 11.2 Teste Meta controlado
 
-1. Mantenha `DEMO_MODE=true`.
-2. Conecte somente a conta Instagram de teste.
+1. Use um workspace de teste ou mantenha os gates externos fechados.
+2. Conecte somente uma conta Instagram controlada.
 3. Valide permissões e webhooks.
 4. Envie uma DM de uma segunda conta controlada.
 5. Confirme inbound e janela de 24h.
@@ -680,9 +719,10 @@ conta Meta real ligada a uma automação ativa.
 9. Teste `PARAR` e confirme o bloqueio posterior.
 10. Teste comentário e confirme uma única Private Reply.
 
-## 12. Checklist para sair do demo e ativar produção
+## 12. Checklist para ativar um novo workspace ou campanha
 
-Não definir `DEMO_MODE=false` até todos os itens estarem aprovados:
+A infraestrutura atual já opera com `DEMO_MODE=false`. Antes de habilitar gates
+externos para um novo tenant ou iniciar uma campanha, aprove todos os itens:
 
 - [ ] domínio próprio definitivo, em vez de depender apenas de `nip.io`;
 - [ ] SMTP transacional e confirmação de e-mail;
@@ -703,19 +743,9 @@ Não definir `DEMO_MODE=false` até todos os itens estarem aprovados:
 - [ ] piloto com pequena lista interna;
 - [ ] kill switch e procedimento de incidente documentados.
 
-Depois disso:
-
-```bash
-sudoedit /opt/wal-chat/app/.env.production
-```
-
-Alterar somente:
-
-```dotenv
-DEMO_MODE=false
-```
-
-Recriar os três processos Node e repetir o checklist externo.
+Em uma instalação nova que ainda esteja em demo, a mudança de `DEMO_MODE` exige
+release versionada, backup, reconstrução dos três processos Node e repetição do
+checklist externo. Não edite a release ativa de produção no lugar.
 
 ## 13. Solução de problemas
 

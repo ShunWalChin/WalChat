@@ -4,7 +4,7 @@ Este diretório é a fonte de verdade técnica e operacional do Wal Chat. Comece
 pela [documentação completa do sistema](DOCUMENTACAO_COMPLETA_DO_SISTEMA.md) e
 use os documentos especializados abaixo quando precisar aprofundar uma área.
 
-Última revisão do índice: **02/09/2026**.
+Última revisão do índice: **04/09/2026**.
 
 ## Visão geral
 
@@ -16,6 +16,10 @@ use os documentos especializados abaixo quando precisar aprofundar uma área.
 | [Banco de dados](BANCO_DE_DADOS.md)                                 | Tabelas, RLS, funções, índices e migrations                                                       |
 | [Guia de desenvolvimento](GUIA_DE_DESENVOLVIMENTO.md)               | Ambiente local, convenções e validações                                                           |
 | [Manual completo](MANUAL_COMPLETO_ACESSOS_OPERACAO_CONFIGURACAO.md) | Acessos, configuração e operação pela interface                                                   |
+| [Estado atual](ESTADO_ATUAL_2026-09-03.md)                          | Evidências de produção, qualidade local, Git, backup, riscos e decisão de deploy                  |
+| [Estado atual — 04/09](ESTADO_ATUAL_2026-09-04.md)                  | Release candidate, CRM escalável, OmniRoute, SLOs, alertas e backup cifrado                       |
+| [Auditoria de usabilidade](USABILIDADE-2026-09-03.md)               | Fluxos das 25 telas, melhorias humanas e matriz responsiva reproduzível                           |
+| [Roadmap de 10 melhorias](ROADMAP_10_MELHORIAS_2026-09-03.md)       | Dez frentes priorizadas, evidências e critérios objetivos de conclusão                            |
 
 ## Produto e automação
 

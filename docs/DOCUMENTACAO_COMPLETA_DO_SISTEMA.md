@@ -4,7 +4,8 @@ Este documento consolida o estado funcional e técnico do Wal Chat. Ele é a
 porta de entrada para produto, desenvolvimento, segurança e operação; os links
 ao longo do texto levam aos runbooks e contratos detalhados.
 
-Última verificação: **02/09/2026 — America/Sao_Paulo**.
+Última verificação: **04/09/2026 — America/Sao_Paulo**. As mudanças mais
+recentes estão consolidadas no [estado atual de 04/09](ESTADO_ATUAL_2026-09-04.md).
 
 ## 1. Resumo executivo
 
@@ -13,7 +14,7 @@ automação, conteúdo e relacionamento em Instagram Professional e WhatsApp
 Business. O núcleo combina React/TanStack Start, Supabase/PostgreSQL, Redis,
 BullMQ e integrações server-to-server com Meta, OpenAI, Google e n8n.
 
-Estado observado em produção em 02/09/2026:
+Estado observado em produção em 03/09/2026:
 
 | Item                                   | Estado verificado                                                                                |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -31,6 +32,8 @@ Estado observado em produção em 02/09/2026:
 | n8n                                    | credenciais cifradas presentes no workspace operacional                                          |
 | Gates do workspace `Wal Demo`          | envios externos, Comment-to-DM e IA autônoma habilitados                                         |
 | Workspace administrativo               | sem canais, IA ou gates operacionais                                                             |
+| Google Ads OCI / Meta CAPI             | implementado na base local; endpoint ainda ausente na release de produção                        |
+| Refino de usabilidade                  | 75 cenários responsivos aprovados localmente; publicação ainda pendente                          |
 
 “Configurado” no readiness significa que o servidor possui a configuração-base.
 Isso não substitui uma conexão OAuth ou uma conta de canal registrada para o
@@ -67,10 +70,18 @@ tenant. A distinção é importante para Google e WhatsApp.
 ### 3.2 CRM comercial
 
 - Pipelines e etapas ordenadas por workspace.
-- Kanban com drag-and-drop e atualização por `lock_version` para evitar perda de
-  escrita concorrente.
+- Kanban com movimentação e reordenação por drag-and-drop, seletor de etapa
+  acessível e atualização por `lock_version` para evitar perda de escrita
+  concorrente.
+- Alternância entre quadro e lista, busca unificada, filtros por responsável,
+  risco, situação e tag, além de ordenação operacional.
 - Oportunidade vinculada a contato, responsável, origem, valor, probabilidade,
-  próxima ação, motivo de perda e trilha de atividades.
+  próxima ação, motivo de perda, tags e atributos personalizados.
+- Drawer 360º do lead com edição e linha do tempo. Notas, tarefas, ligações,
+  reuniões, e-mails, links e documentos por URL são registrados como atividades
+  auditáveis do lead.
+- Gestores podem criar pipelines e criar, editar, reordenar ou arquivar etapas;
+  uma etapa com leads não pode ser arquivada ou ter seu tipo terminal alterado.
 - Score e risco persistidos separadamente.
 - Radar identifica inatividade, atraso e risco; o scheduler reconcilia os
   estados a cada cinco minutos.
@@ -266,7 +277,8 @@ elevado.
 | `/api/contacts/bulk`             | PATCH                    | operação em lote                         |
 | `/api/contact-tags`              | GET, POST, PATCH, DELETE | tags e vínculos                          |
 | `/api/crm`                       | GET, POST                | pipeline e oportunidades                 |
-| `/api/crm/:leadId`               | PATCH                    | movimentação com concorrência otimista   |
+| `/api/crm/:leadId`               | GET, POST, PATCH         | detalhe, atividades, edição e movimento  |
+| `/api/crm/pipelines/:pipelineId` | PATCH                    | pipeline, etapas, ordem e arquivamento   |
 | `/api/crm/radar`                 | GET                      | risco e inatividade                      |
 | `/api/team`                      | GET, PATCH               | disponibilidade, capacidade e roteamento |
 | `/api/templates`                 | GET, POST                | respostas rápidas                        |

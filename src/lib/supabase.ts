@@ -7,6 +7,7 @@ let browserClient: SupabaseClient | null | undefined
 /** Retorna `null` quando a interface está intencionalmente sem Supabase. */
 export function getBrowserSupabase() {
   if (typeof window === 'undefined') return null
+  if (import.meta.env.VITE_E2E_MODE === 'true') return null
   if (browserClient !== undefined) return browserClient
 
   const url = import.meta.env.VITE_SUPABASE_URL
@@ -18,6 +19,8 @@ export function getBrowserSupabase() {
 /** Informa ao login se deve usar Auth real ou o fallback visual de demonstração. */
 export function isSupabaseConfigured() {
   return Boolean(
-    import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY,
+    import.meta.env.VITE_E2E_MODE !== 'true' &&
+    import.meta.env.VITE_SUPABASE_URL &&
+    import.meta.env.VITE_SUPABASE_ANON_KEY,
   )
 }

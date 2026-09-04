@@ -774,21 +774,23 @@ function ContactsPage() {
         <div className="data-table contacts-table crm-table">
           <div className="table-row table-head">
             <span>
-              <input
-                type="checkbox"
-                aria-label="Selecionar contatos desta página"
-                checked={
-                  Boolean(data?.contacts.length) &&
-                  selected.size === data?.contacts.length
-                }
-                onChange={(event) =>
-                  setSelected(
-                    event.target.checked
-                      ? new Set(data?.contacts.map((contact) => contact.id))
-                      : new Set(),
-                  )
-                }
-              />
+              <label className="table-checkbox-hit">
+                <input
+                  type="checkbox"
+                  aria-label="Selecionar contatos desta página"
+                  checked={
+                    Boolean(data?.contacts.length) &&
+                    selected.size === data?.contacts.length
+                  }
+                  onChange={(event) =>
+                    setSelected(
+                      event.target.checked
+                        ? new Set(data?.contacts.map((contact) => contact.id))
+                        : new Set(),
+                    )
+                  }
+                />
+              </label>
             </span>
             <span>CONTATO</span>
             <span>RELACIONAMENTO</span>
@@ -806,12 +808,14 @@ function ContactsPage() {
                 key={contact.id}
               >
                 <span className="row-check">
-                  <input
-                    type="checkbox"
-                    aria-label={`Selecionar ${contact.name}`}
-                    checked={selected.has(contact.id)}
-                    onChange={() => toggleSelection(contact.id)}
-                  />
+                  <label className="table-checkbox-hit">
+                    <input
+                      type="checkbox"
+                      aria-label={`Selecionar ${contact.name}`}
+                      checked={selected.has(contact.id)}
+                      onChange={() => toggleSelection(contact.id)}
+                    />
+                  </label>
                 </span>
                 <button
                   className="person-cell contact-open"

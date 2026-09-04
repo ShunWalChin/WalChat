@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { validateAiProviderCredential } from './ai-provider-validation.server'
 
 const openAiInput = {
@@ -8,6 +8,12 @@ const openAiInput = {
 }
 
 describe('validateAiProviderCredential', () => {
+  const original = { ...process.env }
+
+  afterEach(() => {
+    process.env = { ...original }
+  })
+
   it('consulta o modelo selecionado com a credencial OpenAI', async () => {
     const retrieveOpenAiModel = vi.fn(async () => undefined)
 
@@ -17,6 +23,7 @@ describe('validateAiProviderCredential', () => {
   })
 
   it('transforma autenticação inválida em erro acionável', async () => {
+    delete process.env.OMNIROUTE_BASE_URL
     const retrieveOpenAiModel = vi.fn(async () => {
       throw Object.assign(new Error('unauthorized'), { status: 401 })
     })
@@ -26,6 +33,20 @@ describe('validateAiProviderCredential', () => {
     ).rejects.toMatchObject({
       status: 401,
       message: 'A API key da OpenAI é inválida ou foi revogada.',
+    })
+  })
+
+  it('identifica a falha como OmniRoute quando o gateway está ativo', async () => {
+    process.env.OMNIROUTE_BASE_URL = 'http://127.0.0.1:20128/v1'
+    const retrieveOpenAiModel = vi.fn(async () => {
+      throw Object.assign(new Error('unauthorized'), { status: 401 })
+    })
+
+    await expect(
+      validateAiProviderCredential(openAiInput, { retrieveOpenAiModel }),
+    ).rejects.toMatchObject({
+      status: 401,
+      message: 'A API key da OmniRoute é inválida ou foi revogada.',
     })
   })
 

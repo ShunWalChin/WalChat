@@ -24,13 +24,15 @@ async function authHeaders(init: RequestInit, options: ApiFetchOptions) {
   const token = supabase
     ? (await supabase.auth.getSession()).data.session?.access_token
     : null
-  if (!token)
+  const e2eToken =
+    import.meta.env.VITE_E2E_MODE === 'true' ? 'walchat-e2e' : null
+  if (!token && !e2eToken)
     throw new Error(
       'Entre com uma conta Supabase real para configurar integrações.',
     )
 
   const headers = new Headers(init.headers)
-  headers.set('Authorization', `Bearer ${token}`)
+  headers.set('Authorization', `Bearer ${token ?? e2eToken}`)
   if (init.body && !headers.has('Content-Type'))
     headers.set('Content-Type', 'application/json')
 

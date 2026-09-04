@@ -19,12 +19,6 @@ export const aiSettingsSchema = z
         path: ['apiKey'],
         message: 'Não é possível salvar e remover a chave ao mesmo tempo.',
       })
-    if (value.provider === 'openai' && !value.model.startsWith('gpt-'))
-      context.addIssue({
-        code: 'custom',
-        path: ['model'],
-        message: 'Selecione um modelo OpenAI válido.',
-      })
     if (value.provider === 'google' && !value.model.startsWith('gemini-'))
       context.addIssue({
         code: 'custom',

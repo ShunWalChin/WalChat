@@ -34,6 +34,9 @@ const serverEnvSchema = z.object({
   OPENAI_MODEL: z.string().min(1).default('gpt-5.6-sol'),
   OPENAI_PROJECT: z.string().optional(),
   OPENAI_ORGANIZATION: z.string().optional(),
+  OMNIROUTE_BASE_URL: z.string().url().optional(),
+  OMNIROUTE_API_KEY: z.string().min(8).optional(),
+  OPERATIONS_ALERT_WEBHOOK_URL: z.string().url().optional(),
   N8N_BASE_URL: z.string().url().optional(),
   N8N_API_KEY: z.string().min(8).optional(),
   N8N_WEBHOOK_SIGNING_SECRET: z.string().min(24).optional(),
@@ -125,6 +128,11 @@ export function getServerEnv() {
     OPENAI_MODEL: blankAsUndefined(process.env.OPENAI_MODEL),
     OPENAI_PROJECT: blankAsUndefined(process.env.OPENAI_PROJECT),
     OPENAI_ORGANIZATION: blankAsUndefined(process.env.OPENAI_ORGANIZATION),
+    OMNIROUTE_BASE_URL: blankAsUndefined(process.env.OMNIROUTE_BASE_URL),
+    OMNIROUTE_API_KEY: blankAsUndefined(process.env.OMNIROUTE_API_KEY),
+    OPERATIONS_ALERT_WEBHOOK_URL: blankAsUndefined(
+      process.env.OPERATIONS_ALERT_WEBHOOK_URL,
+    ),
     N8N_BASE_URL: blankAsUndefined(process.env.N8N_BASE_URL),
     N8N_API_KEY: blankAsUndefined(process.env.N8N_API_KEY),
     N8N_WEBHOOK_SIGNING_SECRET: blankAsUndefined(

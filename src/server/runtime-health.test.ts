@@ -121,6 +121,7 @@ describe('capacidades de IA no readiness', () => {
 
   it('reporta configurado quando a chave está guardada no cofre do workspace', async () => {
     delete process.env.OPENAI_API_KEY
+    delete process.env.OMNIROUTE_API_KEY
     // O runtime resolve pelo cofre antes de olhar o ambiente; reportar só o
     // ambiente fazia o readiness negar um provedor que estava funcionando.
     const readiness = await checkRuntimeReadiness({
@@ -134,6 +135,7 @@ describe('capacidades de IA no readiness', () => {
 
   it('não pendura o healthcheck quando a consulta ao cofre trava', async () => {
     delete process.env.OPENAI_API_KEY
+    delete process.env.OMNIROUTE_API_KEY
     const readiness = await checkRuntimeReadiness({
       timeoutMs: 30,
       supabaseProbe: async () => undefined,

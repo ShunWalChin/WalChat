@@ -21,13 +21,29 @@ const clientRoot = path.resolve(scriptDirectory, '../dist/client')
 
 // O proxy informa host/protocolo externos; reconstruí-los mantém URLs e redirects corretos.
 const server = http.createServer(async (incoming, outgoing) => {
+  const startedAt = Date.now()
+  let requestId = randomUUID()
+  let requestPath = '/'
+  const method = incoming.method ?? 'GET'
+  outgoing.once('finish', () => {
+    console.log(
+      JSON.stringify({
+        event: 'http_request_completed',
+        requestId,
+        method,
+        path: requestPath,
+        status: outgoing.statusCode,
+        durationMs: Date.now() - startedAt,
+      }),
+    )
+  })
   try {
     // APP_ORIGIN é a autoridade canônica; Host/X-Forwarded-Host do cliente não
     // participam de redirects, cookies ou URLs absolutas.
     const url = new URL(incoming.url ?? '/', fallbackOrigin)
-    const method = incoming.method ?? 'GET'
+    requestPath = url.pathname
     const suppliedRequestId = firstHeader(incoming.headers['x-request-id'])
-    const requestId = /^[A-Za-z0-9._:-]{8,128}$/.test(suppliedRequestId ?? '')
+    requestId = /^[A-Za-z0-9._:-]{8,128}$/.test(suppliedRequestId ?? '')
       ? suppliedRequestId
       : randomUUID()
     outgoing.setHeader('x-request-id', requestId)
@@ -97,6 +113,10 @@ const server = http.createServer(async (incoming, outgoing) => {
     console.error(
       JSON.stringify({
         event: 'http_request_failed',
+        requestId,
+        method,
+        path: requestPath,
+        durationMs: Date.now() - startedAt,
         error: error instanceof Error ? error.name : 'unknown_error',
       }),
     )

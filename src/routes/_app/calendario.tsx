@@ -681,12 +681,17 @@ function CalendarPage() {
                   <option value="automation">Automações</option>
                 </select>
               </label>
-              <div className="view-switch" aria-label="Visualização">
+              <div
+                className="view-switch"
+                role="group"
+                aria-label="Visualização"
+              >
                 {(['month', 'week', 'agenda'] as const).map((view) => (
                   <button
                     key={view}
                     className={search.view === view ? 'active' : ''}
                     onClick={() => setSearch({ view })}
+                    aria-pressed={search.view === view}
                   >
                     {view === 'month'
                       ? 'Mês'

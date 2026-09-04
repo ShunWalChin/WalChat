@@ -613,14 +613,16 @@ function InboxPage() {
 
   return (
     <div className="inbox-shell">
+      <h1 className="sr-only">Inbox unificada</h1>
       <section className="conversation-list">
-        <div className="inbox-tabs">
+        <div className="inbox-tabs" role="group" aria-label="Filtrar conversas">
           {(['principal', 'geral', 'pedidos', 'ia_off'] as const).map(
             (item) => (
               <button
                 key={item}
                 className={tab === item ? 'active' : ''}
                 onClick={() => setTab(item)}
+                aria-pressed={tab === item}
               >
                 {item === 'ia_off' ? 'IA off' : item}
               </button>
@@ -629,6 +631,7 @@ function InboxPage() {
         </div>
         <label className="search-field">
           <Search size={16} />
+          <span className="sr-only">Buscar conversa</span>
           <input
             placeholder="Buscar conversa…"
             value={query}
@@ -646,6 +649,7 @@ function InboxPage() {
               key={conversation.id}
               className={`conversation-row ${selectedId === conversation.id ? 'active' : ''} ${conversation.unread > 0 ? 'unread' : ''}`}
               onClick={() => void selectConversation(conversation.id)}
+              aria-pressed={selectedId === conversation.id}
             >
               <span
                 className="avatar"

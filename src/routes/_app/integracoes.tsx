@@ -355,7 +355,8 @@ function IntegrationsPage() {
       {feedback && (
         <div
           className={feedback.tone === 'error' ? 'form-error' : 'form-success'}
-          role="status"
+          role={feedback.tone === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
         >
           {feedback.tone === 'success' ? (
             <CheckCircle2 size={16} />

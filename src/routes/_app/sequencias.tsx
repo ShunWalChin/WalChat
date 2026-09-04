@@ -698,7 +698,10 @@ function AutomationStudio() {
             )}
           </div>
         </aside>
-        <main className="automation-workspace glass-panel">
+        <section
+          className="automation-workspace glass-panel"
+          aria-label="Editor da jornada"
+        >
           {!draft || !detail || !layout ? (
             <div className="automation-empty-state">
               <Workflow size={34} />
@@ -948,7 +951,7 @@ function AutomationStudio() {
               </footer>
             </>
           )}
-        </main>
+        </section>
         <aside className="automation-inspector glass-panel">
           <header>
             <span className="eyebrow">INSPETOR</span>

@@ -8,11 +8,12 @@ import {
   requireWorkspaceContext,
 } from '../../../server/api-auth.server'
 import {
+  createCrmActivitySchema,
   leadStatusForStage,
   moveCrmLeadSchema,
   updateCrmLeadSchema,
 } from '../../../server/crm-pipeline-contract'
-import { writeCrmAudit } from '../../../server/crm-pipeline.server'
+import { workspaceMemberOptions } from '../../../server/contacts-crm.server'
 import { readJsonBody } from '../../../server/request-body.server'
 
 const requestSchema = z.discriminatedUnion('kind', [
@@ -23,6 +24,57 @@ const requestSchema = z.discriminatedUnion('kind', [
 export const Route = createFileRoute('/api/crm/$leadId')({
   server: {
     handlers: {
+      GET: async ({ request, params }) => {
+        try {
+          const context = await requireWorkspaceContext(request)
+          const { data: lead, error: leadError } = await context.admin
+            .from('crm_leads')
+            .select('id,title,contact_id,lock_version')
+            .eq('workspace_id', context.workspaceId)
+            .eq('id', params.leadId)
+            .maybeSingle()
+          if (leadError) throw leadError
+          if (!lead) throw new ApiError(404, 'Lead não encontrado.')
+
+          const [{ data: activities, error: activitiesError }, members] =
+            await Promise.all([
+              context.admin
+                .from('crm_lead_activities')
+                .select(
+                  'id,activity_type,payload,performed_by_user_id,performed_at,created_at',
+                )
+                .eq('workspace_id', context.workspaceId)
+                .eq('lead_id', lead.id)
+                .order('performed_at', { ascending: false })
+                .limit(100),
+              workspaceMemberOptions({
+                admin: context.admin,
+                workspaceId: context.workspaceId,
+              }),
+            ])
+          if (activitiesError) throw activitiesError
+          const memberNames = new Map(
+            members.map((member) => [member.id, member.name]),
+          )
+          return Response.json(
+            {
+              lead,
+              activities: activities.map((activity) => ({
+                id: activity.id,
+                type: activity.activity_type,
+                payload: activity.payload ?? {},
+                performedAt: activity.performed_at,
+                actorName: activity.performed_by_user_id
+                  ? (memberNames.get(activity.performed_by_user_id) ?? 'Membro')
+                  : 'Sistema',
+              })),
+            },
+            { headers: { 'Cache-Control': 'no-store' } },
+          )
+        } catch (error) {
+          return apiErrorResponse(error, 'Falha ao carregar o lead.')
+        }
+      },
       PATCH: async ({ request, params }) => {
         try {
           assertTrustedOrigin(request)
@@ -50,6 +102,7 @@ export const Route = createFileRoute('/api/crm/$leadId')({
 
           let changes: Record<string, unknown>
           let activityType: string
+          let activityDetails: Record<string, unknown> = {}
           if (input.kind === 'move') {
             const { data: stage, error: stageError } = await context.admin
               .from('crm_stages')
@@ -61,18 +114,41 @@ export const Route = createFileRoute('/api/crm/$leadId')({
             if (!stage || stage.pipeline_id !== current.pipeline_id)
               throw new ApiError(400, 'Etapa não pertence a este pipeline.')
             const status = leadStatusForStage(stage.terminal_state)
-            if (status === 'lost' && !input.lostReason)
+            const sameStage = stage.id === current.stage_id
+            if (!sameStage && status === 'lost' && !input.lostReason)
               throw new ApiError(422, 'Informe o motivo da perda.')
-            changes = {
-              stage_id: input.stageId,
-              position_in_stage: input.position,
-              status,
-              closed_at: status === 'open' ? null : new Date().toISOString(),
-              lost_reason: status === 'lost' ? input.lostReason : null,
-              last_activity_at: new Date().toISOString(),
+            if (sameStage) {
+              changes = {
+                position_in_stage: input.position,
+                last_activity_at: new Date().toISOString(),
+              }
+              activityType = 'lead_reordered'
+            } else {
+              changes = {
+                stage_id: input.stageId,
+                position_in_stage: input.position,
+                status,
+                closed_at: status === 'open' ? null : new Date().toISOString(),
+                lost_reason: status === 'lost' ? input.lostReason : null,
+                last_activity_at: new Date().toISOString(),
+              }
+              activityType = 'stage_moved'
+              activityDetails = {
+                fromStageId: current.stage_id,
+                toStageId: stage.id,
+                toStageName: stage.name,
+              }
             }
-            activityType = 'stage_moved'
           } else {
+            if (input.contactId) {
+              const { count, error } = await context.admin
+                .from('contacts')
+                .select('id', { count: 'exact', head: true })
+                .eq('workspace_id', context.workspaceId)
+                .eq('id', input.contactId)
+              if (error) throw error
+              if (!count) throw new ApiError(400, 'Contato não encontrado.')
+            }
             if (input.ownerUserId) {
               const { count, error } = await context.admin
                 .from('workspace_members')
@@ -91,6 +167,9 @@ export const Route = createFileRoute('/api/crm/$leadId')({
               ...(input.description === undefined
                 ? {}
                 : { description: input.description || null }),
+              ...(input.contactId === undefined
+                ? {}
+                : { contact_id: input.contactId }),
               ...(input.ownerUserId === undefined
                 ? {}
                 : {
@@ -108,7 +187,11 @@ export const Route = createFileRoute('/api/crm/$leadId')({
               ...(input.nextActionAt === undefined
                 ? {}
                 : { next_action_at: input.nextActionAt || null }),
+              ...(input.source === undefined ? {} : { source: input.source }),
               ...(input.tags === undefined ? {} : { tags: input.tags }),
+              ...(input.customFields === undefined
+                ? {}
+                : { custom_fields: input.customFields }),
               ...(input.status === undefined
                 ? {}
                 : {
@@ -123,45 +206,81 @@ export const Route = createFileRoute('/api/crm/$leadId')({
             activityType = 'lead_updated'
           }
 
-          const { data: updated, error } = await context.admin
-            .from('crm_leads')
-            .update(changes)
-            .eq('workspace_id', context.workspaceId)
-            .eq('id', params.leadId)
-            .eq('lock_version', input.expectedLockVersion)
-            .select('id,stage_id,status,lock_version,updated_at')
-            .maybeSingle()
-          if (error) throw error
-          if (!updated)
+          const { data: updated, error } = await context.admin.rpc(
+            'crm_update_lead_command',
+            {
+              target_workspace_id: context.workspaceId,
+              actor_user_id: context.user.id,
+              target_lead_id: params.leadId,
+              expected_lock_version: input.expectedLockVersion,
+              lead_changes: changes,
+              activity_type: activityType,
+              activity_details: activityDetails,
+              request_user_agent: request.headers.get('user-agent'),
+            },
+          )
+          if (error?.code === '40001')
             throw new ApiError(
               409,
               'Este lead mudou durante a edição. Atualize o quadro.',
             )
-
-          const { error: activityError } = await context.admin
-            .from('crm_lead_activities')
-            .insert({
-              workspace_id: context.workspaceId,
-              lead_id: current.id,
-              contact_id: current.contact_id,
-              activity_type: activityType,
-              payload: { before: current, after: updated },
-              performed_by_user_id: context.user.id,
-            })
-          if (activityError) throw activityError
-          await writeCrmAudit({
-            admin: context.admin,
-            workspaceId: context.workspaceId,
-            user: context.user,
-            action: activityType,
-            resourceType: 'crm_lead',
-            resourceId: current.id,
-            changes: { before: current, after: updated },
-            request,
-          })
+          if (error) throw error
           return Response.json(updated)
         } catch (error) {
           return apiErrorResponse(error, 'Falha ao atualizar o lead.')
+        }
+      },
+      POST: async ({ request, params }) => {
+        try {
+          assertTrustedOrigin(request)
+          const context = await requireWorkspaceContext(request, [
+            'owner',
+            'admin',
+            'agent',
+          ])
+          const input = createCrmActivitySchema.parse(
+            await readJsonBody(request),
+          )
+          const { data: lead, error: leadError } = await context.admin
+            .from('crm_leads')
+            .select('id,contact_id,title')
+            .eq('workspace_id', context.workspaceId)
+            .eq('id', params.leadId)
+            .maybeSingle()
+          if (leadError) throw leadError
+          if (!lead) throw new ApiError(404, 'Lead não encontrado.')
+
+          const payload = {
+            title: input.title || null,
+            body: input.body || null,
+            url: input.url || null,
+            dueAt: input.dueAt || null,
+          }
+          const { data: activity, error: activityError } =
+            await context.admin.rpc('crm_add_activity_command', {
+              target_workspace_id: context.workspaceId,
+              actor_user_id: context.user.id,
+              target_lead_id: lead.id,
+              activity_kind: input.activityType,
+              activity_payload: payload,
+              request_user_agent: request.headers.get('user-agent'),
+            })
+          if (activityError) throw activityError
+          const normalizedActivity = activity as unknown as {
+            id: string
+            type: string
+            payload: Record<string, unknown>
+            performedAt: string
+          }
+          return Response.json(
+            {
+              ...normalizedActivity,
+              actorName: context.user.email ?? 'Usuário atual',
+            },
+            { status: 201 },
+          )
+        } catch (error) {
+          return apiErrorResponse(error, 'Falha ao adicionar ao lead.')
         }
       },
     },

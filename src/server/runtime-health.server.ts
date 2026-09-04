@@ -133,7 +133,7 @@ export async function checkRuntimeReadiness(input?: {
       ),
     ]).catch(() => false)
   const [openaiStored, geminiStored] = await Promise.all([
-    env.OPENAI_API_KEY
+    env.OMNIROUTE_API_KEY || env.OPENAI_API_KEY
       ? Promise.resolve(true)
       : comTeto(storedCredential('openai')),
     env.GOOGLE_GENERATIVE_AI_API_KEY
@@ -166,6 +166,9 @@ export async function checkRuntimeReadiness(input?: {
       ),
       credentialEncryptionConfigured: hasValidCredentialEncryptionKey(),
       openaiConfigured: openaiStored,
+      omniRouteConfigured: Boolean(
+        env.OMNIROUTE_BASE_URL && (env.OMNIROUTE_API_KEY || openaiStored),
+      ),
       geminiConfigured: geminiStored,
       googleWorkspaceConfigured: Boolean(
         env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,

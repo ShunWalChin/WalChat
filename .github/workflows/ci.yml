@@ -46,11 +46,17 @@ jobs:
       - name: Testes unitários
         run: npm test
 
+      - name: E2E determinístico e auditoria responsiva
+        run: npm run audit:usability
+
       - name: Auditoria estática de rotas e limites
         run: npm run audit:system
 
       - name: Build cliente e SSR
         run: npm run build
+
+      - name: Orçamentos de bundle
+        run: npm run audit:bundle
 
       # validate:routes fala HTTP com o bundle real. Sobe o servidor de produção
       # em modo demo: /api/health é liveness puro e o SSR não precisa de
