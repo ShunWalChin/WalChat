@@ -21,7 +21,7 @@ transporte de IA pelo OmniRoute.
 | Bundle                | aprovado                           | CRM 99.383 B; entrada 253.443 B; CSS 182.809 B                                          |
 | Tipos, lint e formato | aprovado                           | TypeScript, ESLint e Prettier sem erro                                                  |
 | Banco local           | pendente de runtime                | Docker local não estava disponível; CI aplica as migrations duas vezes em PostgreSQL 16 |
-| Git                   | em reconciliação                   | histórico local e `github/main` têm patches equivalentes com hashes diferentes          |
+| Git                   | reconciliado                       | branch de release reaplicada sobre `github/main`, sem conflito pendente                 |
 | Produção              | ainda na release anterior          | promoção somente depois de backup e CI verde                                            |
 | OmniRoute             | código pronto; credencial pendente | login local rejeitou a senha padrão; nenhuma tentativa adicional foi feita              |
 
