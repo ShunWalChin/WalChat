@@ -78,11 +78,15 @@ import { Route as ApiComplianceCheckRouteImport } from './routes/api/compliance/
 import { Route as ApiContactsContactIdRouteImport } from './routes/api/contacts/$contactId'
 import { Route as ApiContactsBulkRouteImport } from './routes/api/contacts/bulk'
 import { Route as ApiCrmLeadIdRouteImport } from './routes/api/crm/$leadId'
+import { Route as ApiCrmAssetsRouteImport } from './routes/api/crm/assets'
+import { Route as ApiCrmBulkRouteImport } from './routes/api/crm/bulk'
+import { Route as ApiCrmExportRouteImport } from './routes/api/crm/export'
 import { Route as ApiCrmRadarRouteImport } from './routes/api/crm/radar'
 import { Route as ApiGrowthLinksQrcodeRouteImport } from './routes/api/growth-links/qrcode'
 import { Route as ApiInboxAgendarRouteImport } from './routes/api/inbox/agendar'
 import { Route as ApiMessagesSendRouteImport } from './routes/api/messages/send'
 import { Route as ApiOperationsGoLiveRouteImport } from './routes/api/operations/go-live'
+import { Route as ApiOperationsSloRouteImport } from './routes/api/operations/slo'
 import { Route as ApiOperationsWebhooksRouteImport } from './routes/api/operations/webhooks'
 import { Route as ApiPrivacyDeletionRequestsRouteImport } from './routes/api/privacy/deletion-requests'
 import { Route as ApiPublicReviewsRouteImport } from './routes/api/public/reviews'
@@ -90,6 +94,8 @@ import { Route as ApiTemplatesTemplateIdRouteImport } from './routes/api/templat
 import { Route as ApiAutomationsFlowIdExecuteRouteImport } from './routes/api/automations/$flowId/execute'
 import { Route as ApiAutomationsFlowIdSimulateRouteImport } from './routes/api/automations/$flowId/simulate'
 import { Route as ApiContactsContactIdNotesRouteImport } from './routes/api/contacts/$contactId/notes'
+import { Route as ApiCrmAssetsAssetIdRouteImport } from './routes/api/crm/assets/$assetId'
+import { Route as ApiCrmPipelinesPipelineIdRouteImport } from './routes/api/crm/pipelines/$pipelineId'
 import { Route as ApiIntegrationsConversionsConfigureRouteImport } from './routes/api/integrations/conversions/configure'
 import { Route as ApiIntegrationsConversionsDisconnectRouteImport } from './routes/api/integrations/conversions/disconnect'
 import { Route as ApiIntegrationsConversionsReplayRouteImport } from './routes/api/integrations/conversions/replay'
@@ -469,6 +475,21 @@ const ApiCrmLeadIdRoute = ApiCrmLeadIdRouteImport.update({
   path: '/$leadId',
   getParentRoute: () => ApiCrmRoute,
 } as any)
+const ApiCrmAssetsRoute = ApiCrmAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
+  getParentRoute: () => ApiCrmRoute,
+} as any)
+const ApiCrmBulkRoute = ApiCrmBulkRouteImport.update({
+  id: '/bulk',
+  path: '/bulk',
+  getParentRoute: () => ApiCrmRoute,
+} as any)
+const ApiCrmExportRoute = ApiCrmExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => ApiCrmRoute,
+} as any)
 const ApiCrmRadarRoute = ApiCrmRadarRouteImport.update({
   id: '/radar',
   path: '/radar',
@@ -492,6 +513,11 @@ const ApiMessagesSendRoute = ApiMessagesSendRouteImport.update({
 const ApiOperationsGoLiveRoute = ApiOperationsGoLiveRouteImport.update({
   id: '/api/operations/go-live',
   path: '/api/operations/go-live',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOperationsSloRoute = ApiOperationsSloRouteImport.update({
+  id: '/api/operations/slo',
+  path: '/api/operations/slo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOperationsWebhooksRoute = ApiOperationsWebhooksRouteImport.update({
@@ -532,6 +558,17 @@ const ApiContactsContactIdNotesRoute =
     id: '/notes',
     path: '/notes',
     getParentRoute: () => ApiContactsContactIdRoute,
+  } as any)
+const ApiCrmAssetsAssetIdRoute = ApiCrmAssetsAssetIdRouteImport.update({
+  id: '/$assetId',
+  path: '/$assetId',
+  getParentRoute: () => ApiCrmAssetsRoute,
+} as any)
+const ApiCrmPipelinesPipelineIdRoute =
+  ApiCrmPipelinesPipelineIdRouteImport.update({
+    id: '/pipelines/$pipelineId',
+    path: '/pipelines/$pipelineId',
+    getParentRoute: () => ApiCrmRoute,
   } as any)
 const ApiIntegrationsConversionsConfigureRoute =
   ApiIntegrationsConversionsConfigureRouteImport.update({
@@ -805,11 +842,15 @@ export interface FileRoutesByFullPath {
   '/api/contacts/$contactId': typeof ApiContactsContactIdRouteWithChildren
   '/api/contacts/bulk': typeof ApiContactsBulkRoute
   '/api/crm/$leadId': typeof ApiCrmLeadIdRoute
+  '/api/crm/assets': typeof ApiCrmAssetsRouteWithChildren
+  '/api/crm/bulk': typeof ApiCrmBulkRoute
+  '/api/crm/export': typeof ApiCrmExportRoute
   '/api/crm/radar': typeof ApiCrmRadarRoute
   '/api/growth-links/qrcode': typeof ApiGrowthLinksQrcodeRoute
   '/api/inbox/agendar': typeof ApiInboxAgendarRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
+  '/api/operations/slo': typeof ApiOperationsSloRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
   '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
   '/api/public/reviews': typeof ApiPublicReviewsRoute
@@ -817,6 +858,8 @@ export interface FileRoutesByFullPath {
   '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
   '/api/automations/$flowId/simulate': typeof ApiAutomationsFlowIdSimulateRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
+  '/api/crm/assets/$assetId': typeof ApiCrmAssetsAssetIdRoute
+  '/api/crm/pipelines/$pipelineId': typeof ApiCrmPipelinesPipelineIdRoute
   '/api/integrations/conversions/configure': typeof ApiIntegrationsConversionsConfigureRoute
   '/api/integrations/conversions/disconnect': typeof ApiIntegrationsConversionsDisconnectRoute
   '/api/integrations/conversions/replay': typeof ApiIntegrationsConversionsReplayRoute
@@ -921,11 +964,15 @@ export interface FileRoutesByTo {
   '/api/contacts/$contactId': typeof ApiContactsContactIdRouteWithChildren
   '/api/contacts/bulk': typeof ApiContactsBulkRoute
   '/api/crm/$leadId': typeof ApiCrmLeadIdRoute
+  '/api/crm/assets': typeof ApiCrmAssetsRouteWithChildren
+  '/api/crm/bulk': typeof ApiCrmBulkRoute
+  '/api/crm/export': typeof ApiCrmExportRoute
   '/api/crm/radar': typeof ApiCrmRadarRoute
   '/api/growth-links/qrcode': typeof ApiGrowthLinksQrcodeRoute
   '/api/inbox/agendar': typeof ApiInboxAgendarRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
+  '/api/operations/slo': typeof ApiOperationsSloRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
   '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
   '/api/public/reviews': typeof ApiPublicReviewsRoute
@@ -933,6 +980,8 @@ export interface FileRoutesByTo {
   '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
   '/api/automations/$flowId/simulate': typeof ApiAutomationsFlowIdSimulateRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
+  '/api/crm/assets/$assetId': typeof ApiCrmAssetsAssetIdRoute
+  '/api/crm/pipelines/$pipelineId': typeof ApiCrmPipelinesPipelineIdRoute
   '/api/integrations/conversions/configure': typeof ApiIntegrationsConversionsConfigureRoute
   '/api/integrations/conversions/disconnect': typeof ApiIntegrationsConversionsDisconnectRoute
   '/api/integrations/conversions/replay': typeof ApiIntegrationsConversionsReplayRoute
@@ -1039,11 +1088,15 @@ export interface FileRoutesById {
   '/api/contacts/$contactId': typeof ApiContactsContactIdRouteWithChildren
   '/api/contacts/bulk': typeof ApiContactsBulkRoute
   '/api/crm/$leadId': typeof ApiCrmLeadIdRoute
+  '/api/crm/assets': typeof ApiCrmAssetsRouteWithChildren
+  '/api/crm/bulk': typeof ApiCrmBulkRoute
+  '/api/crm/export': typeof ApiCrmExportRoute
   '/api/crm/radar': typeof ApiCrmRadarRoute
   '/api/growth-links/qrcode': typeof ApiGrowthLinksQrcodeRoute
   '/api/inbox/agendar': typeof ApiInboxAgendarRoute
   '/api/messages/send': typeof ApiMessagesSendRoute
   '/api/operations/go-live': typeof ApiOperationsGoLiveRoute
+  '/api/operations/slo': typeof ApiOperationsSloRoute
   '/api/operations/webhooks': typeof ApiOperationsWebhooksRoute
   '/api/privacy/deletion-requests': typeof ApiPrivacyDeletionRequestsRoute
   '/api/public/reviews': typeof ApiPublicReviewsRoute
@@ -1051,6 +1104,8 @@ export interface FileRoutesById {
   '/api/automations/$flowId/execute': typeof ApiAutomationsFlowIdExecuteRoute
   '/api/automations/$flowId/simulate': typeof ApiAutomationsFlowIdSimulateRoute
   '/api/contacts/$contactId/notes': typeof ApiContactsContactIdNotesRoute
+  '/api/crm/assets/$assetId': typeof ApiCrmAssetsAssetIdRoute
+  '/api/crm/pipelines/$pipelineId': typeof ApiCrmPipelinesPipelineIdRoute
   '/api/integrations/conversions/configure': typeof ApiIntegrationsConversionsConfigureRoute
   '/api/integrations/conversions/disconnect': typeof ApiIntegrationsConversionsDisconnectRoute
   '/api/integrations/conversions/replay': typeof ApiIntegrationsConversionsReplayRoute
@@ -1157,11 +1212,15 @@ export interface FileRouteTypes {
     | '/api/contacts/$contactId'
     | '/api/contacts/bulk'
     | '/api/crm/$leadId'
+    | '/api/crm/assets'
+    | '/api/crm/bulk'
+    | '/api/crm/export'
     | '/api/crm/radar'
     | '/api/growth-links/qrcode'
     | '/api/inbox/agendar'
     | '/api/messages/send'
     | '/api/operations/go-live'
+    | '/api/operations/slo'
     | '/api/operations/webhooks'
     | '/api/privacy/deletion-requests'
     | '/api/public/reviews'
@@ -1169,6 +1228,8 @@ export interface FileRouteTypes {
     | '/api/automations/$flowId/execute'
     | '/api/automations/$flowId/simulate'
     | '/api/contacts/$contactId/notes'
+    | '/api/crm/assets/$assetId'
+    | '/api/crm/pipelines/$pipelineId'
     | '/api/integrations/conversions/configure'
     | '/api/integrations/conversions/disconnect'
     | '/api/integrations/conversions/replay'
@@ -1273,11 +1334,15 @@ export interface FileRouteTypes {
     | '/api/contacts/$contactId'
     | '/api/contacts/bulk'
     | '/api/crm/$leadId'
+    | '/api/crm/assets'
+    | '/api/crm/bulk'
+    | '/api/crm/export'
     | '/api/crm/radar'
     | '/api/growth-links/qrcode'
     | '/api/inbox/agendar'
     | '/api/messages/send'
     | '/api/operations/go-live'
+    | '/api/operations/slo'
     | '/api/operations/webhooks'
     | '/api/privacy/deletion-requests'
     | '/api/public/reviews'
@@ -1285,6 +1350,8 @@ export interface FileRouteTypes {
     | '/api/automations/$flowId/execute'
     | '/api/automations/$flowId/simulate'
     | '/api/contacts/$contactId/notes'
+    | '/api/crm/assets/$assetId'
+    | '/api/crm/pipelines/$pipelineId'
     | '/api/integrations/conversions/configure'
     | '/api/integrations/conversions/disconnect'
     | '/api/integrations/conversions/replay'
@@ -1390,11 +1457,15 @@ export interface FileRouteTypes {
     | '/api/contacts/$contactId'
     | '/api/contacts/bulk'
     | '/api/crm/$leadId'
+    | '/api/crm/assets'
+    | '/api/crm/bulk'
+    | '/api/crm/export'
     | '/api/crm/radar'
     | '/api/growth-links/qrcode'
     | '/api/inbox/agendar'
     | '/api/messages/send'
     | '/api/operations/go-live'
+    | '/api/operations/slo'
     | '/api/operations/webhooks'
     | '/api/privacy/deletion-requests'
     | '/api/public/reviews'
@@ -1402,6 +1473,8 @@ export interface FileRouteTypes {
     | '/api/automations/$flowId/execute'
     | '/api/automations/$flowId/simulate'
     | '/api/contacts/$contactId/notes'
+    | '/api/crm/assets/$assetId'
+    | '/api/crm/pipelines/$pipelineId'
     | '/api/integrations/conversions/configure'
     | '/api/integrations/conversions/disconnect'
     | '/api/integrations/conversions/replay'
@@ -1478,6 +1551,7 @@ export interface RootRouteChildren {
   ApiComplianceCheckRoute: typeof ApiComplianceCheckRoute
   ApiMessagesSendRoute: typeof ApiMessagesSendRoute
   ApiOperationsGoLiveRoute: typeof ApiOperationsGoLiveRoute
+  ApiOperationsSloRoute: typeof ApiOperationsSloRoute
   ApiOperationsWebhooksRoute: typeof ApiOperationsWebhooksRoute
   ApiPrivacyDeletionRequestsRoute: typeof ApiPrivacyDeletionRequestsRoute
   ApiPublicReviewsRoute: typeof ApiPublicReviewsRoute
@@ -2002,6 +2076,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCrmLeadIdRouteImport
       parentRoute: typeof ApiCrmRoute
     }
+    '/api/crm/assets': {
+      id: '/api/crm/assets'
+      path: '/assets'
+      fullPath: '/api/crm/assets'
+      preLoaderRoute: typeof ApiCrmAssetsRouteImport
+      parentRoute: typeof ApiCrmRoute
+    }
+    '/api/crm/bulk': {
+      id: '/api/crm/bulk'
+      path: '/bulk'
+      fullPath: '/api/crm/bulk'
+      preLoaderRoute: typeof ApiCrmBulkRouteImport
+      parentRoute: typeof ApiCrmRoute
+    }
+    '/api/crm/export': {
+      id: '/api/crm/export'
+      path: '/export'
+      fullPath: '/api/crm/export'
+      preLoaderRoute: typeof ApiCrmExportRouteImport
+      parentRoute: typeof ApiCrmRoute
+    }
     '/api/crm/radar': {
       id: '/api/crm/radar'
       path: '/radar'
@@ -2035,6 +2130,13 @@ declare module '@tanstack/react-router' {
       path: '/api/operations/go-live'
       fullPath: '/api/operations/go-live'
       preLoaderRoute: typeof ApiOperationsGoLiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/operations/slo': {
+      id: '/api/operations/slo'
+      path: '/api/operations/slo'
+      fullPath: '/api/operations/slo'
+      preLoaderRoute: typeof ApiOperationsSloRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/operations/webhooks': {
@@ -2085,6 +2187,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/contacts/$contactId/notes'
       preLoaderRoute: typeof ApiContactsContactIdNotesRouteImport
       parentRoute: typeof ApiContactsContactIdRoute
+    }
+    '/api/crm/assets/$assetId': {
+      id: '/api/crm/assets/$assetId'
+      path: '/$assetId'
+      fullPath: '/api/crm/assets/$assetId'
+      preLoaderRoute: typeof ApiCrmAssetsAssetIdRouteImport
+      parentRoute: typeof ApiCrmAssetsRoute
+    }
+    '/api/crm/pipelines/$pipelineId': {
+      id: '/api/crm/pipelines/$pipelineId'
+      path: '/pipelines/$pipelineId'
+      fullPath: '/api/crm/pipelines/$pipelineId'
+      preLoaderRoute: typeof ApiCrmPipelinesPipelineIdRouteImport
+      parentRoute: typeof ApiCrmRoute
     }
     '/api/integrations/conversions/configure': {
       id: '/api/integrations/conversions/configure'
@@ -2451,14 +2567,34 @@ const ApiContactsRouteWithChildren = ApiContactsRoute._addFileChildren(
   ApiContactsRouteChildren,
 )
 
+interface ApiCrmAssetsRouteChildren {
+  ApiCrmAssetsAssetIdRoute: typeof ApiCrmAssetsAssetIdRoute
+}
+
+const ApiCrmAssetsRouteChildren: ApiCrmAssetsRouteChildren = {
+  ApiCrmAssetsAssetIdRoute: ApiCrmAssetsAssetIdRoute,
+}
+
+const ApiCrmAssetsRouteWithChildren = ApiCrmAssetsRoute._addFileChildren(
+  ApiCrmAssetsRouteChildren,
+)
+
 interface ApiCrmRouteChildren {
   ApiCrmLeadIdRoute: typeof ApiCrmLeadIdRoute
+  ApiCrmAssetsRoute: typeof ApiCrmAssetsRouteWithChildren
+  ApiCrmBulkRoute: typeof ApiCrmBulkRoute
+  ApiCrmExportRoute: typeof ApiCrmExportRoute
   ApiCrmRadarRoute: typeof ApiCrmRadarRoute
+  ApiCrmPipelinesPipelineIdRoute: typeof ApiCrmPipelinesPipelineIdRoute
 }
 
 const ApiCrmRouteChildren: ApiCrmRouteChildren = {
   ApiCrmLeadIdRoute: ApiCrmLeadIdRoute,
+  ApiCrmAssetsRoute: ApiCrmAssetsRouteWithChildren,
+  ApiCrmBulkRoute: ApiCrmBulkRoute,
+  ApiCrmExportRoute: ApiCrmExportRoute,
   ApiCrmRadarRoute: ApiCrmRadarRoute,
+  ApiCrmPipelinesPipelineIdRoute: ApiCrmPipelinesPipelineIdRoute,
 }
 
 const ApiCrmRouteWithChildren =
@@ -2540,6 +2676,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiComplianceCheckRoute: ApiComplianceCheckRoute,
   ApiMessagesSendRoute: ApiMessagesSendRoute,
   ApiOperationsGoLiveRoute: ApiOperationsGoLiveRoute,
+  ApiOperationsSloRoute: ApiOperationsSloRoute,
   ApiOperationsWebhooksRoute: ApiOperationsWebhooksRoute,
   ApiPrivacyDeletionRequestsRoute: ApiPrivacyDeletionRequestsRoute,
   ApiPublicReviewsRoute: ApiPublicReviewsRoute,

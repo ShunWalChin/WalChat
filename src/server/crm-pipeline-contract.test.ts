@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   classifyCrmRisk,
+  createCrmActivitySchema,
   createCrmLeadSchema,
+  createCrmStageSchema,
   leadStatusForStage,
   scoreBand,
   slugifyPipelineName,
   updateCrmLeadSchema,
+  updatePipelineSchema,
 } from './crm-pipeline-contract'
 
 describe('contrato do CRM avançado', () => {
@@ -60,5 +63,56 @@ describe('contrato do CRM avançado', () => {
     expect(scoreBand(50)).toBe('morno')
     expect(scoreBand(10)).toBe('frio')
     expect(scoreBand(null)).toBeNull()
+  })
+
+  it('valida atributos personalizados sem aceitar um payload ilimitado', () => {
+    expect(
+      updateCrmLeadSchema.safeParse({
+        expectedLockVersion: 3,
+        customFields: { segmento: 'Enterprise', unidades: 4, contrato: true },
+      }).success,
+    ).toBe(true)
+    expect(
+      updateCrmLeadSchema.safeParse({
+        expectedLockVersion: 3,
+        customFields: Object.fromEntries(
+          Array.from({ length: 31 }, (_, index) => [`campo-${index}`, 'x']),
+        ),
+      }).success,
+    ).toBe(false)
+  })
+
+  it('exige conteúdo coerente para cada ativo do lead', () => {
+    expect(
+      createCrmActivitySchema.safeParse({
+        activityType: 'note',
+        body: 'Cliente pediu retorno na sexta.',
+      }).success,
+    ).toBe(true)
+    expect(
+      createCrmActivitySchema.safeParse({
+        activityType: 'document',
+        title: 'Proposta comercial',
+      }).success,
+    ).toBe(false)
+    expect(
+      createCrmActivitySchema.safeParse({
+        activityType: 'link',
+        title: 'Destino inseguro',
+        url: 'javascript:alert(1)',
+      }).success,
+    ).toBe(false)
+  })
+
+  it('protege a configuração do pipeline e das etapas', () => {
+    expect(updatePipelineSchema.safeParse({}).success).toBe(false)
+    expect(
+      createCrmStageSchema.safeParse({
+        name: 'Diagnóstico',
+        color: '#2563EB',
+        terminalState: 'open',
+        expectedDurationHours: 48,
+      }).success,
+    ).toBe(true)
   })
 })

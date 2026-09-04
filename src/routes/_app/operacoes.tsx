@@ -66,6 +66,25 @@ type WebhookStatus = {
   events: WebhookEvent[]
   summary: Record<WebhookEvent['status'], number>
 }
+type SloService = {
+  id: 'scheduler' | 'webhooks' | 'ai' | 'conversions'
+  label: string
+  status: CheckStatus
+  targetRate: number
+  successRate: number | null
+  total: number
+  completed: number
+  failed: number
+  backlog: number
+  oldestMinutes: number | null
+  p95LatencyMs: number | null
+}
+type SloStatus = {
+  windowHours: number
+  generatedAt: string
+  overall: CheckStatus
+  services: SloService[]
+}
 
 const categoryLabels: Record<GoLiveCheck['category'], string> = {
   infra: 'Infraestrutura',
@@ -78,6 +97,7 @@ const categoryLabels: Record<GoLiveCheck['category'], string> = {
 function OperationsPage() {
   const [goLive, setGoLive] = useState<GoLiveStatus | null>(null)
   const [webhooks, setWebhooks] = useState<WebhookStatus | null>(null)
+  const [slos, setSlos] = useState<SloStatus | null>(null)
   const [confirmation, setConfirmation] = useState('')
   const [busy, setBusy] = useState<string | null>('load')
   const [feedback, setFeedback] = useState<{
@@ -88,12 +108,14 @@ function OperationsPage() {
   const load = useCallback(async (silent = false) => {
     if (!silent) setBusy('load')
     try {
-      const [status, events] = await Promise.all([
+      const [status, events, operationalSlos] = await Promise.all([
         apiFetch<GoLiveStatus>('/api/operations/go-live'),
         apiFetch<WebhookStatus>('/api/operations/webhooks'),
+        apiFetch<SloStatus>('/api/operations/slo').catch(() => null),
       ])
       setGoLive(status)
       setWebhooks(events)
+      setSlos(operationalSlos)
       if (!silent) setFeedback(null)
     } catch (error) {
       setFeedback({
@@ -381,6 +403,94 @@ function OperationsPage() {
           </article>
         </aside>
       </div>
+
+      <section className="card operational-slos">
+        <div className="card-head">
+          <div>
+            <span className="eyebrow">SLOS · ÚLTIMAS 24 HORAS</span>
+            <h3>Saúde dos serviços críticos</h3>
+          </div>
+          <StatusDot
+            tone={
+              slos?.overall === 'fail'
+                ? 'red'
+                : slos?.overall === 'warning'
+                  ? 'orange'
+                  : 'green'
+            }
+          >
+            {!slos
+              ? 'Sem leitura'
+              : slos.overall === 'pass'
+                ? 'Dentro dos limites'
+                : slos.overall === 'warning'
+                  ? 'Requer atenção'
+                  : 'Incidente aberto'}
+          </StatusDot>
+        </div>
+        <p className="slo-intro">
+          Alertas aparecem quando há falhas, fila acumulada ou eventos antigos.
+          Taxas sem amostra são exibidas como “sem volume”, sem falso positivo.
+        </p>
+        <div className="slo-grid">
+          {(slos?.services ?? []).map((service) => (
+            <article className={`slo-card ${service.status}`} key={service.id}>
+              <div className="slo-card-head">
+                <span className={`slo-state ${service.status}`} aria-hidden />
+                <strong>{service.label}</strong>
+                <small>meta ≥ {service.targetRate}%</small>
+              </div>
+              <div className="slo-rate">
+                <strong>
+                  {service.successRate === null
+                    ? '—'
+                    : `${service.successRate}%`}
+                </strong>
+                <span>
+                  {service.successRate === null
+                    ? 'sem volume'
+                    : 'sucesso na janela'}
+                </span>
+              </div>
+              <dl className="slo-facts">
+                <div>
+                  <dt>Total</dt>
+                  <dd>{service.total}</dd>
+                </div>
+                <div>
+                  <dt>Falhas</dt>
+                  <dd>{service.failed}</dd>
+                </div>
+                <div>
+                  <dt>Fila</dt>
+                  <dd>{service.backlog}</dd>
+                </div>
+                <div>
+                  <dt>
+                    {service.p95LatencyMs === null ? 'Mais antigo' : 'P95'}
+                  </dt>
+                  <dd>
+                    {service.p95LatencyMs !== null
+                      ? `${service.p95LatencyMs} ms`
+                      : service.oldestMinutes !== null
+                        ? `${service.oldestMinutes} min`
+                        : '—'}
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          ))}
+          {slos && slos.services.length === 0 && (
+            <p className="table-empty">Nenhum serviço disponível.</p>
+          )}
+          {!slos && (
+            <p className="slo-unavailable">
+              Indicadores ainda indisponíveis. A operação principal continua
+              monitorada pelo checklist e pelos eventos abaixo.
+            </p>
+          )}
+        </div>
+      </section>
 
       <section className="card webhook-observability">
         <div className="card-head">

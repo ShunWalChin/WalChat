@@ -35,7 +35,10 @@ export const Route = createFileRoute('/api/health')({
               instagram: instagramConfigured,
               whatsapp: whatsappConfigured,
               credentialEncryption: hasValidCredentialEncryptionKey(),
-              openai: Boolean(env.OPENAI_API_KEY),
+              openai: Boolean(env.OMNIROUTE_API_KEY || env.OPENAI_API_KEY),
+              omniRoute: Boolean(
+                env.OMNIROUTE_BASE_URL && env.OMNIROUTE_API_KEY,
+              ),
               gemini: Boolean(env.GOOGLE_GENERATIVE_AI_API_KEY),
               googleWorkspace: Boolean(
                 env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,

@@ -3,6 +3,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import {
   AlertTriangle,
   ArrowRight,
+  ArrowUp,
   BookOpenCheck,
   Bot,
   CalendarDays,
@@ -193,7 +194,7 @@ function ManualPage() {
         <div className="manual-hero-copy">
           <span className="manual-kicker">
             <BookOpenCheck size={16} /> GUIA OPERACIONAL · ATUALIZADO EM
-            20/08/2026
+            03/09/2026
           </span>
           <h2 id="manual-title">Wal Chat, do acesso ao Go-Live.</h2>
           <p>
@@ -218,17 +219,17 @@ function ManualPage() {
         </div>
         <div className="manual-hero-status">
           <span className="manual-status-label">BASELINE ATUAL</span>
-          <strong>Homologação protegida</strong>
+          <strong>Produção estável</strong>
           <p>
-            Mantenha o modo demo e os kill switches desligados até concluir
-            todos os gates deste manual.
+            Runtime live, aplicação, banco e Redis saudáveis. Revise os gates do
+            workspace antes de qualquer envio externo.
           </p>
           <div className="manual-status-row">
             <span>
-              <i /> Backend auditado
+              <i /> Runtime saudável
             </span>
             <span>
-              <i /> Disparos bloqueados
+              <i /> Gates por workspace
             </span>
           </div>
         </div>
@@ -296,7 +297,11 @@ function ManualPage() {
             </div>
           </aside>
 
-          <main className="manual-content">
+          <div
+            className="manual-content"
+            role="region"
+            aria-label="Conteúdo do manual"
+          >
             {show('inicio') && (
               <ManualSection
                 id="inicio"
@@ -962,32 +967,35 @@ function ManualPage() {
                       </ModuleRow>
                       <ModuleRow
                         name="Inbox e envio humano"
-                        status="Piloto"
-                        tone="blue"
+                        status="Funcional"
+                        tone="green"
                       >
-                        Uso controlado após conectar uma conta Meta real.
+                        Conversas multicanal, atribuição, prioridade, notas,
+                        respostas rápidas, IA e compliance no mesmo fluxo.
                       </ModuleRow>
                       <ModuleRow
                         name="Gatilhos e Comment-to-DM"
-                        status="Piloto"
-                        tone="blue"
+                        status="Funcional"
+                        tone="green"
                       >
-                        Uma regra curta com conta de teste e supervisão.
+                        Regras persistidas, publicação real, cooldown, limite
+                        por conta e uma Private Reply por comentário.
                       </ModuleRow>
                       <ModuleRow
                         name="Agentes e base de conhecimento"
-                        status="Piloto"
-                        tone="blue"
+                        status="Funcional"
+                        tone="green"
                       >
-                        Copiloto com revisão humana.
+                        OpenAI configurada por workspace, copiloto, modo
+                        autônomo protegido, fontes, orçamento e telemetria.
                       </ModuleRow>
                       <ModuleRow
                         name="Sequências"
-                        status="Parcial"
-                        tone="orange"
+                        status="Funcional"
+                        tone="green"
                       >
-                        Backend agenda passos; editor ainda não cobre todo o
-                        ciclo.
+                        Automation Studio v2 com DAG versionado, simulação,
+                        publicação imutável, scheduler e trilha de execução.
                       </ModuleRow>
                       <ModuleRow
                         name="Dashboard e contatos multicanal"
@@ -1001,10 +1009,11 @@ function ManualPage() {
                       </ModuleRow>
                       <ModuleRow
                         name="Campanhas e reengajamento"
-                        status="Protótipo"
-                        tone="red"
+                        status="Protegido"
+                        tone="blue"
                       >
-                        Não realiza campanha real completa.
+                        Preview, elegibilidade, persistência, início, pausa,
+                        cancelamento e vazão; envio depende do gate externo.
                       </ModuleRow>
                       <ModuleRow
                         name="Calendário e agendamentos"
@@ -1015,16 +1024,37 @@ function ManualPage() {
                         públicos, CRM e integração com IA/gatilhos. Requer
                         credenciais Google para efeitos externos.
                       </ModuleRow>
-                      <ModuleRow
-                        name="Publicar e auto-like"
-                        status="Protótipo"
-                        tone="red"
-                      >
-                        Interface visual; execução Meta ainda não é produção.
+                      <ModuleRow name="Publicar" status="Protegido" tone="blue">
+                        Feed, Reel, Story e Carrossel persistidos, agendados e
+                        publicados pelo scheduler após o gate externo.
                       </ModuleRow>
-                      <ModuleRow name="Insights" status="Protótipo" tone="red">
-                        A tela não exibe mais métricas fictícias. A próxima fase
-                        deve implementar ingestão oficial, histórico e análise.
+                      <ModuleRow
+                        name="Insights"
+                        status="Funcional"
+                        tone="green"
+                      >
+                        Métricas oficiais diárias e por publicação, com
+                        snapshots de seguidores e histórico reconstruído.
+                      </ModuleRow>
+                      <ModuleRow
+                        name="Auto-like"
+                        status="Limitação oficial"
+                        tone="orange"
+                      >
+                        As preferências são salvas, mas a API oficial da Meta
+                        não oferece curtida de comentários.
+                      </ModuleRow>
+                      <ModuleRow name="n8n" status="Funcional" tone="green">
+                        Gateway bidirecional, HMAC, idempotência e workflows
+                        operacionais.
+                      </ModuleRow>
+                      <ModuleRow
+                        name="Google Ads OCI e Meta CAPI"
+                        status="Aguardando deploy"
+                        tone="orange"
+                      >
+                        Implementado e testado na base local; ainda não faz
+                        parte da release ativa em produção.
                       </ModuleRow>
                     </tbody>
                   </table>
@@ -1174,9 +1204,31 @@ function ManualPage() {
                     text="Aplicação e autenticação"
                   />
                   <ManualLink
+                    href="/configuracoes"
+                    title="Configurações"
+                    text="Conta, canais e provedor de IA"
+                    internal
+                  />
+                  <ManualLink
+                    href="/integracoes"
+                    title="Integrações"
+                    text="Meta, Google, n8n e conversões"
+                    internal
+                  />
+                  <ManualLink
+                    href="https://wal-chat.64.181.178.125.nip.io/api/health"
+                    title="Liveness"
+                    text="Processo e modo do runtime"
+                  />
+                  <ManualLink
                     href="https://wal-chat.64.181.178.125.nip.io/api/ready"
                     title="Readiness"
                     text="Banco e Redis"
+                  />
+                  <ManualLink
+                    href="https://n8n.fattech.com.br/"
+                    title="n8n Wal Chat"
+                    text="Automações operacionais"
                   />
                   <ManualLink
                     href="https://developers.facebook.com/apps/"
@@ -1189,9 +1241,19 @@ function ManualPage() {
                     text="Ativos e portfólio"
                   />
                   <ManualLink
-                    href="https://platform.openai.com/"
-                    title="OpenAI Platform"
-                    text="Projetos, chaves e uso"
+                    href="https://platform.openai.com/api-keys"
+                    title="Chaves OpenAI"
+                    text="Projetos e credenciais de API"
+                  />
+                  <ManualLink
+                    href="https://ads.google.com/"
+                    title="Google Ads"
+                    text="Conversões e campanhas"
+                  />
+                  <ManualLink
+                    href="https://console.cloud.google.com/"
+                    title="Google Cloud"
+                    text="OAuth, Calendar, Tasks e Ads API"
                   />
                   <ManualLink
                     href="https://github.com/ShunWalChin/WalChat"
@@ -1223,9 +1285,12 @@ function ManualPage() {
                 </Callout>
               </ManualSection>
             )}
-          </main>
+          </div>
         </div>
       )}
+      <a className="manual-back-to-top" href="#manual-title">
+        <ArrowUp size={16} /> Voltar ao topo
+      </a>
     </div>
   )
 }

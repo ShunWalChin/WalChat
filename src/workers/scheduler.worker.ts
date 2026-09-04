@@ -48,6 +48,7 @@ import {
 } from '../server/rate-limit.server'
 import { evaluateCompliance } from '../server/compliance'
 import { processAdConversionEvent } from '../server/ad-conversions.server'
+import { dispatchOperationalAlerts } from '../server/operations-alerts.server'
 
 /**
  * Prazo de resposta vencido.
@@ -88,6 +89,7 @@ let lastGoogleCalendarSweep = 0
 let lastCrmRiskSweep = 0
 let lastNextReelSweep = 0
 let lastFollowerSnapshotSweep = 0
+let lastOperationalAlertSweep = 0
 
 /** Materializa somente mudanças de faixa para o Radar, sem tocar o lead. */
 /**
@@ -164,6 +166,26 @@ async function snapshotDueFollowers() {
   }
 }
 
+/** Alertas não interrompem os jobs: uma indisponibilidade do canal é registrada e retentada. */
+async function checkOperationalAlerts() {
+  if (Date.now() - lastOperationalAlertSweep < 5 * 60_000) return
+  lastOperationalAlertSweep = Date.now()
+  try {
+    const result = await dispatchOperationalAlerts()
+    if (result.notified)
+      console.log(
+        JSON.stringify({ event: 'operational_alerts_sent', ...result }),
+      )
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: 'operational_alert_dispatch_failed',
+        error: operationalErrorCode(error),
+      }),
+    )
+  }
+}
+
 /**
  * Recupera locks abandonados após crash. Claims externos antigos viram
  * `unknown` antes do job voltar à fila, impedindo um segundo disparo cego.
@@ -232,7 +254,7 @@ async function refreshDueMetaTokens() {
         expiresAt,
         metadata: { tokenType: refreshed.token_type ?? 'bearer' },
       })
-      await supabase
+      const { error: accountUpdateError } = await supabase
         .from('instagram_accounts')
         .update({
           token_expires_at: expiresAt,
@@ -241,6 +263,7 @@ async function refreshDueMetaTokens() {
           connection_error: null,
         })
         .eq('id', account.id)
+      if (accountUpdateError) throw accountUpdateError
       await writeIntegrationAudit({
         workspaceId: account.workspace_id,
         provider: 'meta',
@@ -253,13 +276,22 @@ async function refreshDueMetaTokens() {
       const expired =
         account.token_expires_at &&
         new Date(account.token_expires_at).getTime() <= Date.now()
-      await supabase
+      const { error: accountFailureUpdateError } = await supabase
         .from('instagram_accounts')
         .update({
           status: expired ? 'expired' : 'connected',
           connection_error: message,
         })
         .eq('id', account.id)
+      if (accountFailureUpdateError)
+        console.error(
+          JSON.stringify({
+            event: 'meta_token_refresh_failure_persistence_failed',
+            accountId: account.id,
+            error: operationalErrorCode(accountFailureUpdateError),
+            originalError: message,
+          }),
+        )
       await writeIntegrationAudit({
         workspaceId: account.workspace_id,
         provider: 'meta',
@@ -306,7 +338,7 @@ async function syncDueGoogleCalendars() {
       })
     } catch (caught) {
       const code = operationalErrorCode(caught)
-      await supabase
+      const { error: connectionUpdateError } = await supabase
         .from('calendar_connections')
         .update({
           connection_error: code,
@@ -314,6 +346,15 @@ async function syncDueGoogleCalendars() {
         })
         .eq('id', connection.id)
         .eq('workspace_id', connection.workspace_id)
+      if (connectionUpdateError)
+        console.error(
+          JSON.stringify({
+            event: 'calendar_sync_failure_persistence_failed',
+            connectionId: connection.id,
+            error: operationalErrorCode(connectionUpdateError),
+            originalError: code,
+          }),
+        )
       await writeIntegrationAudit({
         workspaceId: connection.workspace_id,
         provider: 'google',
@@ -371,7 +412,7 @@ async function processDueJobs() {
       const retryDelay = privateReplyLimited
         ? caught.retryAfterMs + 1_000
         : 2 ** Math.max(0, job.attempts - 1) * 30_000
-      await supabase
+      const { error: jobFailureUpdateError } = await supabase
         .from('scheduled_jobs')
         .update({
           status: terminal ? 'failed' : 'pending',
@@ -380,9 +421,18 @@ async function processDueJobs() {
           locked_at: null,
         })
         .eq('id', job.id)
+      if (jobFailureUpdateError)
+        console.error(
+          JSON.stringify({
+            event: 'scheduled_job_failure_persistence_failed',
+            jobId: job.id,
+            error: operationalErrorCode(jobFailureUpdateError),
+            originalError: message,
+          }),
+        )
       const automationRunId = job.payload?.automationRunId
-      if (typeof automationRunId === 'string')
-        await supabase
+      if (typeof automationRunId === 'string') {
+        const { error: runFailureUpdateError } = await supabase
           .from('automation_runs')
           .update({
             status: terminal ? 'failed' : 'scheduled',
@@ -390,6 +440,16 @@ async function processDueJobs() {
           })
           .eq('id', automationRunId)
           .eq('workspace_id', job.workspace_id)
+        if (runFailureUpdateError)
+          console.error(
+            JSON.stringify({
+              event: 'automation_run_failure_persistence_failed',
+              automationRunId,
+              error: operationalErrorCode(runFailureUpdateError),
+              originalError: message,
+            }),
+          )
+      }
       const flowExecutionId = job.payload?.flowExecutionId
       if (typeof flowExecutionId === 'string')
         await markAutomationExecutionFailure({
@@ -714,7 +774,7 @@ async function processSequenceJob(job: {
       .maybeSingle()
     const step = stepResult.data
     if (!step) {
-      await supabase
+      const { error: enrollmentCompletionError } = await supabase
         .from('sequence_enrollments')
         .update({
           status: 'completed',
@@ -722,6 +782,7 @@ async function processSequenceJob(job: {
           next_run_at: null,
         })
         .eq('id', enrollment.id)
+      if (enrollmentCompletionError) throw enrollmentCompletionError
       return
     }
     if (step.kind === 'media') {
@@ -846,7 +907,7 @@ async function processSequenceJob(job: {
         if (replyStatusError) throw replyStatusError
       } catch (replyError) {
         const failureStatus = privateReplyFailureStatus(replyError)
-        await supabase
+        const { error: replyFailureUpdateError } = await supabase
           .from('comment_private_replies')
           .update({
             status: failureStatus,
@@ -854,6 +915,16 @@ async function processSequenceJob(job: {
           })
           .eq('instagram_comment_id', commentId)
           .eq('job_id', job.id)
+        if (replyFailureUpdateError)
+          console.error(
+            JSON.stringify({
+              event: 'private_reply_failure_persistence_failed',
+              jobId: job.id,
+              commentId,
+              error: operationalErrorCode(replyFailureUpdateError),
+              originalError: operationalErrorCode(replyError),
+            }),
+          )
         throw replyError
       }
     } else {
@@ -945,13 +1016,14 @@ async function processSequenceJob(job: {
         policy: result.decision.policy,
         reason: result.decision.reason,
       })
-    await supabase
+    const { error: contactUpdateError } = await supabase
       .from('contacts')
       .update({
         last_interaction_at: new Date().toISOString(),
         last_outbound_at: result.sent ? new Date().toISOString() : null,
       })
       .eq('id', contact.id)
+    if (contactUpdateError) throw contactUpdateError
     if (flowExecutionId && flowNodeId && flowNextNodeId) {
       await resumeAutomationAfterMessage({
         workspaceId: job.workspace_id,
@@ -970,11 +1042,13 @@ async function processSequenceJob(job: {
       }
     }
     if (!result.sent) {
-      if (enrollmentId)
-        await supabase
+      if (enrollmentId) {
+        const { error: enrollmentBlockError } = await supabase
           .from('sequence_enrollments')
           .update({ status: 'blocked', blocked_reason: result.decision.reason })
           .eq('id', enrollmentId)
+        if (enrollmentBlockError) throw enrollmentBlockError
+      }
       return { sent: false, reason: result.decision.reason }
     }
     // A Meta permite uma única Private Reply; uma sequência só continua após
@@ -1048,7 +1122,7 @@ async function processSequenceJob(job: {
       )
       if (agendou.error) throw agendou.error
     } else {
-      await supabase
+      const { error: enrollmentFinalizationError } = await supabase
         .from('sequence_enrollments')
         .update({
           status: 'completed',
@@ -1056,6 +1130,7 @@ async function processSequenceJob(job: {
           next_run_at: null,
         })
         .eq('id', enrollmentId)
+      if (enrollmentFinalizationError) throw enrollmentFinalizationError
     }
   }
   return { sent: true }
@@ -1080,6 +1155,7 @@ async function tick() {
     await attachDueNextReels()
     await snapshotDueFollowers()
     await processDueJobs()
+    await checkOperationalAlerts()
     await writeWorkerHeartbeat('scheduler', 'healthy')
   } catch (error) {
     await writeWorkerHeartbeat('scheduler', 'unhealthy', {

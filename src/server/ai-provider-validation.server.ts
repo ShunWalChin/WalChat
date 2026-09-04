@@ -36,7 +36,12 @@ function statusFromError(error: unknown) {
 
 function validationError(input: ProviderValidationInput, error: unknown) {
   if (error instanceof ApiError) return error
-  const providerName = input.provider === 'openai' ? 'OpenAI' : 'Google Gemini'
+  const providerName =
+    input.provider === 'openai'
+      ? getServerEnv().OMNIROUTE_BASE_URL
+        ? 'OmniRoute'
+        : 'OpenAI'
+      : 'Google Gemini'
   const status = statusFromError(error)
   if (status === 401)
     return new ApiError(
@@ -81,8 +86,9 @@ async function retrieveOpenAiModel(input: ProviderValidationInput) {
   const env = getServerEnv()
   const client = new OpenAI({
     apiKey: input.apiKey,
-    project: env.OPENAI_PROJECT,
-    organization: env.OPENAI_ORGANIZATION,
+    baseURL: env.OMNIROUTE_BASE_URL,
+    project: env.OMNIROUTE_BASE_URL ? undefined : env.OPENAI_PROJECT,
+    organization: env.OMNIROUTE_BASE_URL ? undefined : env.OPENAI_ORGANIZATION,
     timeout: PROVIDER_VALIDATION_TIMEOUT_MS,
     maxRetries: 0,
   })

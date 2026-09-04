@@ -17,7 +17,11 @@ export function PageIntro({
         <h2>{title}</h2>
         <p>{description}</p>
       </div>
-      {actions && <div className="page-actions">{actions}</div>}
+      {actions && (
+        <div className="page-actions" role="group" aria-label="Ações da página">
+          {actions}
+        </div>
+      )}
     </div>
   )
 }
@@ -44,7 +48,7 @@ export function Switch({
       aria-label={label}
       disabled={disabled}
     >
-      <span />
+      <span aria-hidden="true" />
     </button>
   )
 }
@@ -77,7 +81,7 @@ export function StatusDot({
 }) {
   return (
     <span className={`status-dot ${tone}`}>
-      <i />
+      <i aria-hidden="true" />
       {children}
     </span>
   )

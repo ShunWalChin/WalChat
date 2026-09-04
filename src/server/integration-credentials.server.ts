@@ -198,7 +198,7 @@ export async function getAiApiKey(
   if (stored?.value) return stored.value
   const env = getServerEnv()
   return provider === 'openai'
-    ? env.OPENAI_API_KEY
+    ? (env.OMNIROUTE_API_KEY ?? env.OPENAI_API_KEY)
     : env.GOOGLE_GENERATIVE_AI_API_KEY
 }
 

@@ -28,8 +28,19 @@ describe('variáveis de ambiente em branco', () => {
     // que não ajuda em nada quem só deixou a linha pela metade.
     process.env.SUPABASE_URL = ''
     process.env.N8N_BASE_URL = '   '
+    process.env.OMNIROUTE_BASE_URL = ''
     expect(() => getServerEnv()).not.toThrow()
     expect(getServerEnv().N8N_BASE_URL).toBeUndefined()
+    expect(getServerEnv().OMNIROUTE_BASE_URL).toBeUndefined()
+  })
+
+  it('aceita o endpoint OpenAI-compatible do OmniRoute', () => {
+    process.env.OMNIROUTE_BASE_URL = 'http://127.0.0.1:20128/v1'
+    process.env.OMNIROUTE_API_KEY = 'omniroute-test-key'
+    expect(getServerEnv()).toMatchObject({
+      OMNIROUTE_BASE_URL: 'http://127.0.0.1:20128/v1',
+      OMNIROUTE_API_KEY: 'omniroute-test-key',
+    })
   })
 
   /**

@@ -87,6 +87,11 @@ type AiStatus = {
     'openai' | 'google',
     { configured: boolean; source: 'tenant' | 'server' | 'none' }
   >
+  gateway: {
+    enabled: boolean
+    name: 'OmniRoute' | null
+    host: string | null
+  }
 }
 
 type FacebookLoginResponse = {
@@ -559,7 +564,13 @@ function SettingsPage() {
       setAiMessage({
         tone: 'success',
         text: result.providerValidated
-          ? `Conexão com ${ai.settings.provider === 'openai' ? 'OpenAI' : 'Google Gemini'} validada${normalizedApiKey ? '; chave protegida e salva neste workspace.' : ' e configuração salva.'}`
+          ? `Conexão com ${
+              ai.settings.provider === 'openai'
+                ? ai.gateway.enabled
+                  ? 'OmniRoute'
+                  : 'OpenAI'
+                : 'Google Gemini'
+            } validada${normalizedApiKey ? '; chave protegida e salva neste workspace.' : ' e configuração salva.'}`
           : 'Configuração do provedor de IA salva.',
       })
     } catch (error) {
@@ -595,6 +606,8 @@ function SettingsPage() {
       {message && (
         <div
           className={message.tone === 'error' ? 'form-error' : 'form-success'}
+          role={message.tone === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
         >
           {message.tone === 'error' ? (
             <AlertTriangle size={16} />
@@ -995,7 +1008,11 @@ function SettingsPage() {
               </span>
               <div>
                 <h3>Provedor de IA</h3>
-                <p>OpenAI Responses API ou Gemini, isolados por workspace.</p>
+                <p>
+                  {ai?.gateway.enabled
+                    ? `OmniRoute (${ai.gateway.host}) com fallback configurado no gateway.`
+                    : 'OpenAI Responses API ou Gemini, isolados por workspace.'}
+                </p>
               </div>
               <StatusDot
                 tone={
@@ -1030,30 +1047,62 @@ function SettingsPage() {
                       })
                     }}
                   >
-                    <option value="openai">OpenAI</option>
+                    <option value="openai">
+                      {ai.gateway.enabled
+                        ? 'OmniRoute (compatível com OpenAI)'
+                        : 'OpenAI'}
+                    </option>
                     <option value="google">Google Gemini</option>
                   </select>
                 </label>
                 <label>
-                  Modelo
-                  <select
-                    value={ai.settings.model}
-                    onChange={(event) =>
-                      setAi({
-                        ...ai,
-                        settings: { ...ai.settings, model: event.target.value },
-                      })
-                    }
-                  >
-                    {ai.settings.provider === 'openai' ? (
-                      <>
-                        <option value="gpt-5.6-sol">GPT-5.6 Sol</option>
-                        <option value="gpt-5.6-terra">GPT-5.6 Terra</option>
-                      </>
-                    ) : (
-                      <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                    )}
-                  </select>
+                  Modelo ou rota
+                  {ai.gateway.enabled && ai.settings.provider === 'openai' ? (
+                    <input
+                      value={ai.settings.model}
+                      list="omniroute-model-suggestions"
+                      minLength={2}
+                      maxLength={80}
+                      placeholder="Ex.: gpt-5.6-sol ou nome do combo"
+                      onChange={(event) =>
+                        setAi({
+                          ...ai,
+                          settings: {
+                            ...ai.settings,
+                            model: event.target.value,
+                          },
+                        })
+                      }
+                    />
+                  ) : (
+                    <select
+                      value={ai.settings.model}
+                      onChange={(event) =>
+                        setAi({
+                          ...ai,
+                          settings: {
+                            ...ai.settings,
+                            model: event.target.value,
+                          },
+                        })
+                      }
+                    >
+                      {ai.settings.provider === 'openai' ? (
+                        <>
+                          <option value="gpt-5.6-sol">GPT-5.6 Sol</option>
+                          <option value="gpt-5.6-terra">GPT-5.6 Terra</option>
+                        </>
+                      ) : (
+                        <option value="gemini-2.5-flash">
+                          Gemini 2.5 Flash
+                        </option>
+                      )}
+                    </select>
+                  )}
+                  <datalist id="omniroute-model-suggestions">
+                    <option value="gpt-5.6-sol" />
+                    <option value="gpt-5.6-terra" />
+                  </datalist>
                 </label>
                 <label>
                   Esforço de raciocínio
@@ -1078,7 +1127,9 @@ function SettingsPage() {
                   </select>
                 </label>
                 <label>
-                  API key do workspace (opcional)
+                  {ai.gateway.enabled && ai.settings.provider === 'openai'
+                    ? 'API key do OmniRoute (opcional)'
+                    : 'API key do workspace (opcional)'}
                   <input
                     type="password"
                     value={apiKey}

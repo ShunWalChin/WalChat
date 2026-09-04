@@ -59,11 +59,13 @@ export const Route = createFileRoute('/api/ai/settings')({
               providers: {
                 openai: {
                   configured: Boolean(
-                    tenantProviders.has('openai') || env.OPENAI_API_KEY,
+                    tenantProviders.has('openai') ||
+                    env.OMNIROUTE_API_KEY ||
+                    env.OPENAI_API_KEY,
                   ),
                   source: tenantProviders.has('openai')
                     ? 'tenant'
-                    : env.OPENAI_API_KEY
+                    : env.OMNIROUTE_API_KEY || env.OPENAI_API_KEY
                       ? 'server'
                       : 'none',
                 },
@@ -78,6 +80,13 @@ export const Route = createFileRoute('/api/ai/settings')({
                       ? 'server'
                       : 'none',
                 },
+              },
+              gateway: {
+                enabled: Boolean(env.OMNIROUTE_BASE_URL),
+                name: env.OMNIROUTE_BASE_URL ? 'OmniRoute' : null,
+                host: env.OMNIROUTE_BASE_URL
+                  ? new URL(env.OMNIROUTE_BASE_URL).host
+                  : null,
               },
             },
             { headers: { 'Cache-Control': 'no-store' } },
@@ -106,7 +115,13 @@ export const Route = createFileRoute('/api/ai/settings')({
           if ((body.apiKey || body.isEnabled) && !apiKey)
             throw new ApiError(
               422,
-              `Informe uma API key da ${body.provider === 'openai' ? 'OpenAI' : 'Google Gemini'}.`,
+              `Informe uma API key da ${
+                body.provider === 'openai'
+                  ? getServerEnv().OMNIROUTE_BASE_URL
+                    ? 'OmniRoute'
+                    : 'OpenAI'
+                  : 'Google Gemini'
+              }.`,
             )
           if (apiKey)
             await validateAiProviderCredential({

@@ -900,80 +900,88 @@ export function ConversionTrackingPanel({
         </div>
       </div>
 
-      <div className="conversion-section conversion-technical-grid">
-        <div>
-          <div className="conversion-section-head">
-            <div>
-              <span className="eyebrow">CAPTURA EXTERNA</span>
-              <h3>Snippet para GTM/formulários</h3>
-            </div>
-            <button
-              className="button button-outline"
-              onClick={() => {
-                void navigator.clipboard.writeText(gtmSnippet)
-                setCopied(true)
-              }}
-            >
-              <Clipboard size={15} /> {copied ? 'Copiado' : 'Copiar'}
-            </button>
-          </div>
-          <pre className="conversion-code">
-            <code>{gtmSnippet}</code>
-          </pre>
-          <p className="helper-text">
-            O WalChat também captura esses dados automaticamente na agenda
-            pública. Envie os campos ao webhook de leads. O hash SHA-256 final é
-            sempre refeito no servidor.
-          </p>
-        </div>
-        <div>
-          <div className="conversion-section-head">
-            <div>
-              <span className="eyebrow">ÚLTIMAS ENTREGAS</span>
-              <h3>Saúde do pipeline</h3>
-            </div>
-          </div>
-          <div className="conversion-event-list">
-            {status?.recentEvents.map((event) => (
-              <div key={event.id}>
-                <span>
-                  <strong>{event.event_name}</strong>
-                  <small>{localDate(event.event_time)}</small>
-                </span>
-                <StatusDot
-                  tone={
-                    event.status === 'completed'
-                      ? 'green'
-                      : ['failed', 'blocked'].includes(event.status)
-                        ? 'red'
-                        : 'orange'
-                  }
-                >
-                  {event.status}
-                </StatusDot>
-                {['failed', 'partial', 'blocked'].includes(event.status) && (
-                  <button
-                    className="icon-button"
-                    aria-label={`Reenviar ${event.event_name}`}
-                    title={event.error_code ?? 'Reenviar'}
-                    onClick={() => void replay(event.id)}
-                    disabled={Boolean(busy)}
-                  >
-                    {busy === `replay-${event.id}` ? (
-                      <LoaderCircle className="spin" size={15} />
-                    ) : (
-                      <RefreshCw size={15} />
-                    )}
-                  </button>
-                )}
+      <details className="conversion-advanced">
+        <summary>
+          <span>
+            <strong>Implementação técnica e diagnóstico</strong>
+            <small>Snippet do site e últimas entregas do pipeline</small>
+          </span>
+        </summary>
+        <div className="conversion-section conversion-technical-grid">
+          <div>
+            <div className="conversion-section-head">
+              <div>
+                <span className="eyebrow">CAPTURA EXTERNA</span>
+                <h3>Snippet para GTM/formulários</h3>
               </div>
-            ))}
-            {!status?.recentEvents.length && (
-              <p>Nenhuma conversão processada.</p>
-            )}
+              <button
+                className="button button-outline"
+                onClick={() => {
+                  void navigator.clipboard.writeText(gtmSnippet)
+                  setCopied(true)
+                }}
+              >
+                <Clipboard size={15} /> {copied ? 'Copiado' : 'Copiar'}
+              </button>
+            </div>
+            <pre className="conversion-code">
+              <code>{gtmSnippet}</code>
+            </pre>
+            <p className="helper-text">
+              O WalChat também captura esses dados automaticamente na agenda
+              pública. Envie os campos ao webhook de leads. O hash SHA-256 final
+              é sempre refeito no servidor.
+            </p>
+          </div>
+          <div>
+            <div className="conversion-section-head">
+              <div>
+                <span className="eyebrow">ÚLTIMAS ENTREGAS</span>
+                <h3>Saúde do pipeline</h3>
+              </div>
+            </div>
+            <div className="conversion-event-list">
+              {status?.recentEvents.map((event) => (
+                <div key={event.id}>
+                  <span>
+                    <strong>{event.event_name}</strong>
+                    <small>{localDate(event.event_time)}</small>
+                  </span>
+                  <StatusDot
+                    tone={
+                      event.status === 'completed'
+                        ? 'green'
+                        : ['failed', 'blocked'].includes(event.status)
+                          ? 'red'
+                          : 'orange'
+                    }
+                  >
+                    {event.status}
+                  </StatusDot>
+                  {['failed', 'partial', 'blocked'].includes(event.status) && (
+                    <button
+                      className="icon-button"
+                      aria-label={`Reenviar ${event.event_name}`}
+                      title={event.error_code ?? 'Reenviar'}
+                      onClick={() => void replay(event.id)}
+                      disabled={Boolean(busy)}
+                    >
+                      {busy === `replay-${event.id}` ? (
+                        <LoaderCircle className="spin" size={15} />
+                      ) : (
+                        <RefreshCw size={15} />
+                      )}
+                    </button>
+                  )}
+                </div>
+              ))}
+              {!status?.recentEvents.length && (
+                <p>Nenhuma conversão processada.</p>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </details>
     </section>
   )
 }

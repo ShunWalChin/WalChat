@@ -17,14 +17,21 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 const DEMO_KEY = 'wal-chat-demo-session'
+const E2E_USER: WalUser = {
+  id: 'walchat-e2e',
+  email: 'e2e@walchat.local',
+  name: 'Wal E2E',
+}
 
 /** Sincroniza sessão inicial, eventos de Auth, cadastro, login e logout. */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<WalUser | null>(null)
-  const [loading, setLoading] = useState(true)
+  const e2e = import.meta.env.VITE_E2E_MODE === 'true'
+  const [user, setUser] = useState<WalUser | null>(e2e ? E2E_USER : null)
+  const [loading, setLoading] = useState(!e2e)
   const configured = isSupabaseConfigured()
 
   useEffect(() => {
+    if (e2e) return
     const supabase = getBrowserSupabase()
     if (!supabase) {
       if (localStorage.getItem(DEMO_KEY)) {
@@ -61,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     )
     return () => subscription.subscription.unsubscribe()
-  }, [])
+  }, [e2e])
 
   const value = useMemo<AuthContextValue>(
     () => ({

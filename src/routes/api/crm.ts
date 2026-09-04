@@ -10,14 +10,28 @@ import {
 import {
   createCrmLeadSchema,
   createPipelineSchema,
-  scoreBand,
   slugifyPipelineName,
 } from '../../server/crm-pipeline-contract'
-import { writeCrmAudit } from '../../server/crm-pipeline.server'
 import { workspaceMemberOptions } from '../../server/contacts-crm.server'
 import { readJsonBody } from '../../server/request-body.server'
 
-const querySchema = z.object({ pipelineId: z.uuid().optional() })
+const querySchema = z.object({
+  pipelineId: z.uuid().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(20).max(200).default(100),
+  q: z.string().trim().max(160).default(''),
+  owner: z
+    .union([z.uuid(), z.literal('unassigned'), z.literal('all')])
+    .default('all'),
+  risk: z
+    .enum(['em_dia', 'em_voo', 'em_risco', 'critico', 'all'])
+    .default('all'),
+  status: z.enum(['open', 'won', 'lost', 'all']).default('all'),
+  tag: z.string().trim().max(40).default('all'),
+  sort: z
+    .enum(['position', 'next-action', 'value-desc', 'recent'])
+    .default('position'),
+})
 const createRequestSchema = z.discriminatedUnion('kind', [
   createCrmLeadSchema.extend({ kind: z.literal('lead') }),
   createPipelineSchema.extend({ kind: z.literal('pipeline') }),
@@ -32,6 +46,14 @@ export const Route = createFileRoute('/api/crm')({
           const url = new URL(request.url)
           const query = querySchema.parse({
             pipelineId: url.searchParams.get('pipelineId') ?? undefined,
+            page: url.searchParams.get('page') ?? undefined,
+            pageSize: url.searchParams.get('pageSize') ?? undefined,
+            q: url.searchParams.get('q') ?? undefined,
+            owner: url.searchParams.get('owner') ?? undefined,
+            risk: url.searchParams.get('risk') ?? undefined,
+            status: url.searchParams.get('status') ?? undefined,
+            tag: url.searchParams.get('tag') ?? undefined,
+            sort: url.searchParams.get('sort') ?? undefined,
           })
           const { data: pipelines, error: pipelinesError } = await context.admin
             .from('crm_pipelines')
@@ -49,7 +71,7 @@ export const Route = createFileRoute('/api/crm')({
           if (query.pipelineId && !activePipeline)
             throw new ApiError(404, 'Pipeline não encontrado neste workspace.')
 
-          const [stagesResult, leadsResult, members] = activePipeline
+          const [stagesResult, members] = activePipeline
             ? await Promise.all([
                 context.admin
                   .from('crm_stages')
@@ -60,15 +82,6 @@ export const Route = createFileRoute('/api/crm')({
                   .eq('pipeline_id', activePipeline.id)
                   .is('archived_at', null)
                   .order('position'),
-                context.admin
-                  .from('crm_leads')
-                  .select(
-                    'id,pipeline_id,stage_id,contact_id,title,description,status,lost_reason,position_in_stage,value_cents,currency,owner_user_id,last_activity_at,next_action_at,expected_close_date,source,tags,lock_version,created_at,updated_at',
-                  )
-                  .eq('workspace_id', context.workspaceId)
-                  .eq('pipeline_id', activePipeline.id)
-                  .order('position_in_stage')
-                  .limit(500),
                 workspaceMemberOptions({
                   admin: context.admin,
                   workspaceId: context.workspaceId,
@@ -76,90 +89,75 @@ export const Route = createFileRoute('/api/crm')({
               ])
             : [
                 { data: [], error: null },
-                { data: [], error: null },
                 await workspaceMemberOptions({
                   admin: context.admin,
                   workspaceId: context.workspaceId,
                 }),
               ]
           if (stagesResult.error) throw stagesResult.error
-          if (leadsResult.error) throw leadsResult.error
-          const leads = leadsResult.data
-          const leadIds = leads.map((lead) => lead.id)
-          const contactIds = Array.from(
-            new Set(leads.map((lead) => lead.contact_id).filter(Boolean)),
-          )
-          const [contactsResult, scoresResult, risksResult] = await Promise.all(
-            [
-              contactIds.length
-                ? context.admin
-                    .from('contacts')
-                    .select(
-                      'id,display_name,full_name,username,phone,email,avatar_url,platform,lead_score',
-                    )
-                    .eq('workspace_id', context.workspaceId)
-                    .in('id', contactIds)
-                : Promise.resolve({ data: [], error: null }),
-              leadIds.length
-                ? context.admin
-                    .from('crm_lead_scores')
-                    .select('lead_id,probability,reason,band,calculated_at')
-                    .eq('workspace_id', context.workspaceId)
-                    .in('lead_id', leadIds)
-                : Promise.resolve({ data: [], error: null }),
-              leadIds.length
-                ? context.admin
-                    .from('crm_lead_risk_states')
-                    .select('lead_id,bucket,since,cold_hours')
-                    .eq('workspace_id', context.workspaceId)
-                    .in('lead_id', leadIds)
-                : Promise.resolve({ data: [], error: null }),
-            ],
-          )
-          for (const result of [contactsResult, scoresResult, risksResult])
-            if (result.error) throw result.error
-          const contacts = new Map(
-            (contactsResult.data ?? []).map((contact) => [contact.id, contact]),
-          )
-          const scores = new Map(
-            (scoresResult.data ?? []).map((score) => [score.lead_id, score]),
-          )
-          const risks = new Map(
-            (risksResult.data ?? []).map((risk) => [risk.lead_id, risk]),
-          )
+          const emptySummary = {
+            open: 0,
+            won: 0,
+            lost: 0,
+            valueCents: 0,
+            weightedValueCents: 0,
+            atRisk: 0,
+            overdue: 0,
+            unassigned: 0,
+          }
+          const [leadPageResult, summaryResult] = activePipeline
+            ? await Promise.all([
+                context.admin.rpc('crm_list_leads', {
+                  target_workspace_id: context.workspaceId,
+                  target_pipeline_id: activePipeline.id,
+                  target_page: query.page,
+                  target_page_size: query.pageSize,
+                  target_query: query.q || null,
+                  target_owner_id:
+                    query.owner !== 'all' && query.owner !== 'unassigned'
+                      ? query.owner
+                      : null,
+                  target_unassigned: query.owner === 'unassigned',
+                  target_status: query.status === 'all' ? null : query.status,
+                  target_risk: query.risk === 'all' ? null : query.risk,
+                  target_tag: query.tag === 'all' ? null : query.tag,
+                  target_sort: query.sort,
+                }),
+                context.admin.rpc('crm_pipeline_summary', {
+                  target_workspace_id: context.workspaceId,
+                  target_pipeline_id: activePipeline.id,
+                }),
+              ])
+            : [
+                {
+                  data: {
+                    items: [],
+                    total: 0,
+                    page: 1,
+                    pageSize: query.pageSize,
+                  },
+                  error: null,
+                },
+                { data: emptySummary, error: null },
+              ]
+          if (leadPageResult.error) throw leadPageResult.error
+          if (summaryResult.error) throw summaryResult.error
+          const leadPage = leadPageResult.data as unknown as {
+            items: Array<
+              Record<string, unknown> & { ownerUserId: string | null }
+            >
+            total: number
+            page: number
+            pageSize: number
+          }
           const memberNames = new Map(
             members.map((member) => [member.id, member.name]),
           )
-          const normalizedLeads = leads.map((lead) => ({
-            id: lead.id,
-            pipelineId: lead.pipeline_id,
-            stageId: lead.stage_id,
-            contactId: lead.contact_id,
-            title: lead.title,
-            description: lead.description,
-            status: lead.status,
-            lostReason: lead.lost_reason,
-            position: Number(lead.position_in_stage),
-            valueCents:
-              lead.value_cents === null ? null : Number(lead.value_cents),
-            currency: lead.currency,
-            ownerUserId: lead.owner_user_id,
-            ownerName: lead.owner_user_id
-              ? (memberNames.get(lead.owner_user_id) ?? 'Membro')
+          const normalizedLeads = leadPage.items.map((lead) => ({
+            ...lead,
+            ownerName: lead.ownerUserId
+              ? (memberNames.get(lead.ownerUserId) ?? 'Membro')
               : null,
-            lastActivityAt: lead.last_activity_at,
-            nextActionAt: lead.next_action_at,
-            expectedCloseDate: lead.expected_close_date,
-            source: lead.source,
-            tags: lead.tags,
-            lockVersion: lead.lock_version,
-            createdAt: lead.created_at,
-            updatedAt: lead.updated_at,
-            contact: lead.contact_id
-              ? (contacts.get(lead.contact_id) ?? null)
-              : null,
-            score: scores.get(lead.id) ?? null,
-            risk: risks.get(lead.id) ?? null,
           }))
 
           return Response.json(
@@ -169,25 +167,21 @@ export const Route = createFileRoute('/api/crm')({
               stages: stagesResult.data,
               leads: normalizedLeads,
               members,
+              pagination: {
+                page: Number(leadPage.page),
+                pageSize: Number(leadPage.pageSize),
+                total: Number(leadPage.total),
+                totalPages: Math.max(
+                  1,
+                  Math.ceil(Number(leadPage.total) / Number(leadPage.pageSize)),
+                ),
+              },
               permissions: {
                 canWrite: context.role !== 'viewer',
                 canManagePipelines:
                   context.role === 'owner' || context.role === 'admin',
               },
-              summary: {
-                open: normalizedLeads.filter((lead) => lead.status === 'open')
-                  .length,
-                won: normalizedLeads.filter((lead) => lead.status === 'won')
-                  .length,
-                lost: normalizedLeads.filter((lead) => lead.status === 'lost')
-                  .length,
-                valueCents: normalizedLeads
-                  .filter((lead) => lead.status === 'open')
-                  .reduce((total, lead) => total + (lead.valueCents ?? 0), 0),
-                atRisk: normalizedLeads.filter((lead) =>
-                  ['em_risco', 'critico'].includes(lead.risk?.bucket ?? ''),
-                ).length,
-              },
+              summary: summaryResult.data ?? emptySummary,
             },
             { headers: { 'Cache-Control': 'no-store' } },
           )
@@ -210,183 +204,55 @@ export const Route = createFileRoute('/api/crm')({
             const slug = slugifyPipelineName(input.name)
             if (slug.length < 2)
               throw new ApiError(400, 'Nome não gera um identificador válido.')
-            const { data: pipeline, error } = await context.admin
-              .from('crm_pipelines')
-              .insert({
-                workspace_id: context.workspaceId,
-                name: input.name,
-                slug,
-                description: input.description || null,
-                position: Date.now(),
-              })
-              .select('id')
-              .single()
+            const { data: pipeline, error } = await context.admin.rpc(
+              'crm_create_pipeline_command',
+              {
+                target_workspace_id: context.workspaceId,
+                actor_user_id: context.user.id,
+                pipeline_data: {
+                  name: input.name,
+                  slug,
+                  description: input.description || null,
+                },
+                request_user_agent: request.headers.get('user-agent'),
+              },
+            )
             if (error?.code === '23505')
               throw new ApiError(409, 'Já existe um pipeline com este nome.')
             if (error) throw error
-            const { error: stagesError } = await context.admin
-              .from('crm_stages')
-              .insert([
-                {
-                  workspace_id: context.workspaceId,
-                  pipeline_id: pipeline.id,
-                  name: 'Novo lead',
-                  slug: 'novo',
-                  position: 1000,
-                  color: '#3B82F6',
-                  expected_duration_hours: 24,
-                },
-                {
-                  workspace_id: context.workspaceId,
-                  pipeline_id: pipeline.id,
-                  name: 'Em andamento',
-                  slug: 'em-andamento',
-                  position: 2000,
-                  color: '#F59E0B',
-                  expected_duration_hours: 72,
-                },
-                {
-                  workspace_id: context.workspaceId,
-                  pipeline_id: pipeline.id,
-                  name: 'Ganho',
-                  slug: 'ganho',
-                  position: 3000,
-                  color: '#16A34A',
-                  terminal_state: 'won',
-                  expected_duration_hours: 720,
-                },
-                {
-                  workspace_id: context.workspaceId,
-                  pipeline_id: pipeline.id,
-                  name: 'Perdido',
-                  slug: 'perdido',
-                  position: 4000,
-                  color: '#6B7280',
-                  terminal_state: 'lost',
-                  expected_duration_hours: 720,
-                },
-              ])
-            if (stagesError) throw stagesError
-            await writeCrmAudit({
-              admin: context.admin,
-              workspaceId: context.workspaceId,
-              user: context.user,
-              action: 'pipeline_created',
-              resourceType: 'crm_pipeline',
-              resourceId: pipeline.id,
-              changes: { name: input.name },
-              request,
-            })
             return Response.json({ id: pipeline.id }, { status: 201 })
           }
 
-          const { data: stage, error: stageError } = await context.admin
-            .from('crm_stages')
-            .select('id,pipeline_id,terminal_state')
-            .eq('workspace_id', context.workspaceId)
-            .eq('id', input.stageId)
-            .eq('pipeline_id', input.pipelineId)
-            .maybeSingle()
-          if (stageError) throw stageError
-          if (!stage) throw new ApiError(400, 'Etapa não pertence ao pipeline.')
-          if (stage.terminal_state !== 'open')
+          const { data: lead, error } = await context.admin.rpc(
+            'crm_create_lead_command',
+            {
+              target_workspace_id: context.workspaceId,
+              actor_user_id: context.user.id,
+              lead_data: {
+                pipeline_id: input.pipelineId,
+                stage_id: input.stageId,
+                contact_id: input.contactId ?? null,
+                title: input.title,
+                description: input.description || null,
+                value_cents: input.valueCents ?? null,
+                owner_user_id: input.ownerUserId ?? null,
+                expected_close_date: input.expectedCloseDate || null,
+                next_action_at: input.nextActionAt || null,
+                source: input.source,
+                custom_fields: input.customFields,
+                tags: input.tags,
+              },
+              request_user_agent: request.headers.get('user-agent'),
+            },
+          )
+          if (error?.code === '23514')
+            throw new ApiError(400, 'Escolha uma etapa aberta deste pipeline.')
+          if (error?.code === '23503')
             throw new ApiError(
               400,
-              'Novos leads devem entrar em uma etapa aberta.',
+              'Contato ou responsável não pertence ao workspace.',
             )
-          if (input.contactId) {
-            const { count, error } = await context.admin
-              .from('contacts')
-              .select('id', { count: 'exact', head: true })
-              .eq('workspace_id', context.workspaceId)
-              .eq('id', input.contactId)
-            if (error) throw error
-            if (!count) throw new ApiError(400, 'Contato não encontrado.')
-          }
-          if (input.ownerUserId) {
-            const { count, error } = await context.admin
-              .from('workspace_members')
-              .select('user_id', { count: 'exact', head: true })
-              .eq('workspace_id', context.workspaceId)
-              .eq('user_id', input.ownerUserId)
-            if (error) throw error
-            if (!count)
-              throw new ApiError(400, 'Responsável não pertence ao workspace.')
-          }
-          const { data: lastLead, error: positionError } = await context.admin
-            .from('crm_leads')
-            .select('position_in_stage')
-            .eq('workspace_id', context.workspaceId)
-            .eq('stage_id', input.stageId)
-            .order('position_in_stage', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-          if (positionError) throw positionError
-          const now = new Date().toISOString()
-          const { data: lead, error } = await context.admin
-            .from('crm_leads')
-            .insert({
-              workspace_id: context.workspaceId,
-              pipeline_id: input.pipelineId,
-              stage_id: input.stageId,
-              contact_id: input.contactId ?? null,
-              title: input.title,
-              description: input.description || null,
-              value_cents: input.valueCents ?? null,
-              owner_user_id: input.ownerUserId ?? null,
-              assigned_at: input.ownerUserId ? now : null,
-              expected_close_date: input.expectedCloseDate || null,
-              next_action_at: input.nextActionAt || null,
-              source: input.source,
-              tags: input.tags,
-              last_activity_at: now,
-              position_in_stage:
-                Number(lastLead?.position_in_stage ?? 0) + 1000,
-              created_by_user_id: context.user.id,
-            })
-            .select('id,lock_version')
-            .single()
           if (error) throw error
-          const { error: activityError } = await context.admin
-            .from('crm_lead_activities')
-            .insert({
-              workspace_id: context.workspaceId,
-              lead_id: lead.id,
-              contact_id: input.contactId ?? null,
-              activity_type: 'lead_created',
-              payload: { source: input.source, stageId: input.stageId },
-              performed_by_user_id: context.user.id,
-            })
-          if (activityError) throw activityError
-          if (input.contactId) {
-            const { data: contact } = await context.admin
-              .from('contacts')
-              .select('lead_score')
-              .eq('workspace_id', context.workspaceId)
-              .eq('id', input.contactId)
-              .maybeSingle()
-            const probability = Number(contact?.lead_score ?? 0)
-            if (probability > 0)
-              await context.admin.from('crm_lead_scores').upsert({
-                lead_id: lead.id,
-                workspace_id: context.workspaceId,
-                probability,
-                reason: 'Score inicial herdado dos sinais do contato.',
-                evidence: { contactId: input.contactId },
-                band: scoreBand(probability),
-                calculated_at: now,
-              })
-          }
-          await writeCrmAudit({
-            admin: context.admin,
-            workspaceId: context.workspaceId,
-            user: context.user,
-            action: 'lead_created',
-            resourceType: 'crm_lead',
-            resourceId: lead.id,
-            changes: { pipelineId: input.pipelineId, stageId: input.stageId },
-            request,
-          })
           return Response.json(lead, { status: 201 })
         } catch (error) {
           return apiErrorResponse(error, 'Falha ao criar o item do CRM.')

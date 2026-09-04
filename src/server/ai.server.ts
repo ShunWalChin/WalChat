@@ -355,8 +355,11 @@ export async function suggestInstagramReply(input: AgentSuggestionInput) {
   if (agent.provider === 'openai') {
     const client = new OpenAI({
       apiKey,
-      project: env.OPENAI_PROJECT,
-      organization: env.OPENAI_ORGANIZATION,
+      baseURL: env.OMNIROUTE_BASE_URL,
+      project: env.OMNIROUTE_BASE_URL ? undefined : env.OPENAI_PROJECT,
+      organization: env.OMNIROUTE_BASE_URL
+        ? undefined
+        : env.OPENAI_ORGANIZATION,
       timeout: AI_PROVIDER_TIMEOUT_MS,
       maxRetries: AI_PROVIDER_MAX_RETRIES,
     })

@@ -32,7 +32,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/auth-context'
 import { useWorkspace } from '../contexts/workspace-context'
 import { apiFetch } from '../lib/api-client'
@@ -97,7 +97,7 @@ const groups = [
 ] as const
 
 const titles: Record<string, { eyebrow: string; title: string }> = {
-  '/dashboard': { eyebrow: 'SEGUNDA, 21 DE JULHO', title: 'Visão geral' },
+  '/dashboard': { eyebrow: 'RESUMO DA OPERAÇÃO', title: 'Visão geral' },
   '/operacoes': { eyebrow: 'PRONTIDÃO E TELEMETRIA', title: 'Operação' },
   '/inbox': { eyebrow: 'CONVERSAS EM TEMPO REAL', title: 'Inbox unificada' },
   '/contatos': { eyebrow: 'BASE DE RELACIONAMENTO', title: 'Contatos & tags' },
@@ -144,12 +144,16 @@ export function AppShell() {
   const { user, loading, signOut } = useAuth()
   const workspace = useWorkspace()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const mainPanelRef = useRef<HTMLElement>(null)
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null)
+  const sidebarCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [instagramUsername, setInstagramUsername] = useState<string | null>(
     null,
   )
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+  const previousPathRef = useRef(pathname)
   const heading = titles[pathname] ?? titles['/dashboard']
 
   /**
@@ -217,11 +221,40 @@ export function AppShell() {
         ),
       )
       .catch(() => setInstagramUsername(null))
-  }, [user])
+  }, [user, workspace.activeId])
 
   useEffect(() => {
     document.title = `${heading.title} | Wal Chat`
-  }, [heading.title])
+    setMobileOpen(false)
+    if (previousPathRef.current !== pathname) {
+      previousPathRef.current = pathname
+      window.requestAnimationFrame(() => mainPanelRef.current?.focus())
+    }
+  }, [heading.title, pathname])
+
+  useEffect(() => {
+    if (!mobileOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const focusTimer = window.setTimeout(
+      () => sidebarCloseButtonRef.current?.focus({ preventScroll: true }),
+      30,
+    )
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return
+      setMobileOpen(false)
+      window.requestAnimationFrame(() => mobileMenuButtonRef.current?.focus())
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      window.clearTimeout(focusTimer)
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [mobileOpen])
 
   if (loading) {
     return (
@@ -235,7 +268,13 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
-      <aside className={`sidebar ${mobileOpen ? 'is-open' : ''}`}>
+      <a className="skip-link" href="#conteudo-principal">
+        Pular para o conteúdo
+      </a>
+      <aside
+        id="menu-principal"
+        className={`sidebar ${mobileOpen ? 'is-open' : ''}`}
+      >
         <div className="brand-row">
           <Link
             to="/dashboard"
@@ -246,8 +285,15 @@ export function AppShell() {
             <span>WAL CHAT</span>
           </Link>
           <button
+            ref={sidebarCloseButtonRef}
+            type="button"
             className="icon-button sidebar-close"
-            onClick={() => setMobileOpen(false)}
+            onClick={() => {
+              setMobileOpen(false)
+              window.requestAnimationFrame(() =>
+                mobileMenuButtonRef.current?.focus(),
+              )
+            }}
             aria-label="Fechar menu"
           >
             <X size={20} />
@@ -357,7 +403,13 @@ export function AppShell() {
           >
             <Settings size={18} /> Configurações
           </Link>
-          <button className="profile-row" onClick={() => void signOut()}>
+          <button
+            type="button"
+            className="profile-row"
+            onClick={() => void signOut()}
+            aria-label={`Sair da conta de ${user.name}`}
+            title="Sair da conta"
+          >
             <span className="avatar avatar-dark">
               {user.name
                 .split(/\s+/)
@@ -377,31 +429,62 @@ export function AppShell() {
 
       {mobileOpen && (
         <button
+          type="button"
           className="sidebar-backdrop"
-          onClick={() => setMobileOpen(false)}
+          onClick={() => {
+            setMobileOpen(false)
+            window.requestAnimationFrame(() =>
+              mobileMenuButtonRef.current?.focus(),
+            )
+          }}
           aria-label="Fechar menu"
         />
       )}
 
-      <main className="main-panel">
+      <main
+        ref={mainPanelRef}
+        id="conteudo-principal"
+        className="main-panel"
+        tabIndex={-1}
+        aria-label={heading.title}
+      >
         <header className="topbar">
           <button
+            ref={mobileMenuButtonRef}
+            type="button"
             className="icon-button mobile-menu"
-            onClick={() => setMobileOpen(true)}
+            onClick={() => {
+              setMobileOpen(true)
+              window.requestAnimationFrame(() =>
+                sidebarCloseButtonRef.current?.focus({ preventScroll: true }),
+              )
+            }}
             aria-label="Abrir menu"
+            aria-controls="menu-principal"
+            aria-expanded={mobileOpen}
           >
             <Menu size={20} />
           </button>
           <div className="page-title">
             <span>{heading.eyebrow}</span>
-            <h1>{heading.title}</h1>
+            {pathname === '/inbox' ? (
+              <strong className="topbar-heading">{heading.title}</strong>
+            ) : (
+              <h1>{heading.title}</h1>
+            )}
           </div>
           <div className="topbar-actions">
             <span className="connection-pill">
               <i /> {instagramUsername ? 'Meta conectada' : 'Meta pendente'}
             </span>
-            <Link to="/publicar" className="button button-dark">
-              <Plus size={17} /> Criar
+            <Link
+              to="/publicar"
+              className="button button-dark topbar-create"
+              aria-label="Criar conteúdo"
+              title="Criar conteúdo"
+            >
+              <Plus size={17} />
+              <span className="topbar-create-label">Criar conteúdo</span>
             </Link>
           </div>
         </header>
