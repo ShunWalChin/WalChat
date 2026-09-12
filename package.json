@@ -30,6 +30,7 @@
     "audit:system": "node scripts/audit-system.mjs",
     "audit:usability": "node scripts/audit-usability.mjs",
     "audit:bundle": "node scripts/check-bundle-budgets.mjs",
+    "knowledge:export": "node scripts/export-knowledge-graph.mjs",
     "prod:up": "docker compose --env-file .env.production -f docker-compose.production.yml up -d --build",
     "prod:down": "docker compose --env-file .env.production -f docker-compose.production.yml down",
     "prod:logs": "docker compose --env-file .env.production -f docker-compose.production.yml logs -f --tail=200"

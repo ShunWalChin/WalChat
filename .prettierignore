@@ -5,3 +5,8 @@ node_modules
 dist
 supabase/.temp
 output/pdf
+
+# Saida do gerador de grafo: regenerar sempre reescreve, e formatar
+# um arquivo gerado so faz o portao falhar depois de cada execucao.
+knowledge/grafo.json
+knowledge/grafo.jsonl
