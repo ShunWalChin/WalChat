@@ -1,0 +1,346 @@
+{
+  "_leia": "Camada escrita à mão do grafo de conhecimento. O extrator lê a estrutura do código; aqui fica o motivo, que nenhum extrator alcança. Toda referência a nó é validada por scripts/export-knowledge-graph.mjs: se um id deixar de existir, o gerador acusa em vez de gerar um caminho falso.",
+  "regras": [
+    {
+      "id": "janela-24h",
+      "nome": "Janela de 24 horas da Meta",
+      "enunciado": "Mensagem livre só sai dentro de 24 horas contadas da última mensagem recebida do contato. Fora disso, o envio é recusado antes de tocar a rede.",
+      "porque": "É regra da plataforma, não preferência nossa. Furar significa conta suspensa, e a suspensão leva junto todos os workspaces que usam o mesmo app.",
+      "ondeVive": "Avaliada no momento do envio, nunca no agendamento: uma mensagem enfileirada às 10h para sair às 23h pode ter saído da janela no meio do caminho.",
+      "severidade": "critica",
+      "implementadaEm": ["modulo:compliance", "modulo:outbound-delivery"],
+      "protege": ["tabela:messages", "tabela:outbound_deliveries"]
+    },
+    {
+      "id": "opt-out-automacao",
+      "nome": "Toda automação carrega o opt-out",
+      "enunciado": "Mensagem marcada como automatizada recebe 'Responda PARAR' anexado. A palavra de saída é reconhecida na entrada e bloqueia envios futuros para aquele contato.",
+      "porque": "Sem uma saída visível, automação vira spam do ponto de vista de quem recebe — e do ponto de vista da Meta. O rodapé é acrescentado no mesmo lugar que decide o envio, para nenhum caminho novo esquecê-lo.",
+      "severidade": "critica",
+      "implementadaEm": ["modulo:compliance"],
+      "protege": ["tabela:contacts", "tabela:messages"]
+    },
+    {
+      "id": "human-agent-nunca-automatiza",
+      "nome": "HUMAN_AGENT é só para humano",
+      "enunciado": "A política de 7 dias existe para atendimento humano. Nenhum caminho automatizado pode usá-la.",
+      "porque": "É a diferença entre uma extensão legítima de atendimento e usar uma brecha para continuar disparando. A Meta trata as duas coisas de formas muito diferentes.",
+      "severidade": "critica",
+      "implementadaEm": ["modulo:compliance"],
+      "protege": ["tabela:conversations"]
+    },
+    {
+      "id": "entrega-no-maximo-uma-vez",
+      "nome": "Entrega no máximo uma vez",
+      "enunciado": "O claim é gravado antes da chamada de rede. Resposta ambígua da Meta vira estado 'unknown', que nunca é reenviado automaticamente.",
+      "porque": "Entre 'talvez tenha enviado' e 'com certeza não enviei', a escolha segura é não reenviar. Mandar a mesma mensagem duas vezes para um cliente é pior que não mandar: ele vê descontrole, e a Meta vê spam.",
+      "ondeVive": "O conflito de chave no claim é o que impede a segunda chamada, e não uma checagem em memória — duas réplicas do worker competem no banco.",
+      "severidade": "critica",
+      "implementadaEm": ["modulo:outbound-delivery", "modulo:meta-sender"],
+      "protege": ["tabela:outbound_deliveries"]
+    },
+    {
+      "id": "isolamento-por-workspace",
+      "nome": "Isolamento por workspace",
+      "enunciado": "Toda entidade operacional carrega workspace_id, e as políticas de RLS decidem o acesso chamando funções SECURITY DEFINER em vez de subconsultas soltas.",
+      "porque": "Multi-tenant sem isolamento no banco é isolamento nenhum: basta uma rota esquecer o filtro para vazar dado de um cliente para outro. Com a regra no Postgres, a rota errada devolve vazio em vez de dado alheio.",
+      "ondeVive": "Cinco tabelas não têm workspace_id, e todas por motivo: workspaces é o próprio inquilino; customer_reviews são depoimentos do site público; webhook_events é ingestão crua que chega antes de sabermos o destinatário; as duas de exclusão de dados atendem pedidos que podem cruzar workspaces. Uma sexta exceção é sinal de problema, não de padrão.",
+      "severidade": "critica",
+      "implementadaEm": [
+        "funcao:is_workspace_member",
+        "funcao:has_workspace_role"
+      ],
+      "protege": [
+        "tabela:workspaces",
+        "tabela:contacts",
+        "tabela:conversations"
+      ]
+    },
+    {
+      "id": "modelo-escolhe-o-que-nunca-de-quem",
+      "nome": "O modelo escolhe o quê, nunca de quem",
+      "enunciado": "Nenhuma ferramenta de IA aceita identificador de contato, workspace ou agendamento. O alvo vem da conversa, que é confiável, e é injetado por cima dos argumentos.",
+      "porque": "Argumento de ferramenta é texto gerado a partir do que o lead escreveu. Se a ferramenta tivesse um campo de alvo, bastaria alguém pedir 'cancele o agendamento de fulano' para o modelo repassar. Sem o campo, não existe frase capaz de expressar isso.",
+      "severidade": "critica",
+      "implementadaEm": ["modulo:ai-tools"],
+      "protege": ["tabela:bookings", "tabela:contacts"]
+    },
+    {
+      "id": "copiloto-nao-executa",
+      "nome": "Copiloto não executa",
+      "enunciado": "No modo copiloto a IA recebe apenas as ferramentas de leitura. Marcar, remarcar e cancelar são exclusivos do modo autônomo.",
+      "porque": "Copiloto produz um rascunho para revisão humana. Se pudesse agendar, a reunião entraria na agenda no instante em que o rascunho fosse gerado — inclusive quando o operador lesse e descartasse. A agenda teria compromisso que ninguém marcou.",
+      "severidade": "critica",
+      "implementadaEm": ["modulo:ai-tools"],
+      "protege": ["tabela:bookings"]
+    },
+    {
+      "id": "disponibilidade-falha-fechada",
+      "nome": "Disponibilidade falha fechada",
+      "enunciado": "Se a agenda Google está conectada e não responde, nenhum horário é oferecido.",
+      "porque": "Oferecer horário sem conseguir validar a agenda real é marcar no escuro. A reunião entra por cima de outra coisa e quem descobre é o cliente, na hora dela.",
+      "severidade": "alta",
+      "implementadaEm": ["modulo:booking-service"],
+      "protege": ["tabela:bookings", "tabela:calendar_events"]
+    },
+    {
+      "id": "reserva-decidida-no-banco",
+      "nome": "Quem decide a reserva é o banco",
+      "enunciado": "A checagem de disponibilidade na aplicação serve para escolher e responder bem. A decisão é da transação: lock consultivo por agenda e revalidação de sobreposição dentro dela.",
+      "porque": "Três caminhos marcam reunião — página pública, IA e Inbox. Qualquer checagem só em aplicação perde a corrida entre dois pedidos no mesmo segundo. No banco, o primeiro entra e o segundo ouve que o horário acabou.",
+      "severidade": "alta",
+      "implementadaEm": [
+        "funcao:reserve_calendar_booking",
+        "modulo:booking-service"
+      ],
+      "protege": ["tabela:bookings"]
+    },
+    {
+      "id": "ip-do-cliente-vem-do-nginx",
+      "nome": "Identidade de quem chama vem do proxy, não do cabeçalho",
+      "enunciado": "O limite de taxa usa o último salto de x-forwarded-for, que é o peer real acrescentado pelo Nginx, e não o primeiro elemento nem cabeçalhos de CDN que este proxy não escreve.",
+      "porque": "Ler o primeiro elemento deixa qualquer pessoa forjar a identidade e zerar o próprio contador. Foi um bypass real, provado em produção com quarenta requisições e cabeçalho rotativo.",
+      "severidade": "critica",
+      "implementadaEm": ["modulo:request-identity", "modulo:rate-limit"],
+      "protege": [
+        "rota:/api/public/bookings/:slug",
+        "rota:/api/public/webhooks/instagram"
+      ]
+    }
+  ],
+  "decisoes": [
+    {
+      "id": "servico-unico-de-agendamento",
+      "nome": "Um serviço decide horário, três caminhos chamam",
+      "escolha": "Extrair a composição de disponibilidade para booking-service e transformar a página pública numa chamadora como as outras.",
+      "alternativaRejeitada": "Deixar a lógica na rota pública e copiá-la para a IA e para o Inbox.",
+      "porque": "Duas cópias divergem no primeiro ajuste. Basta uma esquecer o freeBusy, ou consultar um intervalo diferente, para duas pessoas caírem no mesmo horário — e o defeito só aparece na frente do cliente.",
+      "data": "2026-08-30",
+      "decideSobre": [
+        "modulo:booking-service",
+        "rota:/api/public/bookings/:slug",
+        "rota:/api/inbox/agendar",
+        "modulo:ai-tools"
+      ]
+    },
+    {
+      "id": "ferramentas-so-com-agenda-vinculada",
+      "nome": "Ferramentas de agenda exigem vínculo explícito",
+      "escolha": "A IA só recebe ferramentas de agenda quando o operador vincula uma agenda ao agente.",
+      "alternativaRejeitada": "Ligar automaticamente quando existir qualquer agenda ativa no workspace.",
+      "porque": "Uma IA que começa a marcar reuniões reais porque alguém criou uma agenda para testar é uma surpresa ruim. O vínculo é o gesto de consentimento.",
+      "data": "2026-08-30",
+      "decideSobre": [
+        "modulo:ai-tools",
+        "tabela:ai_agents",
+        "tabela:booking_pages"
+      ]
+    },
+    {
+      "id": "catraca-de-escrita-sem-verificacao",
+      "nome": "Teto em vez de zero para escrita sem verificação",
+      "escolha": "O auditor conta escritas cujo erro é descartado e falha quando o número sobe.",
+      "alternativaRejeitada": "Exigir zero e corrigir os 56 pontos de uma vez.",
+      "porque": "Nenhum dos pontos existentes produziu falha observada, e alguns são deliberados — escrita dentro de catch, onde relançar esconderia o erro original. Um portão que obriga a mexer em 56 lugares sem urgência vira portão que alguém desliga.",
+      "data": "2026-08-30",
+      "decideSobre": ["modulo:outbound-delivery", "modulo:webhook-processor"]
+    },
+    {
+      "id": "tailwind-mantido",
+      "nome": "Tailwind fica, mesmo sem um utilitário em uso",
+      "escolha": "Manter a dependência apesar de zero classes utilitárias no código.",
+      "alternativaRejeitada": "Remover e economizar bundle.",
+      "porque": "O preflight dele é o reset sobre o qual todo o CSS foi escrito. Remover trocaria um ganho pequeno por risco visual em vinte e cinco telas. É peso morto aceito conscientemente, e está escrito para ninguém 'limpar' isso sem saber.",
+      "data": "2026-08-30",
+      "decideSobre": ["tela:inbox"]
+    },
+    {
+      "id": "origem-de-icebreaker-igual-a-de-link",
+      "nome": "Pergunta pronta usa o mesmo formato de origem que link de captação",
+      "escolha": "O payload do icebreaker carrega um ref no mesmo alfabeto do link.",
+      "alternativaRejeitada": "Um identificador próprio para perguntas prontas.",
+      "porque": "Com o mesmo formato, atribuição, contagem e roteamento para o fluxo certo são literalmente o mesmo código. Um icebreaker vira só mais uma porta de entrada com procedência conhecida, em vez de um segundo mecanismo para manter.",
+      "data": "2026-08-30",
+      "decideSobre": ["tabela:growth_links", "tabela:contacts"]
+    },
+    {
+      "id": "grafo-e-gerador",
+      "nome": "O grafo de conhecimento é gerado, não escrito",
+      "escolha": "Extrair estrutura do código a cada execução e costurar só o porquê à mão.",
+      "alternativaRejeitada": "Um documento de arquitetura mantido manualmente.",
+      "porque": "Documento de arquitetura começa correto e envelhece calado: ninguém percebe quando uma tabela muda de nome ou uma rota perde a autenticação. Gerando, o grafo não tem como divergir — e referência semântica para nó inexistente quebra o gerador em vez de virar caminho falso.",
+      "data": "2026-09-12",
+      "decideSobre": ["modulo:compliance"]
+    }
+  ],
+  "armadilhas": [
+    {
+      "id": "regex-acima-de-255",
+      "nome": "Postgres recusa repetição de regex acima de 255",
+      "sintoma": "A tabela é criada sem reclamar e todo insert morre depois com 'invalid repetition count(s)'.",
+      "causa": "A expressão de um CHECK só é compilada quando alguém insere. Um teto grande dentro das chaves — o caso real era {1,2083}, vindo do limite de URL — passa despercebido na criação.",
+      "defesa": "O auditor recusa qualquer migration com repetição acima de 255. A correção separa as perguntas: regex cuida do alfabeto, char_length cuida do tamanho.",
+      "custou": "Os links de captação nunca puderam ser criados, e ninguém soube até alguém tentar.",
+      "atingiu": ["tabela:growth_links"]
+    },
+    {
+      "id": "embed-ambiguo-no-postgrest",
+      "nome": "Duas chaves estrangeiras entre as mesmas tabelas tornam o embed ambíguo",
+      "sintoma": "A consulta inteira é recusada com 500, não só a parte embutida.",
+      "causa": "bookings aponta para calendar_events e o evento aponta de volta. Pedir a relação sem nomear a chave deixa o PostgREST sem escolha.",
+      "defesa": "Nomear a chave no select quando houver mais de um caminho entre as tabelas.",
+      "custou": "Cancelar agendamento devolvia 500 desde que a rota foi escrita.",
+      "atingiu": ["tabela:bookings", "tabela:calendar_events"]
+    },
+    {
+      "id": "resposta-html-como-sucesso",
+      "nome": "Método não implementado devolve a página HTML com 200",
+      "sintoma": "A tela mostra sucesso e nada foi gravado.",
+      "causa": "O cliente fazia response.json().catch(() => null), via o status ok e devolvia null como se fosse o dado. Quem chamou seguia convencido de que a escrita aconteceu.",
+      "defesa": "Conferir o content-type antes de aceitar o corpo, e tratar resposta não-JSON como falha.",
+      "custou": "Apareceu duas vezes num único dia, em rotas diferentes.",
+      "atingiu": ["rota:/api/inbox", "rota:/api/triggers"]
+    },
+    {
+      "id": "enum-na-mesma-transacao",
+      "nome": "Valor novo de enum não pode ser usado na transação que o criou",
+      "sintoma": "'unsafe use of new value' — e o deploy quebra no meio.",
+      "causa": "O Postgres exige que o valor esteja commitado antes de ser referenciado.",
+      "defesa": "Separar em duas migrations: uma cria o valor, a outra o usa. O ensaio dentro de transação com rollback pegou isso antes de ir para produção.",
+      "custou": "Teria derrubado o deploy das boas-vindas.",
+      "atingiu": ["tabela:triggers"]
+    },
+    {
+      "id": "variavel-de-ambiente-em-branco",
+      "nome": "Variável escrita sem valor não é o mesmo que ausente",
+      "sintoma": "O processo sobe normal com o comportamento invertido, e nada alerta.",
+      "causa": "CHAVE= chega como string vazia. Tratar vazio como indefinido faz cair no padrão — e para DEMO_MODE o padrão liga o modo demo, cortando todos os envios externos.",
+      "defesa": "Linha ausente cai no padrão; linha em branco para o boot com o nome da variável na mensagem. A distinção existe porque uma é escolha e a outra é descuido.",
+      "custou": "Um teste chegou a afirmar que o comportamento perigoso era o correto.",
+      "atingiu": ["modulo:env"]
+    },
+    {
+      "id": "ilike-com-sublinhado",
+      "nome": "ilike trata sublinhado como curinga",
+      "sintoma": "A busca por e-mail encontra o contato errado.",
+      "causa": "Em LIKE, _ casa com qualquer caractere — e sublinhado é comum em e-mail. joao_silva@ encontrava joaoAsilva@.",
+      "defesa": "Igualdade em minúsculas, já que a coluna é gravada assim. ilike só quando o curinga for intencional.",
+      "custou": "A reunião ficaria presa ao contato de outra pessoa.",
+      "atingiu": ["tabela:contacts"]
+    },
+    {
+      "id": "item-de-grid-nao-encolhe",
+      "nome": "Item de grid não encolhe abaixo do próprio conteúdo",
+      "sintoma": "O campo de escrever cai para fora da tela e a casca o corta.",
+      "causa": "min-height padrão é auto. O painel esticava até 1200px dentro de uma casca de 949.",
+      "defesa": "min-height: 0 em todo item de grid que precisa rolar por dentro.",
+      "custou": "A conversa aparecia inteira e não havia como responder.",
+      "atingiu": ["tela:inbox"]
+    }
+  ],
+  "fluxos": [
+    {
+      "id": "comentario-vira-dm",
+      "nome": "Comentário vira mensagem direta",
+      "gatilho": "Alguém comenta uma palavra-chave num post.",
+      "resultado": "A pessoa recebe uma DM com o conteúdo prometido, uma única vez.",
+      "passos": [
+        "rota:/api/public/webhooks/instagram",
+        "modulo:webhook-processor",
+        "tabela:triggers",
+        "tabela:trigger_cooldowns",
+        "tabela:automation_runs",
+        "modulo:compliance",
+        "modulo:outbound-delivery",
+        "modulo:meta-sender",
+        "tabela:messages"
+      ]
+    },
+    {
+      "id": "ia-responde-conversa",
+      "nome": "A IA responde uma conversa",
+      "gatilho": "Mensagem recebida num direct com agente autônomo ligado.",
+      "resultado": "Resposta enviada, ou encaminhada para humano quando não é segura.",
+      "passos": [
+        "rota:/api/public/webhooks/instagram",
+        "modulo:webhook-processor",
+        "tabela:ai_agents",
+        "tabela:knowledge_documents",
+        "modulo:ai",
+        "modulo:ai-tools",
+        "tabela:ai_execution_log",
+        "modulo:compliance",
+        "modulo:outbound-delivery"
+      ]
+    },
+    {
+      "id": "lead-marca-reuniao",
+      "nome": "Um lead marca reunião",
+      "gatilho": "Intenção de reunião numa conversa, ou alguém abrindo o link público.",
+      "resultado": "Reserva confirmada, evento no Google com Meet e convite no e-mail do lead.",
+      "passos": [
+        "modulo:booking-service",
+        "tabela:booking_pages",
+        "modulo:google-calendar",
+        "funcao:reserve_calendar_booking",
+        "tabela:bookings",
+        "tabela:calendar_events"
+      ]
+    },
+    {
+      "id": "link-de-captacao-atribui-origem",
+      "nome": "Link de captação atribui a origem",
+      "gatilho": "Alguém toca num link ig.me com ref, ou numa pergunta pronta do direct.",
+      "resultado": "A conversa abre com a janela de 24h aberta e a origem registrada no contato.",
+      "passos": [
+        "tabela:growth_links",
+        "rota:/api/public/webhooks/instagram",
+        "modulo:webhook-processor",
+        "modulo:growth-links",
+        "tabela:contacts"
+      ]
+    }
+  ],
+  "sistemasExternos": [
+    {
+      "id": "meta",
+      "nome": "Meta — Instagram e WhatsApp",
+      "papel": "Canal de entrada e saída de toda conversa. Define a janela de 24 horas, as políticas de envio e o processo de App Review.",
+      "falhaQuando": "Resposta ambígua vira estado unknown e não é reenviada. Suspensão da conta atinge todos os workspaces do mesmo app.",
+      "acessadoPor": [
+        "modulo:meta-sender",
+        "modulo:meta-api",
+        "rota:/api/public/webhooks/instagram",
+        "rota:/api/public/webhooks/whatsapp"
+      ]
+    },
+    {
+      "id": "google",
+      "nome": "Google Workspace",
+      "papel": "Agenda, Meet e Tarefas. É quem envia o convite ao convidado — o sistema só cria o evento com o convidado anexado.",
+      "falhaQuando": "Indisponível, a consulta falha fechada e nenhum horário é oferecido. App em modo Teste só autoriza usuários cadastrados como testadores.",
+      "acessadoPor": ["modulo:google-calendar", "modulo:booking-service"]
+    },
+    {
+      "id": "provedor-de-ia",
+      "nome": "OpenAI e Gemini",
+      "papel": "Geração de resposta e execução de ferramentas de agenda, configurável por workspace.",
+      "falhaQuando": "Sem teto configurado, a checagem de orçamento devolve limite zero e se desliga — não há parada automática de gasto.",
+      "acessadoPor": ["modulo:ai", "modulo:ai-governance"]
+    },
+    {
+      "id": "redis",
+      "nome": "Redis",
+      "papel": "Limite de taxa distribuído e fila de trabalho.",
+      "falhaQuando": "Fora do ar, o limite falha fechado e recusa tráfego. A espera de conexão vale só no arranque: durante uma queda o estado é reconnecting e a recusa é imediata.",
+      "acessadoPor": ["modulo:rate-limit", "modulo:queue"]
+    },
+    {
+      "id": "postgres",
+      "nome": "Postgres via Supabase",
+      "papel": "Verdade de todo o sistema. Guarda o isolamento por workspace em RLS e resolve as corridas em transação.",
+      "falhaQuando": "O cliente não lança exceção: devolve data e error. Escrita cujo retorno é descartado falha em silêncio.",
+      "acessadoPor": ["modulo:supabase-admin", "modulo:api-auth"]
+    }
+  ]
+}
