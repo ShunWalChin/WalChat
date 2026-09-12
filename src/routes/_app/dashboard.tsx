@@ -2,14 +2,19 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import {
   ArrowRight,
-  Bot,
+  Command,
   LoaderCircle,
   Radio,
-  Sparkles,
-  Users,
-  Zap,
+  Search,
+  X,
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import {
   Area,
   AreaChart,
@@ -20,6 +25,7 @@ import {
 } from 'recharts'
 import { ComplianceBanner, StatusDot } from '../../components/ui'
 import { apiFetch } from '../../lib/api-client'
+import { commandCenterGroups } from '../../lib/app-navigation'
 
 type DashboardData = {
   summary: {
@@ -46,10 +52,25 @@ export const Route = createFileRoute('/_app/dashboard')({
 })
 
 const number = new Intl.NumberFormat('pt-BR')
+const commandToolCount = commandCenterGroups.reduce(
+  (total, group) =>
+    total + group.items.filter((item) => item.to !== '/dashboard').length,
+  0,
+)
+
+function normalizeToolSearch(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR')
+    .trim()
+}
 
 function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [toolSearch, setToolSearch] = useState('')
+  const deferredToolSearch = useDeferredValue(toolSearch)
 
   const load = useCallback(async () => {
     try {
@@ -93,11 +114,34 @@ function Dashboard() {
       ]
     : []
 
+  const visibleCommandGroups = useMemo(() => {
+    const query = normalizeToolSearch(deferredToolSearch)
+
+    return commandCenterGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => {
+          if (item.to === '/dashboard') return false
+          if (!query) return true
+
+          return normalizeToolSearch(
+            `${item.label} ${item.description} ${item.keywords} ${group.title}`,
+          ).includes(query)
+        }),
+      }))
+      .filter((group) => group.items.length > 0)
+  }, [deferredToolSearch])
+
+  const visibleToolCount = visibleCommandGroups.reduce(
+    (total, group) => total + group.items.length,
+    0,
+  )
+
   return (
     <div className="stack-xl">
       <section className="welcome-strip">
         <div>
-          <span>OPERAÇÃO MULTICANAL 👊</span>
+          <span>OPERAÇÃO MULTICANAL</span>
           <h2>Instagram e WhatsApp no mesmo movimento.</h2>
           <p>
             <strong>{data?.channels.instagram ?? 0}</strong> Instagram e{' '}
@@ -237,61 +281,120 @@ function Dashboard() {
         </section>
       </div>
 
-      <section className="quick-grid">
-        <Link to="/gatilhos" className="quick-card">
-          <span className="quick-icon orange">
-            <Zap size={21} />
-          </span>
-          <div>
-            <strong>Novo gatilho</strong>
-            <small>Instagram, story ou WhatsApp</small>
+      <section
+        className="command-center card"
+        aria-labelledby="command-center-title"
+      >
+        <header className="command-center-head">
+          <div className="command-center-intro">
+            <span className="eyebrow command-center-eyebrow">
+              <Command size={15} aria-hidden="true" /> CENTRAL DE COMANDO
+            </span>
+            <h3 id="command-center-title">Todas as ferramentas do Wal Chat</h3>
+            <p>
+              Abra qualquer área do sistema sem precisar percorrer o menu
+              lateral.
+            </p>
           </div>
-          <ArrowRight size={18} />
-        </Link>
-        <Link to="/agentes" className="quick-card">
-          <span className="quick-icon blue">
-            <Bot size={21} />
-          </span>
-          <div>
-            <strong>Treinar agente</strong>
-            <small>Dê mais contexto para a IA</small>
+
+          <div className="command-center-search-block">
+            <div className="command-center-search">
+              <label className="sr-only" htmlFor="dashboard-tool-search">
+                Buscar ferramenta
+              </label>
+              <Search size={18} aria-hidden="true" />
+              <input
+                id="dashboard-tool-search"
+                type="search"
+                value={toolSearch}
+                onChange={(event) => setToolSearch(event.target.value)}
+                placeholder="Buscar ferramenta ou ação..."
+                autoComplete="off"
+                aria-describedby="dashboard-tool-count"
+              />
+              {toolSearch && (
+                <button
+                  type="button"
+                  onClick={() => setToolSearch('')}
+                  aria-label="Limpar busca de ferramentas"
+                >
+                  <X size={17} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+            <span
+              id="dashboard-tool-count"
+              className="command-center-count"
+              aria-live="polite"
+            >
+              {toolSearch
+                ? `${visibleToolCount} ${visibleToolCount === 1 ? 'resultado' : 'resultados'}`
+                : `${commandToolCount} ferramentas`}
+            </span>
           </div>
-          <ArrowRight size={18} />
-        </Link>
-        <Link
-          to="/contatos"
-          search={{
-            q: '',
-            page: 1,
-            platform: 'all',
-            eligibility: 'all',
-            stage: 'all',
-            tag: 'all',
-            assigned: 'all',
-            archived: 'active',
-            sort: 'recent',
-          }}
-          className="quick-card"
-        >
-          <span className="quick-icon green">
-            <Users size={21} />
-          </span>
-          <div>
-            <strong>Ver contatos</strong>
-            <small>Elegibilidade por canal em tempo real</small>
-          </div>
-          <ArrowRight size={18} />
-        </Link>
-        <Link to="/publicar" className="quick-card">
-          <span className="quick-icon dark">
-            <Sparkles size={21} />
-          </span>
-          <div>
-            <strong>Criar com IA</strong>
-            <small>Roteiro, copy e carrossel</small>
-          </div>
-          <ArrowRight size={18} />
-        </Link>
+        </header>
+
+        <div className="command-center-groups">
+          {visibleCommandGroups.map((group) => (
+            <section
+              className={`command-group tone-${group.tone}`}
+              aria-labelledby={`command-group-${group.id}`}
+              key={group.id}
+            >
+              <header className="command-group-head">
+                <div>
+                  <span>{group.label}</span>
+                  <h4 id={`command-group-${group.id}`}>{group.title}</h4>
+                  <p>{group.description}</p>
+                </div>
+                <strong aria-label={`${group.items.length} ferramentas`}>
+                  {group.items.length}
+                </strong>
+              </header>
+
+              <div className="command-tool-grid">
+                {group.items.map((tool) => {
+                  const Icon = tool.icon
+                  return (
+                    <Link
+                      to={tool.to}
+                      preload="intent"
+                      className="command-tool-card"
+                      data-command-center-tool
+                      key={tool.to}
+                    >
+                      <span className="command-tool-icon">
+                        <Icon size={20} strokeWidth={2} aria-hidden="true" />
+                      </span>
+                      <span className="command-tool-copy">
+                        <strong>{tool.label}</strong>
+                        <small>{tool.description}</small>
+                      </span>
+                      <ArrowRight
+                        className="command-tool-arrow"
+                        size={17}
+                        aria-hidden="true"
+                      />
+                    </Link>
+                  )
+                })}
+              </div>
+            </section>
+          ))}
+
+          {visibleToolCount === 0 && (
+            <div className="command-center-empty" role="status">
+              <Search size={22} aria-hidden="true" />
+              <div>
+                <strong>Nenhuma ferramenta encontrada</strong>
+                <span>Tente buscar por outro nome ou objetivo.</span>
+              </div>
+              <button type="button" onClick={() => setToolSearch('')}>
+                Limpar busca
+              </button>
+            </div>
+          )}
+        </div>
       </section>
 
       <ComplianceBanner />

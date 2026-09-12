@@ -26,6 +26,9 @@ Este runbook descreve a configuração real, os limites de segurança e os teste
 - fora da janela, somente template `APPROVED` sincronizado da WABA;
 - mídia inbound por proxy autenticado, sem expor o access token no navegador;
 - Inbox, CRM, tags, gatilhos, sequências e agentes de IA multicanal;
+- atribuição Click-to-WhatsApp por `referral.ctwa_clid`, preservada no contato e
+  apresentada no lead sem expor o identificador completo;
+- devolução CAPI opcional como Business Messaging, via regra de etapa e outbox;
 - opt-out `PARAR`, cooldown e blocklist no gateway central.
 
 ## 2. Pré-requisitos na Meta
@@ -119,6 +122,8 @@ devem usar sempre as variáveis específicas por canal.
 8. Se o telefone exigir registro, abra a seção de PIN e informe os seis dígitos. O PIN é enviado diretamente à Meta e descartado.
 9. Clique em **Sincronizar templates**.
 10. Envie uma mensagem do telefone de teste para abrir a janela de 24h e confirme a conversa na Inbox.
+11. Para CTWA, envie uma mensagem originada de um anúncio real e confirme o card
+    **Origem Meta** no lead antes de ativar a regra CAPI.
 
 ## 7. Regras de envio
 

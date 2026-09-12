@@ -1,6 +1,9 @@
 /** Normalização defensiva dos principais formatos inbound do WhatsApp. */
 import { describe, expect, it } from 'vitest'
-import { normalizeWhatsAppMessage } from './whatsapp-webhook-processor.server'
+import {
+  ctwaAttributionFromWhatsAppMessage,
+  normalizeWhatsAppMessage,
+} from './whatsapp-webhook-processor.server'
 
 describe('normalizeWhatsAppMessage', () => {
   it('normaliza texto, mídia, botão e localização sem depender do payload bruto', () => {
@@ -32,6 +35,36 @@ describe('normalizeWhatsAppMessage', () => {
       type: 'unknown',
       text: '',
       mediaId: null,
+    })
+  })
+
+  it('extrai a atribuição CTWA com WABA e timestamp do webhook', () => {
+    expect(
+      ctwaAttributionFromWhatsAppMessage(
+        {
+          referral: {
+            ctwa_clid: 'ctwa-click-123',
+            source_id: 'ad-456',
+            source_url: 'https://facebook.com/ad?private=value',
+            source_type: 'ad',
+            headline: 'Fale conosco',
+            body: 'Atendimento pelo WhatsApp',
+            media_type: 'image',
+          },
+        },
+        'waba-789',
+        '2026-09-05T12:00:00.000Z',
+      ),
+    ).toMatchObject({
+      ctwaClid: 'ctwa-click-123',
+      ctwaSourceId: 'ad-456',
+      ctwaSourceUrl: 'https://facebook.com/ad',
+      ctwaSourceType: 'ad',
+      ctwaHeadline: 'Fale conosco',
+      ctwaBody: 'Atendimento pelo WhatsApp',
+      ctwaMediaType: 'image',
+      ctwaWabaId: 'waba-789',
+      capturedAt: '2026-09-05T12:00:00.000Z',
     })
   })
 })

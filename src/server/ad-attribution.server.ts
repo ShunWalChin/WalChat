@@ -32,6 +32,8 @@ function hasAttribution(value: AdAttribution) {
     value.fbclid ||
     value.fbc ||
     value.fbp ||
+    value.ctwaClid ||
+    value.ctwaSourceId ||
     value.utmSource ||
     value.utmMedium ||
     value.utmCampaign,
@@ -78,6 +80,17 @@ export async function saveContactAdAttribution(input: {
     fbclid: current?.fbclid ?? next.fbclid ?? null,
     fbc: current?.fbc ?? next.fbc ?? null,
     fbp: current?.fbp ?? next.fbp ?? null,
+    ctwa_clid: current?.ctwa_clid ?? next.ctwaClid ?? null,
+    ctwa_source_id: current?.ctwa_source_id ?? next.ctwaSourceId ?? null,
+    ctwa_source_url: current?.ctwa_source_url ?? next.ctwaSourceUrl ?? null,
+    ctwa_source_type: current?.ctwa_source_type ?? next.ctwaSourceType ?? null,
+    ctwa_headline: current?.ctwa_headline ?? next.ctwaHeadline ?? null,
+    ctwa_body: current?.ctwa_body ?? next.ctwaBody ?? null,
+    ctwa_media_type: current?.ctwa_media_type ?? next.ctwaMediaType ?? null,
+    ctwa_waba_id: current?.ctwa_waba_id ?? next.ctwaWabaId ?? null,
+    ctwa_received_at:
+      current?.ctwa_received_at ??
+      (next.ctwaClid || next.ctwaSourceId ? touchAt : null),
     utm_source: next.utmSource ?? current?.utm_source ?? null,
     utm_medium: next.utmMedium ?? current?.utm_medium ?? null,
     utm_campaign: next.utmCampaign ?? current?.utm_campaign ?? null,

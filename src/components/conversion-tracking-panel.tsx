@@ -802,6 +802,9 @@ export function ConversionTrackingPanel({
                 }
               >
                 <option value="system_generated">Sistema/CRM</option>
+                <option value="business_messaging">
+                  WhatsApp — anúncio CTWA
+                </option>
                 <option value="website">Website</option>
                 <option value="chat">Chat</option>
                 <option value="phone_call">Ligação</option>
@@ -809,6 +812,12 @@ export function ConversionTrackingPanel({
                 <option value="physical_store">Loja física</option>
                 <option value="other">Outra</option>
               </select>
+              {ruleForm.metaActionSource === 'business_messaging' && (
+                <small>
+                  Usa o ctwa_clid recebido no webhook do WhatsApp e envia como
+                  conversão de mensagem, não como evento de website.
+                </small>
+              )}
             </label>
           )}
           <label className="check-row wide">

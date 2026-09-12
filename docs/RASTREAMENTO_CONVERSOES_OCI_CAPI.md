@@ -13,7 +13,9 @@ plataformas acontece dentro da transação que movimenta o lead.
 ```mermaid
 flowchart LR
   A[Google/Meta Ads] -->|gclid, gbraid, wbraid, fbclid| B[Site ou agenda WalChat]
+  A -->|ctwa_clid + referral| W[Webhook WhatsApp]
   B -->|formulário/webhook| C[Contato + atribuição first-touch]
+  W --> C
   C --> D[Lead no CRM]
   D -->|mudança de etapa| E[Regra de conversão]
   E --> F[scheduled_jobs: ad_conversion]
@@ -33,6 +35,7 @@ flowchart LR
 | Captura web      | `src/lib/ad-attribution.ts` lê parâmetros, cookies `_fbc`/`_fbp`, UTMs, URL, referrer e user-agent.    |
 | Agenda pública   | `/agendar/$slug` captura a origem e pede consentimento específico para mensuração.                     |
 | Webhook de leads | `/api/public/webhooks/leads/$token` aceita campos flat ou um objeto `tracking`/`attribution`.          |
+| WhatsApp CTWA    | O webhook captura click ID, WABA e contexto do anúncio sem expor o identificador no CRM.               |
 | Persistência     | `contact_ad_attributions` mantém click IDs first-touch e atualiza UTMs do último toque por 90 dias.    |
 | Regras           | `ad_conversion_rules` mapeia uma etapa do CRM para Google, Meta, valor e consentimento.                |
 | Outbox           | `ad_conversion_events` possui unicidade `(rule_id, lead_id)`.                                          |
@@ -52,6 +55,13 @@ Campos aceitos em camelCase e snake_case:
   "fbclid": "...",
   "fbc": "fb.1....",
   "fbp": "fb.1....",
+  "ctwa_clid": "...",
+  "ctwa_source_id": "120212345678901234",
+  "ctwa_source_url": "https://facebook.com/...",
+  "ctwa_source_type": "ad",
+  "ctwa_headline": "Oferta do anúncio",
+  "ctwa_media_type": "image",
+  "ctwa_waba_id": "123456789012345",
   "utm_source": "google",
   "utm_medium": "cpc",
   "utm_campaign": "campanha",
@@ -69,12 +79,26 @@ Regras importantes:
 
 - `gclid`, `gbraid`, `wbraid`, `fbclid`, `fbc` e `fbp` são first-touch: um
   clique posterior não substitui a origem já ligada ao contato;
+- `ctwa_clid`, WABA e o contexto do primeiro referral também são first-touch;
 - UTMs, página e referrer refletem o toque mais recente;
 - o prazo de retenção operacional é renovado para 90 dias;
 - IP bruto não é coletado nem persistido;
 - os identificadores de clique são removidos do payload de diagnóstico do
   webhook e ficam apenas na tabela restrita de atribuição;
 - a API privada nunca devolve tokens nem click IDs ao navegador.
+
+### Click-to-WhatsApp
+
+Quando a primeira mensagem veio de um anúncio para WhatsApp, a Meta inclui um
+objeto `referral` no webhook. O Wal Chat salva o `ctwa_clid`, a WABA receptora e
+o contexto do anúncio no contato. O drawer do lead mostra origem, ID do anúncio,
+criativo e horário, mas nunca devolve o click ID completo ao frontend.
+
+Para devolver a conversão, selecione **WhatsApp — anúncio CTWA** na origem Meta
+da regra. O payload passa a usar `action_source=business_messaging`,
+`messaging_channel=whatsapp`, `user_data.ctwa_clid` e
+`user_data.whatsapp_business_account_id`. Click ID ou WABA ausente bloqueia a
+entrega com `meta_ctwa_attribution_missing`.
 
 ## Formulários externos e GTM
 
@@ -138,7 +162,9 @@ servidor imediatamente antes do envio.
 
 O evento usa `event_id` estável, `action_source` da regra, `event_source_url`
 quando a origem é `website`, `fbc`/`fbp` sem hash e e-mail, telefone e
-`external_id` com SHA-256. O WalChat não envia IP bruto.
+`external_id` com SHA-256. Para CTWA, usa o contrato Business Messaging descrito
+acima e não mistura identificadores web. Eventos `Purchase` usam o UUID durável
+também como `custom_data.order_id`. O WalChat não envia IP bruto.
 
 ## Regras por etapa do CRM
 
@@ -147,7 +173,8 @@ Uma regra define:
 - etapa que dispara o evento;
 - provedor(es);
 - ID da ação do Google e/ou nome do evento Meta;
-- origem Meta (`system_generated`, `website`, `chat`, `phone_call`, etc.);
+- origem Meta (`system_generated`, `website`, `business_messaging`,
+  `phone_call`, etc.);
 - valor da oportunidade, valor fixo ou nenhum valor;
 - moeda;
 - exigência de consentimento;

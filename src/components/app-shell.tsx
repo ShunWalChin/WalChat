@@ -1,100 +1,11 @@
 /** Shell autenticado com navegação responsiva e estado da conta conectada. */
 import { Link, Navigate, Outlet, useRouterState } from '@tanstack/react-router'
-import {
-  BarChart3,
-  HandHeart,
-  BookOpenCheck,
-  Bot,
-  BriefcaseBusiness,
-  Cable,
-  CalendarDays,
-  ChevronDown,
-  ClipboardList,
-  ContactRound,
-  GitBranch,
-  Heart,
-  Inbox,
-  LayoutDashboard,
-  Link2,
-  LogOut,
-  Menu,
-  Megaphone,
-  MessageCircleReply,
-  Gauge,
-  Plus,
-  Radio,
-  Radar,
-  Send,
-  Settings,
-  UsersRound,
-  Webhook,
-  Workflow,
-  X,
-  Zap,
-} from 'lucide-react'
+import { ChevronDown, LogOut, Menu, Plus, Radio, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/auth-context'
 import { useWorkspace } from '../contexts/workspace-context'
 import { apiFetch } from '../lib/api-client'
-
-const groups = [
-  {
-    label: 'CONVERSAS',
-    items: [
-      { to: '/dashboard', label: 'Visão geral', icon: LayoutDashboard },
-      { to: '/operacoes', label: 'Operação & Go-Live', icon: Gauge },
-      { to: '/inbox', label: 'Inbox', icon: Inbox },
-    ],
-  },
-  {
-    label: 'CRM',
-    items: [
-      { to: '/crm', label: 'Pipeline', icon: BriefcaseBusiness },
-      { to: '/radar', label: 'Radar de risco', icon: Radar },
-      { to: '/contatos', label: 'Contatos & tags', icon: ContactRound },
-      {
-        to: '/respostas',
-        label: 'Respostas rápidas',
-        icon: MessageCircleReply,
-      },
-      { to: '/equipe', label: 'Equipe', icon: UsersRound },
-    ],
-  },
-  {
-    label: 'AUTOMAÇÃO',
-    items: [
-      { to: '/gatilhos', label: 'Gatilhos', icon: Zap },
-      { to: '/boas-vindas', label: 'Boas-vindas', icon: HandHeart },
-      { to: '/captacao', label: 'Captação', icon: Link2 },
-      {
-        to: '/comment-to-dm',
-        label: 'Comment-to-DM',
-        icon: MessageCircleReply,
-      },
-      { to: '/sequencias', label: 'Sequências', icon: Workflow },
-      { to: '/agentes', label: 'Agentes de IA', icon: Bot },
-      { to: '/governanca', label: 'Governança de IA', icon: GitBranch },
-      { to: '/reengajamento', label: 'Reengajamento', icon: Megaphone },
-      { to: '/auto-like', label: 'Auto-like', icon: Heart },
-    ],
-  },
-  {
-    label: 'CONTEÚDO',
-    items: [
-      { to: '/calendario', label: 'Calendário', icon: CalendarDays },
-      { to: '/publicar', label: 'Publicar', icon: Send },
-      { to: '/insights', label: 'Insights', icon: BarChart3 },
-    ],
-  },
-  {
-    label: 'SISTEMA',
-    items: [
-      { to: '/integracoes', label: 'Integrações', icon: Cable },
-      { to: '/webhooks', label: 'Webhooks de leads', icon: Webhook },
-      { to: '/auditoria', label: 'Auditoria', icon: ClipboardList },
-    ],
-  },
-] as const
+import { navigationGroups, utilityNavigationItems } from '../lib/app-navigation'
 
 const titles: Record<string, { eyebrow: string; title: string }> = {
   '/dashboard': { eyebrow: 'RESUMO DA OPERAÇÃO', title: 'Visão geral' },
@@ -159,7 +70,7 @@ export function AppShell() {
   /**
    * Grupos abertos na barra lateral.
    *
-   * São 27 destinos: com todos abertos, o menu mede 1706px e doze itens ficam
+   * São 25 destinos: com todos abertos, o menu mede 1706px e doze itens ficam
    * abaixo da dobra numa tela de 900px — incluindo Calendário, Integrações e o
    * próprio Manual. A barra rola, mas ninguém percebe que rola, então metade do
    * produto some.
@@ -167,8 +78,11 @@ export function AppShell() {
    * O grupo da tela atual abre sempre; os outros ficam como a pessoa deixou.
    */
   const grupoDaRota =
-    groups.find((g) => g.items.some((i) => i.to === pathname))?.label ??
-    groups[0].label
+    navigationGroups.find((g) => g.items.some((i) => i.to === pathname))
+      ?.label ??
+    (utilityNavigationItems.some((item) => item.to === pathname)
+      ? 'SISTEMA'
+      : navigationGroups[0].label)
   const [openGroups, setOpenGroups] = useState<Array<string>>([grupoDaRota])
 
   useEffect(() => {
@@ -336,7 +250,7 @@ export function AppShell() {
         </Link>
 
         <nav className="nav-groups" aria-label="Navegação principal">
-          {groups.map((group) => {
+          {navigationGroups.map((group) => {
             const aberto = openGroups.includes(group.label)
             return (
               <div
@@ -389,20 +303,19 @@ export function AppShell() {
                 : 'Conecte uma conta em Configurações'}
             </small>
           </div>
-          <Link
-            to="/manual"
-            className="nav-item"
-            activeProps={{ className: 'nav-item active' }}
-          >
-            <BookOpenCheck size={18} /> Manual do sistema
-          </Link>
-          <Link
-            to="/configuracoes"
-            className="nav-item"
-            activeProps={{ className: 'nav-item active' }}
-          >
-            <Settings size={18} /> Configurações
-          </Link>
+          {utilityNavigationItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="nav-item"
+                activeProps={{ className: 'nav-item active' }}
+              >
+                <Icon size={18} /> {item.label}
+              </Link>
+            )
+          })}
           <button
             type="button"
             className="profile-row"

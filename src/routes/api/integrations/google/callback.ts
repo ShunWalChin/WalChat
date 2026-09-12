@@ -1,6 +1,8 @@
 /** Finaliza OAuth Google e persiste tokens cifrados por conexão/tenant. */
 import { createFileRoute } from '@tanstack/react-router'
 import { timingSafeEqual } from 'node:crypto'
+import type { GoogleOAuthReason } from '../../../../lib/google-oauth-feedback'
+import { normalizeGoogleOAuthReason } from '../../../../lib/google-oauth-feedback'
 import { getServerEnv } from '../../../../server/env.server'
 import {
   consumeGoogleOAuthState,
@@ -38,6 +40,7 @@ function equalState(left: string | null, right: string) {
 function response(
   status: 'connected' | 'denied' | 'error',
   targetPath: '/calendario' | '/integracoes' = '/calendario',
+  reason?: GoogleOAuthReason,
 ) {
   const env = getServerEnv()
   const secure = env.APP_ORIGIN.startsWith('https://')
@@ -47,6 +50,11 @@ function response(
     targetPath === '/integracoes' ? 'googleAds' : 'google',
     status,
   )
+  if (reason)
+    target.searchParams.set(
+      targetPath === '/integracoes' ? 'googleAdsReason' : 'googleReason',
+      reason,
+    )
   const clear = (name: string) =>
     [
       `${prefix}${name}=`,
@@ -91,19 +99,21 @@ export const Route = createFileRoute('/api/integrations/google/callback')({
         const code = url.searchParams.get('code')
         const state = url.searchParams.get('state')
         const verifier = cookie(request, 'wal_google_pkce')
-        if (url.searchParams.get('error')) {
+        const providerError = url.searchParams.get('error')
+        if (providerError) {
+          const reason = normalizeGoogleOAuthReason(providerError)
           if (
             state &&
             equalState(cookie(request, 'wal_google_oauth_state'), state)
           ) {
             try {
               const deniedState = await consumeGoogleOAuthState(state)
-              return response('denied', deniedState.redirect_after)
+              return response('denied', deniedState.redirect_after, reason)
             } catch {
-              return response('denied')
+              return response('denied', '/calendario', reason)
             }
           }
-          return response('denied')
+          return response('denied', '/calendario', reason)
         }
         if (
           !code ||

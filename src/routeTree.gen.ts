@@ -41,6 +41,7 @@ import { Route as AppRespostasRouteImport } from './routes/_app/respostas'
 import { Route as AppSequenciasRouteImport } from './routes/_app/sequencias'
 import { Route as AppWebhooksRouteImport } from './routes/_app/webhooks'
 import { Route as AgendarSlugRouteImport } from './routes/agendar/$slug'
+import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as ApiAuditRouteImport } from './routes/api/audit'
 import { Route as ApiAutoLikeRouteImport } from './routes/api/auto-like'
 import { Route as ApiAutomationsRouteImport } from './routes/api/automations'
@@ -288,6 +289,11 @@ const AppWebhooksRoute = AppWebhooksRouteImport.update({
 const AgendarSlugRoute = AgendarSlugRouteImport.update({
   id: '/agendar/$slug',
   path: '/agendar/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSplatRoute = ApiSplatRouteImport.update({
+  id: '/api/$',
+  path: '/api/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuditRoute = ApiAuditRouteImport.update({
@@ -805,6 +811,7 @@ export interface FileRoutesByFullPath {
   '/sequencias': typeof AppSequenciasRoute
   '/webhooks': typeof AppWebhooksRoute
   '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/$': typeof ApiSplatRoute
   '/api/audit': typeof ApiAuditRoute
   '/api/auto-like': typeof ApiAutoLikeRoute
   '/api/automations': typeof ApiAutomationsRouteWithChildren
@@ -927,6 +934,7 @@ export interface FileRoutesByTo {
   '/sequencias': typeof AppSequenciasRoute
   '/webhooks': typeof AppWebhooksRoute
   '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/$': typeof ApiSplatRoute
   '/api/audit': typeof ApiAuditRoute
   '/api/auto-like': typeof ApiAutoLikeRoute
   '/api/automations': typeof ApiAutomationsRouteWithChildren
@@ -1051,6 +1059,7 @@ export interface FileRoutesById {
   '/_app/sequencias': typeof AppSequenciasRoute
   '/_app/webhooks': typeof AppWebhooksRoute
   '/agendar/$slug': typeof AgendarSlugRoute
+  '/api/$': typeof ApiSplatRoute
   '/api/audit': typeof ApiAuditRoute
   '/api/auto-like': typeof ApiAutoLikeRoute
   '/api/automations': typeof ApiAutomationsRouteWithChildren
@@ -1175,6 +1184,7 @@ export interface FileRouteTypes {
     | '/sequencias'
     | '/webhooks'
     | '/agendar/$slug'
+    | '/api/$'
     | '/api/audit'
     | '/api/auto-like'
     | '/api/automations'
@@ -1297,6 +1307,7 @@ export interface FileRouteTypes {
     | '/sequencias'
     | '/webhooks'
     | '/agendar/$slug'
+    | '/api/$'
     | '/api/audit'
     | '/api/auto-like'
     | '/api/automations'
@@ -1420,6 +1431,7 @@ export interface FileRouteTypes {
     | '/_app/sequencias'
     | '/_app/webhooks'
     | '/agendar/$slug'
+    | '/api/$'
     | '/api/audit'
     | '/api/auto-like'
     | '/api/automations'
@@ -1519,6 +1531,7 @@ export interface RootRouteChildren {
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
   AgendarSlugRoute: typeof AgendarSlugRoute
+  ApiSplatRoute: typeof ApiSplatRoute
   ApiAuditRoute: typeof ApiAuditRoute
   ApiAutoLikeRoute: typeof ApiAutoLikeRoute
   ApiAutomationsRoute: typeof ApiAutomationsRouteWithChildren
@@ -1815,6 +1828,13 @@ declare module '@tanstack/react-router' {
       path: '/agendar/$slug'
       fullPath: '/agendar/$slug'
       preLoaderRoute: typeof AgendarSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/$': {
+      id: '/api/$'
+      path: '/api/$'
+      fullPath: '/api/$'
+      preLoaderRoute: typeof ApiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/audit': {
@@ -2644,6 +2664,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
   AgendarSlugRoute: AgendarSlugRoute,
+  ApiSplatRoute: ApiSplatRoute,
   ApiAuditRoute: ApiAuditRoute,
   ApiAutoLikeRoute: ApiAutoLikeRoute,
   ApiAutomationsRoute: ApiAutomationsRouteWithChildren,

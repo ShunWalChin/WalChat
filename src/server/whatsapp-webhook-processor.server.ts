@@ -1,5 +1,7 @@
 /** Normaliza mensagens/status do WhatsApp e alimenta Inbox e automações. */
 import '@tanstack/react-start/server-only'
+import { normalizeAdAttribution } from '../lib/ad-attribution'
+import { saveContactAdAttribution } from './ad-attribution.server'
 import { suggestInstagramReply } from './ai.server'
 import {
   resumeAutomationAfterReply,
@@ -34,6 +36,16 @@ type WhatsAppMessage = {
   location?: { latitude?: number; longitude?: number; name?: string }
   contacts?: unknown[]
   reaction?: { message_id?: string; emoji?: string }
+  referral?: {
+    ctwa_clid?: string
+    source_id?: string
+    source_ad_id?: string
+    source_url?: string
+    source_type?: string
+    headline?: string
+    body?: string
+    media_type?: string
+  }
 }
 type WhatsAppStatus = {
   id?: string
@@ -140,6 +152,17 @@ export async function processWhatsAppWebhook(
         if (ingestionError) throw ingestionError
         if (!ingestion) throw new Error('ingest_whatsapp_inbound_empty')
         const ingested = ingestion as IngestionResult
+        const attribution = ctwaAttributionFromWhatsAppMessage(
+          message,
+          entry.id,
+          receivedAt,
+        )
+        if (attribution.ctwaClid || attribution.ctwaSourceId)
+          await saveContactAdAttribution({
+            workspaceId: account.workspace_id,
+            contactId: ingested.contact_id,
+            attribution,
+          })
         if (ingested.interaction_inserted)
           await assignConversationByRouting({
             admin: supabase,
@@ -204,6 +227,26 @@ export async function processWhatsAppWebhook(
     .eq('meta_event_key', metaEventKey)
   if (completedError) throw completedError
   return { processed, statuses, demo: false }
+}
+
+/** Extrai a referência oficial Click-to-WhatsApp sem confiar no payload bruto. */
+export function ctwaAttributionFromWhatsAppMessage(
+  message: WhatsAppMessage,
+  wabaId?: string,
+  receivedAt?: string,
+) {
+  const referral = message.referral
+  return normalizeAdAttribution({
+    ctwaClid: referral?.ctwa_clid,
+    ctwaSourceId: referral?.source_id ?? referral?.source_ad_id,
+    ctwaSourceUrl: referral?.source_url,
+    ctwaSourceType: referral?.source_type,
+    ctwaHeadline: referral?.headline,
+    ctwaBody: referral?.body,
+    ctwaMediaType: referral?.media_type,
+    ctwaWabaId: wabaId,
+    capturedAt: receivedAt,
+  })
 }
 
 export function normalizeWhatsAppMessage(message: WhatsAppMessage) {

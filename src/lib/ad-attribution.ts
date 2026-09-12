@@ -8,6 +8,14 @@ export type AdAttribution = {
   fbclid?: string
   fbc?: string
   fbp?: string
+  ctwaClid?: string
+  ctwaSourceId?: string
+  ctwaSourceUrl?: string
+  ctwaSourceType?: string
+  ctwaHeadline?: string
+  ctwaBody?: string
+  ctwaMediaType?: string
+  ctwaWabaId?: string
   utmSource?: string
   utmMedium?: string
   utmCampaign?: string
@@ -86,6 +94,36 @@ export function normalizeAdAttribution(value: unknown): AdAttribution {
     fbclid: bounded(source.fbclid, 512),
     fbc: bounded(source.fbc ?? source._fbc, 512),
     fbp: bounded(source.fbp ?? source._fbp, 512),
+    ctwaClid: bounded(source.ctwaClid ?? source.ctwa_clid, 512),
+    ctwaSourceId: bounded(
+      source.ctwaSourceId ??
+        source.ctwa_source_id ??
+        source.sourceAdId ??
+        source.source_ad_id ??
+        source.source_id,
+      128,
+    ),
+    ctwaSourceUrl: safeUrl(
+      source.ctwaSourceUrl ?? source.ctwa_source_url ?? source.source_url,
+      false,
+    ),
+    ctwaSourceType: bounded(
+      source.ctwaSourceType ?? source.ctwa_source_type ?? source.source_type,
+      32,
+    ),
+    ctwaHeadline: bounded(
+      source.ctwaHeadline ?? source.ctwa_headline ?? source.headline,
+      500,
+    ),
+    ctwaBody: bounded(source.ctwaBody ?? source.ctwa_body ?? source.body, 1000),
+    ctwaMediaType: bounded(
+      source.ctwaMediaType ?? source.ctwa_media_type ?? source.media_type,
+      32,
+    ),
+    ctwaWabaId: bounded(
+      source.ctwaWabaId ?? source.ctwa_waba_id ?? source.waba_id,
+      80,
+    ),
     utmSource: bounded(source.utmSource ?? source.utm_source, 160),
     utmMedium: bounded(source.utmMedium ?? source.utm_medium, 160),
     utmCampaign: bounded(source.utmCampaign ?? source.utm_campaign, 240),
@@ -157,6 +195,14 @@ export function captureAdAttribution(consent?: AdUserDataConsent) {
     fbclid: previous.fbclid ?? current.fbclid,
     fbc: previous.fbc ?? current.fbc,
     fbp: previous.fbp ?? current.fbp,
+    ctwaClid: previous.ctwaClid ?? current.ctwaClid,
+    ctwaSourceId: previous.ctwaSourceId ?? current.ctwaSourceId,
+    ctwaSourceUrl: previous.ctwaSourceUrl ?? current.ctwaSourceUrl,
+    ctwaSourceType: previous.ctwaSourceType ?? current.ctwaSourceType,
+    ctwaHeadline: previous.ctwaHeadline ?? current.ctwaHeadline,
+    ctwaBody: previous.ctwaBody ?? current.ctwaBody,
+    ctwaMediaType: previous.ctwaMediaType ?? current.ctwaMediaType,
+    ctwaWabaId: previous.ctwaWabaId ?? current.ctwaWabaId,
     utmSource: current.utmSource ?? previous.utmSource,
     utmMedium: current.utmMedium ?? previous.utmMedium,
     utmCampaign: current.utmCampaign ?? previous.utmCampaign,

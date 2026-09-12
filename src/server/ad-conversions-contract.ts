@@ -69,6 +69,7 @@ export const adConversionRuleSchema = z
         'email',
         'other',
         'physical_store',
+        'business_messaging',
         'system_generated',
       ])
       .default('system_generated'),

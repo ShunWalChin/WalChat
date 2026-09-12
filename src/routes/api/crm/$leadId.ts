@@ -21,6 +21,21 @@ const requestSchema = z.discriminatedUnion('kind', [
   updateCrmLeadSchema.extend({ kind: z.literal('update') }),
 ])
 
+function safeExternalUrl(value: unknown) {
+  if (typeof value !== 'string') return null
+  try {
+    const url = new URL(value)
+    if (!['http:', 'https:'].includes(url.protocol)) return null
+    url.username = ''
+    url.password = ''
+    url.search = ''
+    url.hash = ''
+    return url.toString().slice(0, 2048)
+  } catch {
+    return null
+  }
+}
+
 export const Route = createFileRoute('/api/crm/$leadId')({
   server: {
     handlers: {
@@ -36,7 +51,7 @@ export const Route = createFileRoute('/api/crm/$leadId')({
           if (leadError) throw leadError
           if (!lead) throw new ApiError(404, 'Lead não encontrado.')
 
-          const [{ data: activities, error: activitiesError }, members] =
+          const [activityResult, members, attributionResult] =
             await Promise.all([
               context.admin
                 .from('crm_lead_activities')
@@ -51,14 +66,40 @@ export const Route = createFileRoute('/api/crm/$leadId')({
                 admin: context.admin,
                 workspaceId: context.workspaceId,
               }),
+              lead.contact_id
+                ? context.admin
+                    .from('contact_ad_attributions')
+                    .select(
+                      'ctwa_clid,ctwa_source_id,ctwa_source_url,ctwa_source_type,ctwa_headline,ctwa_body,ctwa_media_type,ctwa_received_at',
+                    )
+                    .eq('workspace_id', context.workspaceId)
+                    .eq('contact_id', lead.contact_id)
+                    .maybeSingle()
+                : Promise.resolve({ data: null, error: null }),
             ])
-          if (activitiesError) throw activitiesError
+          if (activityResult.error) throw activityResult.error
+          if (attributionResult.error) throw attributionResult.error
+          const activities = activityResult.data
+          const attribution = attributionResult.data
           const memberNames = new Map(
             members.map((member) => [member.id, member.name]),
           )
           return Response.json(
             {
               lead,
+              ctwaAttribution:
+                attribution?.ctwa_clid || attribution?.ctwa_source_id
+                  ? {
+                      hasClickId: Boolean(attribution.ctwa_clid),
+                      sourceId: attribution.ctwa_source_id,
+                      sourceUrl: safeExternalUrl(attribution.ctwa_source_url),
+                      sourceType: attribution.ctwa_source_type,
+                      headline: attribution.ctwa_headline,
+                      body: attribution.ctwa_body,
+                      mediaType: attribution.ctwa_media_type,
+                      receivedAt: attribution.ctwa_received_at,
+                    }
+                  : null,
               activities: activities.map((activity) => ({
                 id: activity.id,
                 type: activity.activity_type,
