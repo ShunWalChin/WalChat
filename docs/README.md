@@ -4,7 +4,7 @@ Este diretório é a fonte de verdade técnica e operacional do Wal Chat. Comece
 pela [documentação completa do sistema](DOCUMENTACAO_COMPLETA_DO_SISTEMA.md) e
 use os documentos especializados abaixo quando precisar aprofundar uma área.
 
-Última revisão do índice: **04/09/2026**.
+Última revisão do índice: **08/09/2026**.
 
 ## Visão geral
 
@@ -35,28 +35,30 @@ use os documentos especializados abaixo quando precisar aprofundar uma área.
 
 ## Integrações e APIs
 
-| Documento                                                            | Conteúdo                                               |
-| -------------------------------------------------------------------- | ------------------------------------------------------ |
-| [API e webhooks](API_E_WEBHOOKS.md)                                  | Contratos HTTP e exemplos de integração                |
-| [Meta, Instagram e WhatsApp](INTEGRACOES_META_INSTAGRAM_WHATSAPP.md) | OAuth, webhooks, Cloud API e Embedded Signup           |
-| [Meta e OpenAI](CONFIGURACAO_META_E_OPENAI.md)                       | Variáveis e configuração dos provedores                |
-| [Google Calendar](CONFIGURACAO_GOOGLE_CALENDAR.md)                   | OAuth PKCE, Calendar, Tasks, Meet e Free/Busy          |
-| [Google Ads OCI e Meta CAPI](RASTREAMENTO_CONVERSOES_OCI_CAPI.md)    | Atribuição, regras CRM, fila, consentimento e operação |
-| [Integração n8n](INTEGRACAO_N8N.md)                                  | Ponte bidirecional, autenticação e idempotência        |
-| [Workflows n8n](WORKFLOWS_N8N_OPERACIONAIS_2026-08-24.md)            | Suíte operacional provisionada                         |
+| Documento                                                                    | Conteúdo                                               |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------ |
+| [API e webhooks](API_E_WEBHOOKS.md)                                          | Contratos HTTP e exemplos de integração                |
+| [Meta, Instagram e WhatsApp](INTEGRACOES_META_INSTAGRAM_WHATSAPP.md)         | OAuth, webhooks, Cloud API e Embedded Signup           |
+| [Meta e OpenAI](CONFIGURACAO_META_E_OPENAI.md)                               | Variáveis e configuração dos provedores                |
+| [Google Calendar](CONFIGURACAO_GOOGLE_CALENDAR.md)                           | OAuth PKCE, Calendar, Tasks, Meet e Free/Busy          |
+| [Google Ads OCI e Meta CAPI](RASTREAMENTO_CONVERSOES_OCI_CAPI.md)            | Atribuição, regras CRM, fila, consentimento e operação |
+| [Engenharia reversa Anima CTWA](ENGENHARIA_REVERSA_ANIMA_CTWA_2026-09-05.md) | Decisões, contrato CTWA, segurança e operação          |
+| [Integração n8n](INTEGRACAO_N8N.md)                                          | Ponte bidirecional, autenticação e idempotência        |
+| [Workflows n8n](WORKFLOWS_N8N_OPERACIONAIS_2026-08-24.md)                    | Suíte operacional provisionada                         |
 
 ## Segurança, produção e recuperação
 
-| Documento                                                      | Conteúdo                                                    |
-| -------------------------------------------------------------- | ----------------------------------------------------------- |
-| [Segurança e compliance](SEGURANCA_E_COMPLIANCE.md)            | Meta, LGPD, opt-out, janela de 24h e controles técnicos     |
-| [Auditoria de segurança](AUDITORIA_SEGURANCA_2026-08-25.md)    | Hardening e riscos remanescentes                            |
-| [Plano de produção](PLANO_DE_PRODUCAO.md)                      | Critérios de go-live e preparação do ambiente               |
-| [Ativação live e backup](ATIVACAO_LIVE_E_BACKUP_2026-08-24.md) | Gates, backup e rollback                                    |
-| [Runbook de deploy](DEPLOY_2026-08-25_MANYCHAT_E_SEGURANCA.md) | Publicação por release imutável                             |
-| [Release CRM/IA](REGISTRO_RELEASE_20260828_CRM_IA.md)          | Evidências do deploy que incorporou as capacidades Deskcomm |
-| [Validação de produção](VALIDACAO_PRODUCAO_REAL_V1.md)         | Matriz de homologação e evidências operacionais             |
-| [Débito técnico](DEBITO_TECNICO_2026-08-25.md)                 | Pendências conhecidas e prioridades                         |
+| Documento                                                             | Conteúdo                                                    |
+| --------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [Segurança e compliance](SEGURANCA_E_COMPLIANCE.md)                   | Meta, LGPD, opt-out, janela de 24h e controles técnicos     |
+| [Auditoria de segurança](AUDITORIA_SEGURANCA_2026-08-25.md)           | Hardening e riscos remanescentes                            |
+| [Homologação de produção — 08/09](HOMOLOGACAO_PRODUCAO_2026-09-08.md) | Evidências live, bloqueios, testes e critério para GO       |
+| [Plano de produção](PLANO_DE_PRODUCAO.md)                             | Critérios de go-live e preparação do ambiente               |
+| [Ativação live e backup](ATIVACAO_LIVE_E_BACKUP_2026-08-24.md)        | Gates, backup e rollback                                    |
+| [Runbook de deploy](DEPLOY_2026-08-25_MANYCHAT_E_SEGURANCA.md)        | Publicação por release imutável                             |
+| [Release CRM/IA](REGISTRO_RELEASE_20260828_CRM_IA.md)                 | Evidências do deploy que incorporou as capacidades Deskcomm |
+| [Validação de produção](VALIDACAO_PRODUCAO_REAL_V1.md)                | Matriz de homologação e evidências operacionais             |
+| [Débito técnico](DEBITO_TECNICO_2026-08-25.md)                        | Pendências conhecidas e prioridades                         |
 
 ## Regra de atualização
 

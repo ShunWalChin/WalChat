@@ -42,6 +42,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 import { PageIntro, StatusDot } from '../../components/ui'
 import { apiFetch } from '../../lib/api-client'
+import { getGoogleOAuthFeedback } from '../../lib/google-oauth-feedback'
 
 const searchSchema = z.object({
   view: z.enum(['month', 'week', 'agenda']).catch('month'),
@@ -53,6 +54,11 @@ const searchSchema = z.object({
   source: z
     .enum(['all', 'calendar', 'task', 'booking', 'content', 'automation'])
     .catch('all'),
+  google: z.enum(['connected', 'denied', 'error']).optional().catch(undefined),
+  googleReason: z
+    .enum(['access_denied', 'provider_error'])
+    .optional()
+    .catch(undefined),
 })
 
 export const Route = createFileRoute('/_app/calendario')({
@@ -302,6 +308,10 @@ function CalendarPage() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [bookingOpen, setBookingOpen] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const oauthFeedback = useMemo(
+    () => getGoogleOAuthFeedback(search.google, search.googleReason),
+    [search.google, search.googleReason],
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -323,15 +333,6 @@ function CalendarPage() {
   }, [range.from.getTime(), range.to.getTime()])
 
   useEffect(() => void load(), [load])
-
-  useEffect(() => {
-    const result = new URLSearchParams(window.location.search).get('google')
-    if (result === 'connected')
-      setSuccess('Google Calendar e Tasks conectados com sucesso.')
-    if (result === 'denied') setError('A conexão Google foi cancelada.')
-    if (result === 'error')
-      setError('O Google não concluiu a conexão. Confira a configuração OAuth.')
-  }, [])
 
   const connection = google?.connections.find(
     (item) => item.status === 'connected' && item.tokenStored,
@@ -568,7 +569,7 @@ function CalendarPage() {
         }
       />
 
-      {!google?.platformConfigured && (
+      {google && !google.platformConfigured && (
         <div className="calendar-alert warning">
           <CircleAlert size={18} />
           <div>
@@ -584,6 +585,61 @@ function CalendarPage() {
           >
             Ver configuração
           </button>
+        </div>
+      )}
+      {oauthFeedback && (
+        <div
+          className={`calendar-oauth-feedback ${oauthFeedback.tone}`}
+          role={oauthFeedback.tone === 'error' ? 'alert' : 'status'}
+          aria-live={oauthFeedback.tone === 'error' ? 'assertive' : 'polite'}
+          aria-labelledby="google-oauth-feedback-title"
+        >
+          <span className="calendar-oauth-feedback-icon" aria-hidden="true">
+            {oauthFeedback.tone === 'error' ? (
+              <CircleAlert size={19} />
+            ) : (
+              <CheckCircle2 size={19} />
+            )}
+          </span>
+          <div className="calendar-oauth-feedback-copy">
+            <strong id="google-oauth-feedback-title">
+              {oauthFeedback.title}
+            </strong>
+            <span>{oauthFeedback.description}</span>
+          </div>
+          <div className="calendar-oauth-feedback-actions">
+            {oauthFeedback.tone === 'error' && (
+              <button
+                className="button button-outline"
+                onClick={() => setSettingsOpen(true)}
+              >
+                Ver como corrigir
+              </button>
+            )}
+            {oauthFeedback.canRetry && google?.platformConfigured && (
+              <button
+                className="button button-dark"
+                onClick={() => void connectGoogle()}
+                disabled={busy === 'google-connect'}
+              >
+                {busy === 'google-connect' ? (
+                  <LoaderCircle className="spin" size={16} />
+                ) : (
+                  <RefreshCw size={16} />
+                )}
+                Tentar novamente
+              </button>
+            )}
+            <button
+              className="calendar-oauth-feedback-close"
+              onClick={() =>
+                setSearch({ google: undefined, googleReason: undefined })
+              }
+              aria-label="Dispensar aviso da conexão Google"
+            >
+              <X size={17} />
+            </button>
+          </div>
         </div>
       )}
       {error && (
@@ -1564,6 +1620,19 @@ function GoogleSettings({
               O Wal Chat pedirá apenas os escopos de eventos, lista de
               calendários e tarefas.
             </p>
+            <div className="calendar-oauth-help">
+              <CircleAlert size={18} aria-hidden="true" />
+              <div>
+                <strong>Se o Google bloquear o acesso</strong>
+                <p>
+                  Em modo de teste, adicione esta conta em Google Auth Platform
+                  → Público-alvo → Usuários de teste. Para uso geral, publique e
+                  verifique o app.
+                </p>
+                <span>URI autorizada</span>
+                <code>{status.redirectUri}</code>
+              </div>
+            </div>
             <button className="button button-dark" onClick={onConnect}>
               Autorizar Google
             </button>

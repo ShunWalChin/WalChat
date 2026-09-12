@@ -246,24 +246,38 @@ export function buildMetaConversion(input: {
   attribution: Record<string, unknown>
   clickTime?: string
 }) {
-  const userData: Record<string, unknown> = {
-    external_id: [sha256Identifier(input.contactId)],
+  const isBusinessMessaging = input.actionSource === 'business_messaging'
+  if (
+    isBusinessMessaging &&
+    (!input.attribution.ctwa_clid || !input.attribution.ctwa_waba_id)
+  )
+    throw new AdConversionDeliveryError('meta_ctwa_attribution_missing', true)
+  const userData: Record<string, unknown> = isBusinessMessaging
+    ? {
+        ctwa_clid: input.attribution.ctwa_clid,
+        whatsapp_business_account_id: input.attribution.ctwa_waba_id,
+      }
+    : { external_id: [sha256Identifier(input.contactId)] }
+  if (!isBusinessMessaging) {
+    if (input.contact.email)
+      userData.em = [
+        sha256Identifier(normalizeEmailForAds(input.contact.email)),
+      ]
+    if (input.contact.phone) {
+      const phone = normalizePhoneForAds(input.contact.phone)
+      if (phone) userData.ph = [sha256Identifier(phone)]
+    }
+    if (input.attribution.fbc) userData.fbc = input.attribution.fbc
+    else if (input.attribution.fbclid)
+      userData.fbc = `fb.1.${Date.parse(input.clickTime ?? input.eventTime)}.${input.attribution.fbclid}`
+    if (input.attribution.fbp) userData.fbp = input.attribution.fbp
   }
-  if (input.contact.email)
-    userData.em = [sha256Identifier(normalizeEmailForAds(input.contact.email))]
-  if (input.contact.phone) {
-    const phone = normalizePhoneForAds(input.contact.phone)
-    if (phone) userData.ph = [sha256Identifier(phone)]
-  }
-  if (input.attribution.fbc) userData.fbc = input.attribution.fbc
-  else if (input.attribution.fbclid)
-    userData.fbc = `fb.1.${Date.parse(input.clickTime ?? input.eventTime)}.${input.attribution.fbclid}`
-  if (input.attribution.fbp) userData.fbp = input.attribution.fbp
   return {
     event_name: input.eventName,
     event_time: Math.floor(Date.parse(input.eventTime) / 1_000),
     event_id: input.eventId,
     action_source: input.actionSource,
+    ...(isBusinessMessaging ? { messaging_channel: 'whatsapp' } : {}),
     ...(input.actionSource === 'website' && input.attribution.landing_url
       ? { event_source_url: input.attribution.landing_url }
       : {}),
@@ -274,6 +288,9 @@ export function buildMetaConversion(input: {
           custom_data: {
             value: input.valueCents / 100,
             currency: input.currency,
+            ...(input.eventName === 'Purchase'
+              ? { order_id: input.eventId }
+              : {}),
           },
         }),
   }
@@ -704,7 +721,10 @@ async function sendMeta(input: {
     attribution: input.attribution,
     clickTime: input.attribution.first_touch_at,
   })
-  if (input.attribution.client_user_agent) {
+  if (
+    input.rule.meta_action_source !== 'business_messaging' &&
+    input.attribution.client_user_agent
+  ) {
     event.user_data.client_user_agent = input.attribution.client_user_agent
   }
   const testEventCode = await connectionCredential({

@@ -77,6 +77,8 @@
   --orange-dark: #d84918;
   --blue: #2f66d0;
   --green: #17744f;
+  --violet: #6b53c7;
+  --slate: #59616d;
   --red: #c93c35;
   --yellow: #f1b942;
   --glass-surface: rgba(251, 250, 247, 0.82);
@@ -1202,6 +1204,325 @@ select:focus {
   color: var(--muted);
   font-size: 11px;
   margin-top: 3px;
+}
+
+/* Central de comando: um índice pesquisável de todas as ferramentas do produto. */
+.command-center {
+  padding: 0;
+  overflow: hidden;
+  border-color: var(--glass-line);
+  background: var(--glass-surface);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.command-center-head {
+  padding: 24px;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 28px;
+}
+.command-center-intro {
+  min-width: 0;
+}
+.command-center-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.command-center h3 {
+  margin-top: 5px;
+  font-family: 'Archivo Black', sans-serif;
+  font-size: clamp(21px, 2.2vw, 29px);
+  letter-spacing: -0.04em;
+}
+.command-center-intro > p {
+  max-width: 610px;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.command-center-search-block {
+  width: min(100%, 420px);
+  flex: 0 1 420px;
+  display: grid;
+  gap: 7px;
+}
+.command-center-search {
+  min-height: 48px;
+  padding: 0 3px 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.82);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+.command-center-search:focus-within {
+  border-color: var(--focus-ring);
+  background: #fff;
+  box-shadow: 0 0 0 var(--focus-ring-width) rgba(47, 102, 208, 0.16);
+}
+.command-center-search input {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  background: transparent;
+}
+.command-center-search input::-webkit-search-cancel-button {
+  display: none;
+}
+.command-center-search button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+.command-center-search button:hover {
+  color: var(--ink);
+  background: var(--surface-sunk);
+}
+.command-center-count {
+  min-height: 17px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: right;
+}
+.command-center-groups {
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+}
+.command-group {
+  --command-accent: var(--orange-text);
+  padding: 18px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.42);
+}
+.command-group.tone-blue {
+  --command-accent: var(--blue);
+}
+.command-group.tone-violet {
+  --command-accent: var(--violet);
+}
+.command-group.tone-green {
+  --command-accent: var(--green);
+}
+.command-group.tone-dark {
+  --command-accent: var(--ink);
+}
+.command-group.tone-slate {
+  --command-accent: var(--slate);
+}
+.command-group-head {
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--line-soft);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+}
+.command-group-head span {
+  color: var(--command-accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.command-group-head h4 {
+  margin: 3px 0 0;
+  font-size: 16px;
+  line-height: 1.35;
+}
+.command-group-head p {
+  max-width: 620px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.command-group-head > strong {
+  min-width: 31px;
+  height: 31px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--command-accent) 24%, transparent);
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--command-accent);
+  background: color-mix(in srgb, var(--command-accent) 8%, #fff);
+  font-size: 12px;
+}
+.command-tool-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(235px, 100%), 1fr));
+  gap: 9px;
+}
+.command-tool-card {
+  min-width: 0;
+  min-height: 88px;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  background: rgba(255, 255, 255, 0.72);
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+.command-tool-card:hover {
+  border-color: color-mix(in srgb, var(--command-accent) 42%, var(--line));
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(35, 30, 24, 0.08);
+  transform: translateY(-1px);
+}
+.command-tool-card:active {
+  transform: translateY(0);
+}
+.command-tool-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--command-accent);
+  background: color-mix(in srgb, var(--command-accent) 10%, #fff);
+}
+.command-tool-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.command-tool-copy strong,
+.command-tool-copy small {
+  display: block;
+}
+.command-tool-copy strong {
+  font-size: 13px;
+  line-height: 1.3;
+}
+.command-tool-copy small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.command-tool-arrow {
+  color: var(--ink-faint);
+  transition:
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+.command-tool-card:hover .command-tool-arrow {
+  color: var(--command-accent);
+  transform: translateX(2px);
+}
+.command-center-empty {
+  min-height: 116px;
+  padding: 20px;
+  border: 1px dashed var(--line);
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.42);
+}
+.command-center-empty > div {
+  display: grid;
+  gap: 3px;
+}
+.command-center-empty strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+.command-center-empty span {
+  font-size: 12px;
+}
+.command-center-empty button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .command-center-head {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .command-center-search-block {
+    width: 100%;
+    flex-basis: auto;
+  }
+}
+
+@media (max-width: 650px) {
+  .command-center-head,
+  .command-center-groups {
+    padding: 16px;
+  }
+  .command-group {
+    padding: 14px;
+  }
+  .command-group-head p {
+    max-width: 250px;
+  }
+  .command-tool-grid {
+    grid-template-columns: 1fr;
+  }
+  .command-center-empty {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .command-center-empty button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .command-center-search,
+  .command-tool-card,
+  .command-tool-arrow {
+    transition: none;
+  }
+  .command-tool-card:hover,
+  .command-tool-card:active,
+  .command-tool-card:hover .command-tool-arrow {
+    transform: none;
+  }
 }
 
 /* Inbox
@@ -6359,6 +6680,67 @@ select:focus {
   display: grid;
   place-items: center;
 }
+.calendar-oauth-feedback {
+  min-height: 76px;
+  padding: 14px;
+  border: 1px solid;
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.calendar-oauth-feedback.error {
+  border-color: #e3b6b2;
+  background: #fff4f2;
+  color: #7d211b;
+}
+.calendar-oauth-feedback.success {
+  border-color: #b8ddce;
+  background: #eef9f4;
+  color: #145d43;
+}
+.calendar-oauth-feedback-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.76);
+  display: grid;
+  place-items: center;
+}
+.calendar-oauth-feedback-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.calendar-oauth-feedback-copy strong,
+.calendar-oauth-feedback-copy span {
+  display: block;
+}
+.calendar-oauth-feedback-copy strong {
+  font-size: 13px;
+}
+.calendar-oauth-feedback-copy span {
+  max-width: 760px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.calendar-oauth-feedback-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.calendar-oauth-feedback-close {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: currentColor;
+  display: grid;
+  place-items: center;
+}
 .calendar-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -6898,6 +7280,52 @@ select:focus {
   max-width: 360px;
   color: var(--muted);
   font-size: 11px;
+}
+.calendar-oauth-help {
+  width: min(100%, 520px);
+  padding: 12px;
+  border: 1px solid #e2c77d;
+  border-radius: 10px;
+  background: #fff8e5;
+  color: #664b0f;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  text-align: left;
+}
+.calendar-oauth-help > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.calendar-oauth-help > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+.calendar-oauth-help strong,
+.calendar-oauth-help span,
+.calendar-oauth-help code {
+  display: block;
+}
+.calendar-oauth-help strong {
+  font-size: 12px;
+}
+.calendar-oauth-help p {
+  max-width: none;
+  margin: 0;
+  color: inherit;
+  line-height: 1.55;
+}
+.calendar-oauth-help span {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.calendar-oauth-help code {
+  overflow-wrap: anywhere;
+  font-size: 10px;
 }
 .google-account-banner {
   min-height: 65px;
@@ -7511,6 +7939,21 @@ select:focus {
   .calendar-alert .button {
     width: 100%;
     margin-left: 28px;
+  }
+  .calendar-oauth-feedback {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+  .calendar-oauth-feedback-actions {
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+  }
+  .calendar-oauth-feedback-actions .button {
+    flex: 1 1 180px;
+    justify-content: center;
+  }
+  .calendar-oauth-feedback-close {
+    margin-left: auto;
   }
   .calendar-summary-grid {
     grid-template-columns: 1fr 1fr;

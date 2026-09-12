@@ -97,6 +97,16 @@ const health = await healthResponse.json()
 if (!healthResponse.ok || !health.ok || health.service !== 'wal-chat')
   throw new Error('Health check da aplicação falhou.')
 
+const missingApiResponse = await fetch(
+  `${appUrl}/api/endereco-que-nao-existe-wal-chat`,
+)
+const missingApi = await missingApiResponse.json().catch(() => ({}))
+if (
+  missingApiResponse.status !== 404 ||
+  missingApi.error !== 'api_route_not_found'
+)
+  throw new Error('API desconhecida não devolveu o 404 JSON esperado.')
+
 console.log(
   JSON.stringify(
     {
@@ -106,6 +116,7 @@ console.log(
       robots: 'ok',
       sitemap: 'ok',
       health: 'ok',
+      missingApi: missingApiResponse.status,
       results,
     },
     null,

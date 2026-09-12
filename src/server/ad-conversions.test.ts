@@ -72,6 +72,72 @@ describe('ad conversions', () => {
     expect(JSON.stringify(payload)).not.toContain('lead@example.com')
   })
 
+  it('builds a CTWA business messaging event with the original click id', () => {
+    const payload = buildMetaConversion({
+      eventId: 'event-ctwa-123',
+      eventName: 'QualifiedLead',
+      eventTime: '2026-09-05T12:30:00.000Z',
+      actionSource: 'business_messaging',
+      valueCents: 25000,
+      currency: 'BRL',
+      contactId: 'contact-ctwa-123',
+      contact: { email: 'lead@example.com', phone: '+5538999990000' },
+      attribution: {
+        ctwa_clid: 'raw-ctwa-click-id',
+        ctwa_waba_id: '123456789012345',
+      },
+    })
+
+    expect(payload).toMatchObject({
+      event_id: 'event-ctwa-123',
+      action_source: 'business_messaging',
+      messaging_channel: 'whatsapp',
+      user_data: {
+        ctwa_clid: 'raw-ctwa-click-id',
+        whatsapp_business_account_id: '123456789012345',
+      },
+    })
+    expect(payload.user_data).not.toHaveProperty('em')
+    expect(payload.user_data).not.toHaveProperty('ph')
+    expect(payload.user_data).not.toHaveProperty('external_id')
+  })
+
+  it('blocks a CTWA conversion without click id and WABA', () => {
+    expect(() =>
+      buildMetaConversion({
+        eventId: 'event-missing-ctwa',
+        eventName: 'Lead',
+        eventTime: '2026-09-05T12:30:00.000Z',
+        actionSource: 'business_messaging',
+        valueCents: null,
+        currency: 'BRL',
+        contactId: 'contact-123',
+        contact: {},
+        attribution: {},
+      }),
+    ).toThrow('meta_ctwa_attribution_missing')
+  })
+
+  it('uses the durable event id as the Meta Purchase order id', () => {
+    const payload = buildMetaConversion({
+      eventId: 'order-event-123',
+      eventName: 'Purchase',
+      eventTime: '2026-09-05T12:30:00.000Z',
+      actionSource: 'system_generated',
+      valueCents: 9990,
+      currency: 'BRL',
+      contactId: 'contact-123',
+      contact: {},
+      attribution: {},
+    })
+
+    expect(payload.custom_data).toEqual({
+      value: 99.9,
+      currency: 'BRL',
+      order_id: 'order-event-123',
+    })
+  })
+
   it('requires provider-specific conversion identifiers', () => {
     const result = adConversionRuleSchema.safeParse({
       stageId: '8a8856c3-5274-48d2-855f-0fc61074a279',
@@ -81,6 +147,19 @@ describe('ad conversions', () => {
     })
 
     expect(result.success).toBe(false)
+  })
+
+  it('accepts business messaging as a Meta action source', () => {
+    const result = adConversionRuleSchema.safeParse({
+      stageId: '8a8856c3-5274-48d2-855f-0fc61074a279',
+      name: 'Qualificado via WhatsApp',
+      googleEnabled: false,
+      metaEnabled: true,
+      metaEventName: 'QualifiedLead',
+      metaActionSource: 'business_messaging',
+    })
+
+    expect(result.success).toBe(true)
   })
 
   it('exposes conversion.ready as an n8n subscription', () => {

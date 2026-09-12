@@ -117,3 +117,14 @@ export type LeadActivity = {
   performedAt: string
   actorName: string
 }
+
+export type CtwaAttribution = {
+  hasClickId: boolean
+  sourceId: string | null
+  sourceUrl: string | null
+  sourceType: string | null
+  headline: string | null
+  body: string | null
+  mediaType: string | null
+  receivedAt: string | null
+}

@@ -323,7 +323,64 @@ try {
     deviceScaleFactor: 1,
     mobile: true,
   })
+  await navigate(
+    '/calendario?google=denied&googleReason=access_denied&view=month&source=all',
+  )
+  const googleOAuthRecovery = await evaluate(`(() => {
+    const panel = document.querySelector('.calendar-oauth-feedback[role="alert"]')
+    const text = panel?.textContent?.replace(/\\s+/g, ' ').trim() || ''
+    const buttons = panel ? [...panel.querySelectorAll('button')] : []
+    return {
+      messageVisible: text.includes('O Google recusou a autorização'),
+      causeExplained: text.includes('Usuários de teste'),
+      recoveryAction: buttons.some((button) =>
+        button.textContent?.includes('Ver como corrigir'),
+      ),
+      dismissAction: buttons.some(
+        (button) =>
+          button.getAttribute('aria-label') ===
+          'Dispensar aviso da conexão Google',
+      ),
+      persistsWithLoadError: Boolean(document.querySelector('.calendar-feedback')),
+      noHorizontalOverflow: document.documentElement.scrollWidth <= innerWidth + 1,
+      touchTargets: buttons.every((button) => {
+        const rect = button.getBoundingClientRect()
+        return rect.width >= 44 && rect.height >= 44
+      }),
+    }
+  })()`)
+
+  await command('Emulation.setDeviceMetricsOverride', {
+    width: 375,
+    height: 812,
+    deviceScaleFactor: 1,
+    mobile: true,
+  })
   await navigate('/dashboard')
+  const commandCenter = await evaluate(`(async () => {
+    const input = document.querySelector('#dashboard-tool-search')
+    const initialLinks = [...document.querySelectorAll('[data-command-center-tool]')]
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    ).set
+    valueSetter.call(input, 'governanca')
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await new Promise((resolve) => setTimeout(resolve, 180))
+    const filteredLinks = [...document.querySelectorAll('[data-command-center-tool]')]
+    const clear = document.querySelector('button[aria-label="Limpar busca de ferramentas"]')
+    clear?.click()
+    await new Promise((resolve) => setTimeout(resolve, 180))
+    const restoredLinks = [...document.querySelectorAll('[data-command-center-tool]')]
+    return {
+      allToolsVisible: initialLinks.length === 24,
+      uniqueDestinations: new Set(initialLinks.map((link) => link.pathname)).size === 24,
+      groupedByWorkflow: document.querySelectorAll('.command-group').length === 6,
+      searchWorks: filteredLinks.length === 1 && filteredLinks[0].pathname === '/governanca',
+      clearWorks: restoredLinks.length === 24 && input.value === '',
+      noHorizontalOverflow: document.documentElement.scrollWidth <= innerWidth + 1,
+    }
+  })()`)
   const menuKeyboard = await evaluate(`(async () => {
     const open = document.querySelector('button[aria-label="Abrir menu"]')
     open?.click()
@@ -431,8 +488,10 @@ try {
         viewports,
         checks: report.length,
         failures,
+        commandCenter,
         menuKeyboard,
         crmWorkflow,
+        googleOAuthRecovery,
         routesWithSmallTargets: report
           .filter((item) => item.smallTargetCount > 0)
           .sort((left, right) => right.smallTargetCount - left.smallTargetCount)
@@ -450,8 +509,10 @@ try {
 
   if (
     failures.length ||
+    Object.values(commandCenter).some((value) => !value) ||
     Object.values(menuKeyboard).some((value) => !value) ||
-    Object.values(crmWorkflow).some((value) => !value)
+    Object.values(crmWorkflow).some((value) => !value) ||
+    Object.values(googleOAuthRecovery).some((value) => !value)
   ) {
     process.exitCode = 1
   }
@@ -693,10 +754,17 @@ async function evaluate(expression) {
 }
 
 async function navigate(route) {
+  const routeUrl = new URL(route, baseUrl)
+  const routePath = routeUrl.pathname
   const usedClientNavigation = await evaluate(`(() => {
     if (!document.querySelector('main')) return false
     const link = [...document.querySelectorAll('a[href]')].find((item) => {
-      try { return new URL(item.href).pathname === ${JSON.stringify(route)} }
+      try {
+        const target = new URL(item.href)
+        return target.pathname === ${JSON.stringify(routePath)} &&
+          (${JSON.stringify(routeUrl.search)} === '' ||
+            target.search === ${JSON.stringify(routeUrl.search)})
+      }
       catch { return false }
     })
     if (!link) return false
@@ -715,7 +783,9 @@ async function navigate(route) {
         '.loading-screen, .crm-loading',
       )
       return document.readyState === 'complete' &&
-        location.pathname === ${JSON.stringify(route)} &&
+        location.pathname === ${JSON.stringify(routePath)} &&
+        (${JSON.stringify(routeUrl.search)} === '' ||
+          location.search === ${JSON.stringify(routeUrl.search)}) &&
         (!appRoute || (document.querySelector('main') && document.querySelector('h1'))) &&
         !loading
     })()`)

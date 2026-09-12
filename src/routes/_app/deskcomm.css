@@ -1734,6 +1734,40 @@
   line-height: 1.6;
   white-space: pre-wrap;
 }
+.crm-ctwa-attribution {
+  background: color-mix(
+    in srgb,
+    var(--crm-green-soft) 58%,
+    var(--surface-raised)
+  );
+}
+.crm-ctwa-attribution .crm-section-title strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.crm-ctwa-attribution > small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+.crm-ctwa-attribution > .button {
+  justify-self: start;
+}
+.crm-ctwa-creative {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-raised) 84%, transparent);
+}
+.crm-ctwa-creative p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
 .crm-lost-reason {
   display: flex;
   gap: var(--space-2);

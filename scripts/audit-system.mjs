@@ -35,6 +35,7 @@ for (const file of apiFiles) {
   const isPublic =
     name.includes('/api/public/') ||
     name.includes('/api/privacy/') ||
+    name.endsWith('/api/$.ts') ||
     name.endsWith('/api/health.ts') ||
     name.endsWith('/api/ready.ts') ||
     name.endsWith('/api/data-deletion.ts') ||
@@ -76,6 +77,7 @@ for (const file of apiFiles) {
   // Endpoint anonimo sem cota vira amplificacao barata contra Postgres/Redis.
   if (
     isPublic &&
+    !name.endsWith('/api/$.ts') &&
     !name.endsWith('/api/health.ts') &&
     !name.endsWith('/api/ready.ts')
   ) {

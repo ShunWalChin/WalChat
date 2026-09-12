@@ -42,6 +42,25 @@ describe('ad attribution', () => {
     ).toBe('unknown')
   })
 
+  it('normaliza referral CTWA e remove dados privados da URL de origem', () => {
+    const result = normalizeAdAttribution({
+      ctwa_clid: `ctwa-${'x'.repeat(600)}`,
+      source_id: '120212345678901234',
+      source_url:
+        'https://user:secret@facebook.com/ad?email=lead@example.com#private',
+      source_type: 'ad',
+      headline: 'Oferta do anúncio',
+      media_type: 'image',
+      waba_id: '1234567890',
+    })
+
+    expect(result.ctwaClid).toHaveLength(512)
+    expect(result.ctwaSourceId).toBe('120212345678901234')
+    expect(result.ctwaSourceUrl).toBe('https://facebook.com/ad')
+    expect(result.ctwaHeadline).toBe('Oferta do anúncio')
+    expect(result.ctwaWabaId).toBe('1234567890')
+  })
+
   it('strips credentials, fragments and unrelated query data from stored URLs', () => {
     const result = normalizeAdAttribution({
       landing_url:

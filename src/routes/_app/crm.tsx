@@ -33,6 +33,7 @@ import {
   Link2,
   LoaderCircle,
   Mail,
+  Megaphone,
   MessageSquareText,
   MoreHorizontal,
   Pencil,
@@ -55,6 +56,7 @@ import type {
   ActivityType,
   ContactOption,
   CrmData,
+  CtwaAttribution,
   Lead,
   LeadActivity,
   LeadStatus,
@@ -1971,6 +1973,8 @@ function LeadPanel({
 }) {
   const panelRef = useRef<HTMLElement>(null)
   const [activities, setActivities] = useState<LeadActivity[]>([])
+  const [ctwaAttribution, setCtwaAttribution] =
+    useState<CtwaAttribution | null>(null)
   const [loadingActivities, setLoadingActivities] = useState(true)
   const [showComposer, setShowComposer] = useState(false)
   useDialogKeyboard(panelRef, onClose)
@@ -1978,10 +1982,12 @@ function LeadPanel({
   const loadActivities = useCallback(async () => {
     setLoadingActivities(true)
     try {
-      const result = await apiFetch<{ activities: LeadActivity[] }>(
-        `/api/crm/${lead.id}`,
-      )
+      const result = await apiFetch<{
+        activities: LeadActivity[]
+        ctwaAttribution: CtwaAttribution | null
+      }>(`/api/crm/${lead.id}`)
       setActivities(result.activities)
+      setCtwaAttribution(result.ctwaAttribution)
     } catch (caught) {
       onError(
         caught instanceof Error
@@ -2156,6 +2162,74 @@ function LeadPanel({
               </div>
             )}
           </section>
+
+          {ctwaAttribution && (
+            <section className="crm-drawer-section crm-ctwa-attribution">
+              <div className="crm-section-title">
+                <div>
+                  <span>Origem Meta</span>
+                  <strong>
+                    <Megaphone size={15} /> Anúncio para WhatsApp
+                  </strong>
+                </div>
+                <StatusDot tone={ctwaAttribution.hasClickId ? 'green' : 'gray'}>
+                  {ctwaAttribution.hasClickId
+                    ? 'CTWA identificado'
+                    : 'Referência sem click ID'}
+                </StatusDot>
+              </div>
+              <dl className="crm-detail-grid">
+                <Detail
+                  label="Tipo"
+                  value={
+                    ctwaAttribution.sourceType === 'ad'
+                      ? 'Anúncio'
+                      : ctwaAttribution.sourceType === 'post'
+                        ? 'Publicação'
+                        : (ctwaAttribution.sourceType ?? 'Meta')
+                  }
+                />
+                <Detail
+                  label="ID da origem"
+                  value={ctwaAttribution.sourceId ?? 'Não informado'}
+                />
+                <Detail
+                  label="Criativo"
+                  value={ctwaAttribution.mediaType ?? 'Não informado'}
+                />
+                <Detail
+                  label="Primeiro contato"
+                  value={
+                    ctwaAttribution.receivedAt
+                      ? longDate(ctwaAttribution.receivedAt)
+                      : 'Não informado'
+                  }
+                />
+              </dl>
+              {(ctwaAttribution.headline || ctwaAttribution.body) && (
+                <div className="crm-ctwa-creative">
+                  {ctwaAttribution.headline && (
+                    <strong>{ctwaAttribution.headline}</strong>
+                  )}
+                  {ctwaAttribution.body && <p>{ctwaAttribution.body}</p>}
+                </div>
+              )}
+              {ctwaAttribution.sourceUrl && (
+                <a
+                  className="button button-outline"
+                  href={ctwaAttribution.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ExternalLink size={15} /> Abrir origem na Meta
+                </a>
+              )}
+              <small>
+                O click ID completo fica protegido no servidor e será usado
+                somente por uma regra CAPI do tipo WhatsApp — anúncio CTWA.
+              </small>
+            </section>
+          )}
 
           {(lead.tags.length > 0 ||
             Object.keys(lead.customFields).length > 0) && (
